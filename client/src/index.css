@@ -1,0 +1,336 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap');
+
+:root {
+  /* Fond clair perle */
+  --app-bg: #f8fafc; 
+  
+  /* Textes purs et nets */
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  
+  /* Couleurs de marque Safehill */
+  --safehill-blue: #0e4a9e;
+  --safehill-teal: #00c4b4;
+  --gradient-brand: linear-gradient(135deg, #0e4a9e, #00c4b4);
+  
+  /* Glassmorphism premium (Light Aurora) */
+  --glass-bg: rgba(255, 255, 255, 0.65); 
+  --glass-border: rgba(255, 255, 255, 0.9); 
+  --glass-shadow: 0 12px 40px -12px rgba(15, 23, 42, 0.1);
+  --glass-card-bg: rgba(255, 255, 255, 0.45);
+  
+  /* Couleurs de statuts */
+  --status-paid: #10b981;    
+  --status-partial: #f59e0b; 
+  --status-pending: #3b82f6; 
+
+  /* Autres */
+  --input-bg: rgba(255, 255, 255, 0.8);
+  --input-border: rgba(255, 255, 255, 1);
+  --card-bg: rgba(255, 255, 255, 0.5);
+  --hover-bg: rgba(255, 255, 255, 0.9);
+  --border-color: rgba(15, 23, 42, 0.05);
+  --table-header-bg: rgba(0,0,0,0.02);
+}
+
+[data-theme='dark'] {
+  --app-bg: #0f172a;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  
+  --glass-bg: rgba(30, 41, 59, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  --glass-card-bg: rgba(30, 41, 59, 0.5);
+  
+  --input-bg: #1e293b;
+  --input-border: #334155;
+  --card-bg: #1e293b;
+  --hover-bg: #334155;
+  --border-color: #334155;
+  --table-header-bg: rgba(255,255,255,0.03);
+}
+
+body {
+  margin: 0;
+  background-color: var(--app-bg);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Outfit', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* =========================================
+   COMPOSANTS GLASSMORPHISM
+   ========================================= */
+
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: var(--glass-shadow);
+  padding: 24px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), var(--glass-shadow);
+}
+
+.glass-panel:hover {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 14px 45px -12px rgba(15, 23, 42, 0.15);
+}
+
+.glass-card {
+  background: var(--glass-card-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: var(--glass-shadow);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 20px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), var(--glass-shadow);
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 20px 40px -10px rgba(15, 23, 42, 0.15);
+}
+
+/* Boutons avec micro-animations */
+.btn-primary {
+  background: var(--gradient-brand);
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;
+  box-shadow: 0 4px 14px 0 rgba(0, 196, 180, 0.25);
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  box-shadow: 0 6px 20px 0 rgba(0, 196, 180, 0.35);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-main);
+  border: 1px solid var(--glass-border);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Badges de statut */
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid currentColor;
+  font-family: 'Outfit', sans-serif;
+}
+
+.status-badge.payee { color: var(--status-paid); background: rgba(16, 185, 129, 0.1); }
+.status-badge.partielle { color: var(--status-partial); background: rgba(245, 158, 11, 0.1); }
+.status-badge.pending { color: var(--status-pending); background: rgba(59, 130, 246, 0.1); }
+
+/* Formulaires */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.form-control {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--safehill-teal);
+  box-shadow: 0 0 0 1px var(--safehill-teal);
+}
+
+/* Modales */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  animation: fadeIn 0.2s forwards ease-out;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 450px;
+  padding: 30px;
+  transform: scale(0.95);
+  animation: scaleUp 0.2s forwards ease-out;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  to { transform: scale(1); }
+}
+
+/* Texte dégradé */
+.gradient-text {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* =========================================
+   STYLES POUR L'IMPRESSION PDF
+   ========================================= */
+@media print {
+  body, html {
+    background-color: white;
+    color: black;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  ::-webkit-scrollbar {
+    display: none !important;
+  }
+  .modal-overlay {
+    overflow: visible !important;
+    position: absolute !important;
+    padding: 0 !important;
+    background: none !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+    position: static !important;
+    width: 100%;
+    background: white;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  @page {
+    size: letter;
+    margin: 1cm;
+  }
+}
+
+/* =========================================
+   FOND AURORA (LIGHT MODE)
+   ========================================= */
+.aurora-bg-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  overflow: hidden;
+  background-color: var(--app-bg);
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.6;
+  animation: float 20s infinite ease-in-out alternate;
+  will-change: transform;
+}
+
+.aurora-blob-1 {
+  top: -15%;
+  left: -10%;
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(circle, rgba(14,74,158,0.15) 0%, rgba(14,74,158,0) 70%);
+  animation-delay: 0s;
+}
+
+.aurora-blob-2 {
+  bottom: -20%;
+  right: -10%;
+  width: 70vw;
+  height: 70vw;
+  background: radial-gradient(circle, rgba(0,196,180,0.12) 0%, rgba(0,196,180,0) 70%);
+  animation-delay: -5s;
+}
+
+.aurora-blob-3 {
+  top: 30%;
+  left: 25%;
+  width: 50vw;
+  height: 50vw;
+  background: radial-gradient(circle, rgba(168,85,247,0.1) 0%, rgba(168,85,247,0) 70%);
+  animation-delay: -10s;
+}
+
+@keyframes float {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(4%, 6%) scale(1.05); }
+  100% { transform: translate(-3%, -4%) scale(0.95); }
+}
