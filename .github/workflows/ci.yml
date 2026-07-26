@@ -1,0 +1,54 @@
+# Vérifie que la suite de tests, l'analyse statique et la compilation de
+# l'interface passent avant toute fusion.
+#
+# Les tests couvrent notamment l'arithmétique monétaire et le cloisonnement des
+# rôles : les exécuter automatiquement est ce qui les rend utiles.
+name: Vérifications
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Une nouvelle poussée annule la vérification en cours sur la même branche,
+# pour ne pas consommer inutilement des minutes d'exécution.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verifications:
+    name: Tests, analyse statique et compilation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Version minimale déclarée dans package.json (engines).
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+
+      - name: Installer les dépendances du serveur
+        run: npm ci
+
+      - name: Exécuter la suite de tests
+        run: npm test
+
+      - name: Installer les dépendances de l'interface
+        working-directory: client
+        run: npm ci
+
+      - name: Analyser l'interface
+        working-directory: client
+        run: npx eslint .
+
+      - name: Compiler l'interface
+        working-directory: client
+        run: npm run build
