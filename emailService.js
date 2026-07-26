@@ -1,45 +1,103 @@
+/**
+ * Envoi de courriels avec la facture ou le devis en pièce jointe.
+ */
+
 const nodemailer = require('nodemailer');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: process.env.SMTP_PORT === '465',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  tls: {
-    ciphers: 'SSLv3'
-  }
-});
+/** Taille maximale de la pièce jointe, une fois décodée. */
+const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 
-async function sendEmailWithAttachment({ to, cc, subject, text, attachmentBase64, filename }) {
-  if (!process.env.SMTP_PASS || process.env.SMTP_PASS === 'VOTRE_MOT_DE_PASSE_ICI') {
-    throw new Error('Le mot de passe SMTP n\'est pas configuré dans le fichier .env');
-  }
+let transporter = null;
 
-  // Le format de html2pdf peut inclure le nom du fichier ex: data:application/pdf;filename=generated.pdf;base64,JVBER...
-  const base64Parts = attachmentBase64.split('base64,');
-  const base64Data = base64Parts.length > 1 ? base64Parts[1] : attachmentBase64;
+/**
+ * Construit le transporteur SMTP.
+ *
+ * Aucune contrainte de chiffrement n'est imposée : la configuration précédente
+ * forçait `ciphers: 'SSLv3'`, un protocole obsolète qui dégradait la connexion
+ * au lieu de la sécuriser. Node négocie désormais la meilleure version de TLS
+ * disponible avec le serveur.
+ */
+function getTransporter() {
+  if (transporter) return transporter;
 
-  const mailOptions = {
-    from: `Safehill Technologies <${process.env.SMTP_USER}>`,
-    to: to,
-    cc: cc,
-    subject: subject,
-    text: text,
-    attachments: [
-      {
-        filename: filename,
-        content: base64Data,
-        encoding: 'base64'
-      }
-    ]
-  };
-
-  return await transporter.sendMail(mailOptions);
+  const port = Number(process.env.SMTP_PORT) || 587;
+  transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port,
+    secure: port === 465,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
+    },
+    requireTLS: port !== 465
+  });
+  return transporter;
 }
 
-module.exports = { sendEmailWithAttachment };
+/** Indique si la configuration SMTP est exploitable. */
+function isConfigured() {
+  return Boolean(
+    process.env.SMTP_HOST &&
+    process.env.SMTP_USER &&
+    process.env.SMTP_PASS &&
+    process.env.SMTP_PASS !== 'VOTRE_MOT_DE_PASSE_ICI'
+  );
+}
+
+/**
+ * Extrait les données utiles d'une pièce jointe en base64.
+ *
+ * html2pdf produit une chaîne du type
+ * `data:application/pdf;filename=generated.pdf;base64,JVBER...`
+ */
+function extractBase64(input) {
+  const marker = 'base64,';
+  const index = input.indexOf(marker);
+  const data = index >= 0 ? input.slice(index + marker.length) : input;
+  const cleaned = data.replace(/\s/g, '');
+
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(cleaned)) {
+    throw Object.assign(new Error('La pièce jointe est mal formée.'), { status: 400 });
+  }
+  // 4 caractères base64 encodent 3 octets.
+  if ((cleaned.length * 3) / 4 > MAX_ATTACHMENT_BYTES) {
+    throw Object.assign(new Error('La pièce jointe dépasse 15 Mo.'), { status: 400 });
+  }
+  return cleaned;
+}
+
+/**
+ * Envoie un courriel avec une pièce jointe.
+ *
+ * L'expéditeur affiché reprend le nom d'entreprise des paramètres : il était
+ * auparavant codé en dur, ce qui empêchait toute autre entreprise d'utiliser le
+ * logiciel sous son propre nom.
+ *
+ * @param {Object} params
+ * @param {{entreprise_nom?: string}} [expediteur] paramètres de l'entreprise
+ */
+async function sendEmailWithAttachment({ to, cc, subject, text, attachmentBase64, filename }, expediteur = {}) {
+  if (!isConfigured()) {
+    throw Object.assign(
+      new Error("La configuration SMTP est incomplète : renseignez SMTP_HOST, SMTP_USER et SMTP_PASS dans le fichier .env."),
+      { status: 503 }
+    );
+  }
+
+  const content = extractBase64(attachmentBase64);
+  const nomAffiche = (expediteur.entreprise_nom || '').trim();
+  const adresse = process.env.SMTP_USER;
+
+  return getTransporter().sendMail({
+    from: nomAffiche ? `"${nomAffiche.replace(/"/g, '')}" <${adresse}>` : adresse,
+    to,
+    cc: cc || undefined,
+    subject,
+    text,
+    attachments: [{ filename: filename || 'document.pdf', content, encoding: 'base64' }]
+  });
+}
+
+module.exports = { sendEmailWithAttachment, isConfigured, MAX_ATTACHMENT_BYTES };

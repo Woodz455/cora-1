@@ -1,4 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap');
+/* Aucune police n'est chargée depuis un service distant : l'application est un
+   logiciel de bureau qui doit fonctionner hors ligne, et l'import Google Fonts
+   laissait l'interface en police de repli dès qu'il n'y avait pas de réseau.
+   Inter et Outfit restent utilisées si elles sont installées sur le poste ;
+   sinon les polices système, très proches, prennent le relais. */
+:root {
+  --font-body: 'Inter', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Outfit', 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+}
 
 :root {
   /* Fond clair perle */
@@ -20,15 +28,25 @@
   --glass-card-bg: rgba(255, 255, 255, 0.45);
   
   /* Couleurs de statuts */
-  --status-paid: #10b981;    
-  --status-partial: #f59e0b; 
-  --status-pending: #3b82f6; 
+  --status-paid: #10b981;
+  --status-partial: #f59e0b;
+  --status-pending: #3b82f6;
+
+  /* Actions destructrices et d'avertissement */
+  --status-danger: #dc2626;
+  --status-danger-bg: rgba(239, 68, 68, 0.08);
+  --status-danger-border: rgba(239, 68, 68, 0.35);
+  --status-warning: #ea580c;
+  --status-warning-bg: rgba(234, 88, 12, 0.08);
+  --status-warning-border: rgba(234, 88, 12, 0.35);
 
   /* Autres */
   --input-bg: rgba(255, 255, 255, 0.8);
   --input-border: rgba(255, 255, 255, 1);
   --card-bg: rgba(255, 255, 255, 0.5);
   --hover-bg: rgba(255, 255, 255, 0.9);
+  --hover-subtle: rgba(15, 23, 42, 0.04);
+  --hover-border: rgba(15, 23, 42, 0.12);
   --border-color: rgba(15, 23, 42, 0.05);
   --table-header-bg: rgba(0,0,0,0.02);
 }
@@ -47,21 +65,31 @@
   --input-border: #334155;
   --card-bg: #1e293b;
   --hover-bg: #334155;
+  --hover-subtle: rgba(255, 255, 255, 0.06);
+  --hover-border: rgba(255, 255, 255, 0.18);
   --border-color: #334155;
   --table-header-bg: rgba(255,255,255,0.03);
+
+  /* Teintes éclaircies pour rester lisibles sur fond sombre. */
+  --status-danger: #f87171;
+  --status-danger-bg: rgba(248, 113, 113, 0.12);
+  --status-danger-border: rgba(248, 113, 113, 0.4);
+  --status-warning: #fb923c;
+  --status-warning-bg: rgba(251, 146, 60, 0.12);
+  --status-warning-border: rgba(251, 146, 60, 0.4);
 }
 
 body {
   margin: 0;
   background-color: var(--app-bg);
   color: var(--text-main);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-display);
 }
 
 * {
@@ -112,7 +140,7 @@ h1, h2, h3, h4, h5, h6 {
   border: none;
   padding: 10px 20px;
   border-radius: 8px;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-display);
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;
@@ -143,15 +171,78 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid var(--glass-border);
   padding: 10px 20px;
   border-radius: 8px;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-display);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .btn-secondary:hover {
-  background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.1);
+  background: var(--hover-subtle);
+  border-color: var(--hover-border);
+}
+
+/* Boutons d'action typés.
+   Ils remplacent les couleurs écrites en dur dans le JSX (#fef2f2, #fff7ed…),
+   qui restaient claires en mode sombre et rendaient le texte illisible. */
+.btn-danger,
+.btn-warning,
+.btn-icon {
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: var(--font-display);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--glass-card-bg);
+}
+
+.btn-danger {
+  color: var(--status-danger);
+  border: 1px solid var(--status-danger-border);
+}
+
+.btn-danger:hover {
+  background: var(--status-danger-bg);
+}
+
+.btn-warning {
+  color: var(--status-warning);
+  border: 1px solid var(--status-warning-border);
+}
+
+.btn-warning:hover {
+  background: var(--status-warning-bg);
+}
+
+.btn-icon {
+  color: var(--text-muted);
+  border: 1px solid var(--glass-border);
+}
+
+.btn-icon:hover {
+  color: var(--text-main);
+  background: var(--hover-subtle);
+}
+
+.btn-danger:disabled,
+.btn-warning:disabled,
+.btn-icon:disabled,
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Un anneau de focus visible sur tous les éléments interactifs : la navigation
+   se faisait par <div onClick>, sans aucun repère au clavier. */
+button:focus-visible,
+a:focus-visible,
+.nav-item:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--safehill-teal);
+  outline-offset: 2px;
 }
 
 /* Badges de statut */
@@ -160,14 +251,162 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 20px;
   font-size: 0.85rem;
   font-weight: 600;
-  background: rgba(0, 0, 0, 0.03);
+  background: var(--hover-subtle);
   border: 1px solid currentColor;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-display);
+  white-space: nowrap;
 }
 
-.status-badge.payee { color: var(--status-paid); background: rgba(16, 185, 129, 0.1); }
-.status-badge.partielle { color: var(--status-partial); background: rgba(245, 158, 11, 0.1); }
-.status-badge.pending { color: var(--status-pending); background: rgba(59, 130, 246, 0.1); }
+.status-badge.payee { color: var(--status-paid); background: rgba(16, 185, 129, 0.12); }
+.status-badge.partielle { color: var(--status-partial); background: rgba(245, 158, 11, 0.12); }
+.status-badge.pending { color: var(--status-pending); background: rgba(59, 130, 246, 0.12); }
+/* Cette variante était utilisée par le JSX sans être définie : les factures
+   annulées s'affichaient sans couleur de statut. */
+.status-badge.annulee { color: var(--text-muted); background: var(--hover-subtle); }
+
+/* =========================================
+   NAVIGATION LATÉRALE
+   ========================================= */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 15px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.nav-item:hover {
+  color: var(--text-main);
+  background: var(--hover-subtle);
+}
+
+.nav-item[aria-current='page'] {
+  color: var(--text-main);
+  font-weight: 600;
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* =========================================
+   MESSAGES ET ÉTATS
+   ========================================= */
+.alert {
+  padding: 14px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid transparent;
+  font-size: 0.95rem;
+}
+
+.alert-error {
+  color: var(--status-danger);
+  background: var(--status-danger-bg);
+  border-color: var(--status-danger-border);
+}
+
+.alert-success {
+  color: var(--status-paid);
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.alert-info {
+  color: var(--text-main);
+  background: var(--hover-subtle);
+  border-color: var(--glass-border);
+}
+
+.empty-state {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* =========================================
+   BARRE D'OUTILS ET TABLEAUX
+   ========================================= */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.search-input {
+  min-width: 240px;
+  padding: 10px 14px;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-main);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th {
+  padding: 12px 10px;
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-bottom: 2px solid var(--border-color);
+  background: var(--table-header-bg);
+}
+
+.data-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-main);
+}
+
+.data-table tbody tr:hover {
+  background: var(--hover-subtle);
+}
+
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
 
 /* Formulaires */
 .form-group {
@@ -189,7 +428,7 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 8px;
   background: var(--input-bg);
   color: var(--text-main);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   font-size: 1rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
@@ -333,4 +572,26 @@ h1, h2, h3, h4, h5, h6 {
   0% { transform: translate(0, 0) scale(1); }
   50% { transform: translate(4%, 6%) scale(1.05); }
   100% { transform: translate(-3%, -4%) scale(0.95); }
+}
+
+/* Les trois blobs floutés s'animent en continu et occupent en permanence le
+   processeur graphique. On les fige pour qui préfère limiter les animations,
+   et à l'impression. */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  .aurora-bg-container {
+    display: none !important;
+  }
 }

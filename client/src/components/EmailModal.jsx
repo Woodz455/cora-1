@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaultMessage }) {
   const [to, setTo] = useState(initialTo || '');

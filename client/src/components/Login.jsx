@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { api } from '../api';
 
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -12,22 +13,14 @@ function Login({ onLogin }) {
     setError(null);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        window.location.reload();
-      } else {
-        setError(data.error || 'Identifiants invalides');
-      }
+      await api.post('/api/auth/login', { username, password });
+      // Le rôle est relu auprès du serveur plutôt que déduit côté client.
+      const session = await api.get('/api/auth/check');
+      // Un rechargement complet de la page n'est plus nécessaire : l'état
+      // applicatif suffit, et l'interface ne clignote plus à la connexion.
+      onLogin({ username: session.username, role: session.role });
     } catch (err) {
-      setError('Erreur de connexion au serveur');
-    } finally {
+      setError(err.message);
       setLoading(false);
     }
   };
@@ -35,34 +28,44 @@ function Login({ onLogin }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--app-bg)' }}>
       <div className="glass-panel" style={{ width: '400px', padding: '40px', textAlign: 'center' }}>
-        <img src="/banner.png" alt="Safehill Technologies" style={{ maxWidth: '100%', marginBottom: '30px' }} />
-        <h2 style={{ color: 'var(--text-main)', marginBottom: '20px' }}>Connexion Clora</h2>
-        
-        {error && <p style={{ color: '#ef4444', background: '#fef2f2', padding: '10px', borderRadius: '5px', marginBottom: '15px' }}>{error}</p>}
+        <img
+          src="/banner.png"
+          alt=""
+          style={{ maxWidth: '100%', marginBottom: '30px' }}
+          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+        />
+        <h1 style={{ color: 'var(--text-main)', marginBottom: '20px', fontSize: '1.6rem' }}>Connexion à Clora</h1>
+
+        {error && <p className="alert alert-error" role="alert">{error}</p>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group" style={{ textAlign: 'left' }}>
-            <label>Nom d'utilisateur</label>
-            <input 
-              type="text" 
-              className="form-control" 
+            <label htmlFor="login-username">Nom d'utilisateur</label>
+            <input
+              id="login-username"
+              type="text"
+              className="form-control"
+              autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              autoFocus
             />
           </div>
           <div className="form-group" style={{ textAlign: 'left' }}>
-            <label>Mot de passe</label>
-            <input 
-              type="password" 
-              className="form-control" 
+            <label htmlFor="login-password">Mot de passe</label>
+            <input
+              id="login-password"
+              type="password"
+              className="form-control"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
           <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '10px', padding: '12px' }} disabled={loading}>
-            {loading ? 'Connexion en cours...' : 'Se connecter'}
+            {loading ? 'Connexion en cours…' : 'Se connecter'}
           </button>
         </form>
       </div>

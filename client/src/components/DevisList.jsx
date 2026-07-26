@@ -1,148 +1,143 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import InvoiceModal from './InvoiceModal';
 import InvoicePrintTemplate from './InvoicePrintTemplate';
+import { api, formatMontant } from '../api';
+import { useApiResource } from '../useApiResource';
+import { useUser } from '../UserContext';
 
 function DevisList() {
-  const [devisList, setDevisList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
+  const user = useUser();
+  const peutConvertir = user?.role === 'admin' || user?.role === 'comptable';
+
+  const { data: devisList, loading, error, setError, refresh: fetchDevis } = useApiResource('/api/devis', []);
+  const [message, setMessage] = useState(null);
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [devisIdToEdit, setDevisIdToEdit] = useState(null);
   const [printingDevisId, setPrintingDevisId] = useState(null);
+  const [recherche, setRecherche] = useState('');
 
-  const fetchDevis = async () => {
+  const devisFiltres = useMemo(() => {
+    const terme = recherche.trim().toLowerCase();
+    if (!terme) return devisList;
+    return devisList.filter((d) => (d.numero_devis || '').toLowerCase().includes(terme)
+      || (d.client || '').toLowerCase().includes(terme));
+  }, [devisList, recherche]);
+
+  const handleCancelDevis = async (devis) => {
+    if (!window.confirm(`Marquer le devis ${devis.numero_devis} comme refusé ?`)) return;
     try {
-      setLoading(true);
-      const response = await fetch('/api/devis');
-      if (!response.ok) throw new Error('Erreur réseau');
-      
-      const data = await response.json();
-      setDevisList(data);
+      setError(null);
+      await api.put(`/api/devis/${devis.id}/cancel`);
+      fetchDevis();
     } catch (err) {
-      console.error(err);
-      setError('Impossible de charger les devis.');
-    } finally {
-      setLoading(false);
+      setError(err.message);
     }
   };
 
-  useEffect(() => {
-    fetchDevis();
-  }, []);
-
-  const handleCancelDevis = async (id) => {
-    if (window.confirm('Voulez-vous vraiment annuler/refuser ce devis ?')) {
-      try {
-        const response = await fetch(`/api/devis/${id}/cancel`, { method: 'PUT' });
-        if (!response.ok) throw new Error('Erreur réseau');
-        fetchDevis();
-      } catch (err) {
-        alert('Erreur lors de l\'annulation du devis');
-      }
+  const handleConvert = async (devis) => {
+    if (!window.confirm(`Convertir le devis ${devis.numero_devis} en facture définitive ?`)) return;
+    try {
+      setError(null);
+      const facture = await api.post(`/api/devis/${devis.id}/convert`);
+      // Le numéro réellement attribué est affiché : la conversion échouait
+      // silencieusement avant, en laissant une facture orpheline en base.
+      setMessage(`Devis converti en facture ${facture.numero_facture}. Retrouvez-la dans l'onglet Factures.`);
+      fetchDevis();
+    } catch (err) {
+      setError(err.message);
     }
   };
 
-  const handleConvert = async (id) => {
-    if (window.confirm('Convertir ce devis en facture définitive ?')) {
-      try {
-        const response = await fetch(`/api/devis/${id}/convert`, { method: 'POST' });
-        if (!response.ok) throw new Error('Erreur réseau');
-        fetchDevis();
-        alert('Devis converti avec succès en facture ! Allez dans l\'onglet Factures pour la voir.');
-      } catch (err) {
-        alert('Erreur lors de la conversion');
-      }
-    }
-  };
-
-  if (loading) return <p style={{ color: 'var(--text-muted)' }}>Chargement des devis...</p>;
-  if (error) return <p style={{ color: 'red' }}>{error}</p>;
+  if (loading) return <p style={{ color: 'var(--text-muted)' }}>Chargement des devis…</p>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
-        <button className="btn-primary" onClick={() => setIsCreateModalOpen(true)}>
-          + Nouveau Devis
+      {error && <p className="alert alert-error" role="alert">{error}</p>}
+      {message && <p className="alert alert-success" role="status">{message}</p>}
+
+      <div className="toolbar">
+        <input
+          type="search"
+          className="search-input"
+          placeholder="Rechercher un numéro ou un client…"
+          aria-label="Rechercher un devis"
+          value={recherche}
+          onChange={(e) => setRecherche(e.target.value)}
+        />
+        <button type="button" className="btn-primary" onClick={() => setIsCreateModalOpen(true)}>
+          + Nouveau devis
         </button>
       </div>
 
-      {devisList.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>Aucun devis trouvé.</p>
+      {devisFiltres.length === 0 ? (
+        <div className="glass-panel empty-state">
+          {devisList.length === 0 ? 'Aucun devis pour le moment.' : 'Aucun devis ne correspond à votre recherche.'}
+        </div>
       ) : (
-        devisList.map((devis) => {
-          const isTermine = devis.statut === 'Refusé' || devis.statut === 'Converti';
+        devisFiltres.map((devis) => {
+          const estTermine = devis.statut === 'Refusé' || devis.statut === 'Converti';
+          const classeStatut = devis.statut === 'Converti' ? 'payee'
+            : devis.statut === 'Refusé' ? 'annulee' : 'pending';
+
           return (
-          <div key={devis.id} className="glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: isTermine ? 0.6 : 1, filter: devis.statut === 'Refusé' ? 'grayscale(100%)' : 'none' }}>
-            
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '600', textDecoration: devis.statut === 'Refusé' ? 'line-through' : 'none' }}>{devis.numero_devis}</h3>
-                <span className={`status-badge ${devis.statut === 'Converti' ? 'payee' : devis.statut === 'Refusé' ? 'annulee' : 'pending'}`}>
-                  {devis.statut}
-                </span>
-              </div>
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                Client : <strong style={{ color: 'var(--text-main)' }}>{devis.client}</strong> | Émis le {devis.date_emission}
-              </p>
-            </div>
-
-            <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div
+              key={devis.id}
+              className="glass-card"
+              style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                gap: '20px', flexWrap: 'wrap',
+                opacity: estTermine ? 0.7 : 1,
+                filter: devis.statut === 'Refusé' ? 'grayscale(100%)' : 'none'
+              }}
+            >
               <div>
-                <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total estimé</p>
-                <p style={{ margin: 0, fontWeight: '700', fontSize: '1.2rem', color: 'var(--text-main)' }}>{devis.montant_total.toFixed(2)} $</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '600', textDecoration: devis.statut === 'Refusé' ? 'line-through' : 'none' }}>
+                    {devis.numero_devis}
+                  </h3>
+                  <span className={`status-badge ${classeStatut}`}>{devis.statut}</span>
+                </div>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+                  Client : <strong style={{ color: 'var(--text-main)' }}>{devis.client}</strong>
+                  {' '}| Émis le {devis.date_emission} | Valide jusqu'au {devis.date_validite}
+                </p>
               </div>
-              
-              <button 
-                className="btn-secondary" 
-                onClick={() => setPrintingDevisId(devis.id)}
-                style={{ padding: '8px 12px' }}
-              >
-                🖨️ PDF
-              </button>
 
-              {!isTermine && (
-                <button 
-                  className="btn-secondary" 
-                  onClick={() => setDevisIdToEdit(devis.id)}
-                  style={{ padding: '8px 12px' }}
-                >
-                  ✏️ Modifier
-                </button>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <div className="numeric">
+                  <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total estimé</p>
+                  <p style={{ margin: 0, fontWeight: '700', fontSize: '1.2rem', color: 'var(--text-main)' }}>
+                    {formatMontant(devis.montant_total, devis.devise)}
+                  </p>
+                </div>
 
-              {!isTermine && (
-                <button 
-                  className="btn-secondary" 
-                  onClick={() => handleCancelDevis(devis.id)}
-                  style={{ padding: '8px 12px', color: '#ef4444', borderColor: '#fee2e2', background: '#fef2f2' }}
-                >
-                  🚫 Refuser
-                </button>
-              )}
+                <button type="button" className="btn-icon" onClick={() => setPrintingDevisId(devis.id)}>🖨️ PDF</button>
 
-              {!isTermine && (
-                <button 
-                  className="btn-primary" 
-                  onClick={() => handleConvert(devis.id)}
-                  style={{ width: '180px' }}
-                >
-                  ✨ Convertir en Facture
-                </button>
-              )}
+                {!estTermine && (
+                  <button type="button" className="btn-icon" onClick={() => setDevisIdToEdit(devis.id)}>✏️ Modifier</button>
+                )}
+
+                {!estTermine && (
+                  <button type="button" className="btn-danger" onClick={() => handleCancelDevis(devis)}>🚫 Refuser</button>
+                )}
+
+                {!estTermine && peutConvertir && (
+                  <button type="button" className="btn-primary" onClick={() => handleConvert(devis)} style={{ width: '190px' }}>
+                    ✨ Convertir en facture
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        )})
+          );
+        })
       )}
 
       {(isCreateModalOpen || devisIdToEdit) && (
         <InvoiceModal
           mode="devis"
           factureIdToEdit={devisIdToEdit}
-          onClose={() => {
-            setIsCreateModalOpen(false);
-            setDevisIdToEdit(null);
-          }}
+          onClose={() => { setIsCreateModalOpen(false); setDevisIdToEdit(null); }}
           onSuccess={() => {
             setIsCreateModalOpen(false);
             setDevisIdToEdit(null);
@@ -152,10 +147,10 @@ function DevisList() {
       )}
 
       {printingDevisId && (
-        <InvoicePrintTemplate 
+        <InvoicePrintTemplate
           mode="devis"
-          factureId={printingDevisId} 
-          onClose={() => setPrintingDevisId(null)} 
+          factureId={printingDevisId}
+          onClose={() => setPrintingDevisId(null)}
         />
       )}
     </div>

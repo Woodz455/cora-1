@@ -1,4 +1,18 @@
 node_modules/
-.env
 dist/
 .DS_Store
+
+# Secrets et configuration locale
+.env
+.jwt-secret
+
+# Base de données locale : elle contient les données réelles de l'entreprise
+# (clients, factures, comptes utilisateurs et empreintes de mots de passe) et
+# n'a rien à faire dans le dépôt.
+database.sqlite
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Sauvegardes produites par reset_data.js
+*.backup-*

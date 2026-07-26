@@ -1,7 +1,26 @@
 /**
- * Service gérant les opérations liées aux factures et au calcul financier.
+ * Service gérant les factures, les paiements et les calculs financiers.
  */
 
+const { roundCents, computeTotals, sqlTotals } = require('./money.js');
+const { withTransaction } = require('./dbUtils.js');
+const { nextDocumentNumber } = require('./sequences.js');
+
+/** Statuts possibles d'une facture. */
+const STATUTS = {
+  EN_ATTENTE: 'En attente',
+  PARTIELLE: 'Partiellement payée',
+  PAYEE: 'Payée',
+  ANNULEE: 'Annulée'
+};
+
+/** Tolérance d'un demi-cent, pour absorber les résidus de calcul flottant. */
+const EPSILON = 0.005;
+
+/**
+ * Taux de taxe applicables selon la province de facturation du client.
+ * Taux en vigueur en 2026.
+ */
 function getTaxRatesForProvince(province) {
   const p = (province || '').toUpperCase();
   switch (p) {
@@ -22,31 +41,55 @@ function getTaxRatesForProvince(province) {
   }
 }
 
+// Expressions SQL partagées, alignées sur `computeTotals` de money.js.
+const T = sqlTotals('tl.sous_total', 'f');
+const PAYE = 'ROUND(COALESCE(tp.total_paye, 0), 2)';
+const SOLDE = `ROUND(${T.montantTotal} - ${PAYE}, 2)`;
+const TAUX = 'COALESCE(f.taux_change, 1.0)';
+
+const CTE_TOTAUX = `
+  WITH total_lignes AS (
+    SELECT facture_id, SUM(quantite * prix_unitaire) AS sous_total
+    FROM lignes_facture
+    GROUP BY facture_id
+  ),
+  total_paiements AS (
+    SELECT facture_id, SUM(montant) AS total_paye
+    FROM paiements
+    GROUP BY facture_id
+  )
+`;
+
+/** Colonnes financières communes aux listes et aux détails de facture. */
+const COLONNES_FINANCIERES = `
+  ${T.sousTotal} AS sous_total,
+  ${T.taxe1} AS montant_taxe_1,
+  ${T.taxe2} AS montant_taxe_2,
+  ${T.montantTotal} AS montant_total,
+  ${PAYE} AS montant_paye,
+  ${SOLDE} AS solde_restant,
+  ROUND(${T.montantTotal} * ${TAUX}, 2) AS montant_total_cad,
+  ROUND(${PAYE} * ${TAUX}, 2) AS montant_paye_cad,
+  ROUND(${SOLDE} * ${TAUX}, 2) AS solde_restant_cad
+`;
+
 /**
- * Récupère toutes les factures avec leur total, le montant payé et le solde restant.
- * L'utilisation des requêtes "WITH" (Common Table Expressions - CTE) permet 
- * d'éviter les produits cartésiens (lignes multipliées) si une facture a 
- * plusieurs lignes ET plusieurs paiements.
- * 
- * @param {import('sqlite').Database} db Instance de la base de données
- * @returns {Promise<Array>} Liste des factures enrichies
+ * Récupère toutes les factures avec leur total, le montant payé et le solde.
+ *
+ * Les CTE évitent le produit cartésien qui multiplierait les lignes quand une
+ * facture a plusieurs lignes *et* plusieurs paiements.
+ *
+ * @param {import('sqlite').Database} db
+ * @returns {Promise<Array>}
  */
 async function getFacturesAvecSoldes(db) {
-  const query = `
-    WITH total_lignes AS (
-      SELECT facture_id, SUM(quantite * prix_unitaire) as sous_total
-      FROM lignes_facture
-      GROUP BY facture_id
-    ),
-    total_paiements AS (
-      SELECT facture_id, SUM(montant) as total_paye
-      FROM paiements
-      GROUP BY facture_id
-    )
-    SELECT 
+  return db.all(`
+    ${CTE_TOTAUX}
+    SELECT
       f.id,
       f.numero_facture,
-      c.nom_entreprise as client,
+      c.nom_entreprise AS client,
+      f.client_id,
       f.date_emission,
       f.date_echeance,
       f.statut,
@@ -54,439 +97,521 @@ async function getFacturesAvecSoldes(db) {
       f.date_derniere_relance,
       f.devise,
       f.taux_change,
-      (COALESCE(tl.sous_total, 0) * (1 + COALESCE(f.taux_taxe_1, 0) + COALESCE(f.taux_taxe_2, 0))) as montant_total,
-      COALESCE(tp.total_paye, 0) as montant_paye,
-      ((COALESCE(tl.sous_total, 0) * (1 + COALESCE(f.taux_taxe_1, 0) + COALESCE(f.taux_taxe_2, 0))) - COALESCE(tp.total_paye, 0)) as solde_restant,
-      (COALESCE(tl.sous_total, 0) * (1 + COALESCE(f.taux_taxe_1, 0) + COALESCE(f.taux_taxe_2, 0))) * COALESCE(f.taux_change, 1.0) as montant_total_cad,
-      COALESCE(tp.total_paye, 0) * COALESCE(f.taux_change, 1.0) as montant_paye_cad,
-      ((COALESCE(tl.sous_total, 0) * (1 + COALESCE(f.taux_taxe_1, 0) + COALESCE(f.taux_taxe_2, 0))) - COALESCE(tp.total_paye, 0)) * COALESCE(f.taux_change, 1.0) as solde_restant_cad
+      f.taux_taxe_1,
+      f.taux_taxe_2,
+      f.taxe_1_nom,
+      f.taxe_2_nom,
+      ${COLONNES_FINANCIERES}
     FROM factures f
     JOIN clients c ON f.client_id = c.id
     LEFT JOIN total_lignes tl ON tl.facture_id = f.id
     LEFT JOIN total_paiements tp ON tp.facture_id = f.id
-    ORDER BY f.date_emission DESC
-  `;
-
-  return await db.all(query);
+    ORDER BY f.date_emission DESC, f.id DESC
+  `);
 }
 
 /**
- * Récupère le détail financier d'une facture spécifique (calcul du solde).
- * 
- * @param {import('sqlite').Database} db Instance de la base de données
- * @param {number} factureId L'identifiant de la facture
- * @returns {Promise<Object>} Détails de la facture et de son solde
+ * Détail financier d'une facture (sous-total, taxes, payé, solde).
+ *
+ * @param {import('sqlite').Database} db
+ * @param {number} factureId
+ * @returns {Promise<Object|undefined>}
  */
 async function getSoldeFacture(db, factureId) {
-  const query = `
-    WITH total_lignes AS (
-      SELECT facture_id, SUM(quantite * prix_unitaire) as sous_total
-      FROM lignes_facture
-      WHERE facture_id = ?
-      GROUP BY facture_id
-    ),
-    total_paiements AS (
-      SELECT facture_id, SUM(montant) as total_paye
-      FROM paiements
-      WHERE facture_id = ?
-      GROUP BY facture_id
-    )
-    SELECT 
+  return db.get(`
+    ${CTE_TOTAUX}
+    SELECT
       f.id,
       f.numero_facture,
       f.statut,
       f.devise,
       f.taux_change,
-      COALESCE(tl.sous_total, 0) as sous_total,
-      (COALESCE(tl.sous_total, 0) * (1 + COALESCE(f.taux_taxe_1, 0) + COALESCE(f.taux_taxe_2, 0))) as montant_total,
-      COALESCE(tp.total_paye, 0) as montant_paye,
-      ((COALESCE(tl.sous_total, 0) * (1 + COALESCE(f.taux_taxe_1, 0) + COALESCE(f.taux_taxe_2, 0))) - COALESCE(tp.total_paye, 0)) as solde_restant,
-      (COALESCE(tl.sous_total, 0) * (1 + COALESCE(f.taux_taxe_1, 0) + COALESCE(f.taux_taxe_2, 0))) * COALESCE(f.taux_change, 1.0) as montant_total_cad,
-      COALESCE(tp.total_paye, 0) * COALESCE(f.taux_change, 1.0) as montant_paye_cad,
-      ((COALESCE(tl.sous_total, 0) * (1 + COALESCE(f.taux_taxe_1, 0) + COALESCE(f.taux_taxe_2, 0))) - COALESCE(tp.total_paye, 0)) * COALESCE(f.taux_change, 1.0) as solde_restant_cad
+      f.taux_taxe_1,
+      f.taux_taxe_2,
+      f.taxe_1_nom,
+      f.taxe_2_nom,
+      ${COLONNES_FINANCIERES}
     FROM factures f
     LEFT JOIN total_lignes tl ON tl.facture_id = f.id
     LEFT JOIN total_paiements tp ON tp.facture_id = f.id
     WHERE f.id = ?
-  `;
-
-  // On passe 'factureId' trois fois car il est utilisé dans les 3 clauses WHERE
-  return await db.get(query, [factureId, factureId, factureId]);
+  `, [factureId]);
 }
 
 /**
- * Ajoute un paiement à une facture et met à jour son statut si elle est totalement payée.
- * 
- * @param {import('sqlite').Database} db Instance de la base de données
- * @param {number} factureId ID de la facture
- * @param {number} montant Montant du paiement
- * @param {string} note Note optionnelle
- * @param {string} datePaiement Date du paiement (YYYY-MM-DD)
- * @returns {Promise<Object>} Les détails mis à jour de la facture
+ * Statut qu'une facture devrait porter au vu de ses montants.
+ *
+ * Une facture annulée le reste. Sinon le statut découle uniquement du solde :
+ * l'ancienne implémentation attendait un statut « Envoyée » que le code ne
+ * produisait jamais, si bien qu'un acompte ne faisait jamais passer la facture
+ * en « Partiellement payée » — et son encaissement disparaissait du chiffre
+ * d'affaires du tableau de bord.
+ *
+ * @param {string} statutActuel
+ * @param {number} soldeRestant
+ * @param {number} montantPaye
+ * @returns {string}
  */
-async function addPaiement(db, factureId, montant, note = '', datePaiement = new Date().toISOString().split('T')[0]) {
-  // 1. Ajouter le paiement
-  await db.run(
-    'INSERT INTO paiements (facture_id, date_paiement, montant, note) VALUES (?, ?, ?, ?)',
-    [factureId, datePaiement, montant, note]
-  );
+function resolveStatut(statutActuel, soldeRestant, montantPaye) {
+  if (statutActuel === STATUTS.ANNULEE) return STATUTS.ANNULEE;
+  if (soldeRestant <= EPSILON) return STATUTS.PAYEE;
+  if (montantPaye > EPSILON) return STATUTS.PARTIELLE;
+  return STATUTS.EN_ATTENTE;
+}
 
-  // 2. Vérifier le nouveau solde
-  const soldeInfo = await getSoldeFacture(db, factureId);
-  
-  // 3. Mettre à jour le statut si le solde est <= 0
-  if (soldeInfo && soldeInfo.solde_restant <= 0 && soldeInfo.statut !== 'Payée') {
-    await db.run('UPDATE factures SET statut = ? WHERE id = ?', ['Payée', factureId]);
-    soldeInfo.statut = 'Payée';
-  } else if (soldeInfo && soldeInfo.solde_restant > 0 && soldeInfo.statut === 'Envoyée') {
-    await db.run('UPDATE factures SET statut = ? WHERE id = ?', ['Partiellement payée', factureId]);
-    soldeInfo.statut = 'Partiellement payée';
+/** Recalcule et enregistre le statut d'une facture d'après ses montants. */
+async function syncStatut(db, factureId) {
+  const info = await getSoldeFacture(db, factureId);
+  if (!info) return null;
+
+  const attendu = resolveStatut(info.statut, info.solde_restant, info.montant_paye);
+  if (attendu !== info.statut) {
+    await db.run('UPDATE factures SET statut = ? WHERE id = ?', [attendu, factureId]);
+    info.statut = attendu;
+  }
+  return info;
+}
+
+/**
+ * Enregistre un paiement et met le statut de la facture à jour.
+ *
+ * Le montant est plafonné au solde restant : encaisser plus que dû produisait
+ * un solde négatif qui se propageait ensuite dans tous les rapports.
+ *
+ * @param {import('sqlite').Database} db
+ * @param {number} factureId
+ * @param {number} montant montant dans la devise de la facture
+ * @param {string} note
+ * @param {string} datePaiement format YYYY-MM-DD
+ * @returns {Promise<Object>} facture mise à jour
+ */
+async function addPaiement(db, factureId, montant, note = '', datePaiement = null) {
+  const date = datePaiement || new Date().toISOString().split('T')[0];
+  const valeur = roundCents(montant);
+
+  if (!(valeur > 0)) {
+    throw Object.assign(new Error('Le montant du paiement doit être strictement positif.'), { status: 400 });
   }
 
-  return soldeInfo;
+  return withTransaction(db, async () => {
+    const facture = await getSoldeFacture(db, factureId);
+    if (!facture) {
+      throw Object.assign(new Error('Facture non trouvée.'), { status: 404 });
+    }
+    if (facture.statut === STATUTS.ANNULEE) {
+      throw Object.assign(new Error('Une facture annulée ne peut pas recevoir de paiement.'), { status: 400 });
+    }
+    if (facture.solde_restant <= EPSILON) {
+      throw Object.assign(new Error('Cette facture est déjà soldée.'), { status: 400 });
+    }
+    if (valeur > facture.solde_restant + EPSILON) {
+      throw Object.assign(
+        new Error(`Le paiement (${valeur.toFixed(2)}) dépasse le solde restant (${facture.solde_restant.toFixed(2)}).`),
+        { status: 400 }
+      );
+    }
+
+    await db.run(
+      'INSERT INTO paiements (facture_id, date_paiement, montant, note) VALUES (?, ?, ?, ?)',
+      [factureId, date, valeur, note]
+    );
+
+    return syncStatut(db, factureId);
+  });
 }
 
 /**
- * Calcule les statistiques globales pour le tableau de bord des rapports
- * 
- * @param {import('sqlite').Database} db Instance de la base de données
- * @returns {Promise<Object>} Les statistiques globales
+ * Statistiques consolidées pour la page Rapports.
+ *
+ * Tous les montants sont ramenés en CAD au taux figé sur chaque facture — y
+ * compris les paiements, qui échappaient auparavant à la conversion et
+ * produisaient un « encaissé » supérieur au « facturé » sur les factures en USD.
+ *
+ * @param {import('sqlite').Database} db
+ * @returns {Promise<Object>}
  */
 async function getReportStats(db) {
   const stats = await db.get(`
-    WITH FacturesTotals AS (
-      SELECT 
-        f.id,
-        (COALESCE(SUM(l.quantite * l.prix_unitaire), 0) * (1 + COALESCE(f.taux_taxe_1, 0) + COALESCE(f.taux_taxe_2, 0))) * COALESCE(f.taux_change, 1.0) AS total_facture
-      FROM factures f
-      LEFT JOIN lignes_facture l ON f.id = l.facture_id
-      WHERE f.statut != 'Annulée'
-      GROUP BY f.id
-    ),
-    PaiementsTotals AS (
-      SELECT 
-        facture_id, 
-        COALESCE(SUM(montant), 0) AS total_paye
-      FROM paiements
-      GROUP BY facture_id
-    )
-    SELECT 
-      COALESCE(SUM(ft.total_facture), 0) AS revenu_total,
-      COALESCE(SUM(pt.total_paye), 0) AS total_encaisse,
-      COALESCE(SUM(ft.total_facture) - SUM(COALESCE(pt.total_paye, 0)), 0) AS solde_a_percevoir
-    FROM FacturesTotals ft
-    LEFT JOIN PaiementsTotals pt ON ft.id = pt.facture_id
+    ${CTE_TOTAUX}
+    SELECT
+      COALESCE(SUM(ROUND(${T.montantTotal} * ${TAUX}, 2)), 0) AS revenu_total,
+      COALESCE(SUM(ROUND(${PAYE} * ${TAUX}, 2)), 0) AS total_encaisse,
+      COALESCE(SUM(ROUND(${SOLDE} * ${TAUX}, 2)), 0) AS solde_a_percevoir
+    FROM factures f
+    LEFT JOIN total_lignes tl ON tl.facture_id = f.id
+    LEFT JOIN total_paiements tp ON tp.facture_id = f.id
+    WHERE f.statut != '${STATUTS.ANNULEE}'
   `);
 
-  const depensesStats = await db.get(`
-    SELECT COALESCE(SUM(montant_ht + tps + tvq), 0) as total_depenses
+  const depenses = await db.get(`
+    SELECT
+      COALESCE(SUM(montant_ht), 0) AS total_depenses_ht,
+      COALESCE(SUM(tps + tvq), 0) AS total_taxes_recuperables,
+      COALESCE(SUM(montant_ht + tps + tvq), 0) AS total_depenses_ttc
     FROM depenses
   `);
-  stats.total_depenses = depensesStats.total_depenses;
 
   const statusDistribution = await db.all(`
-    SELECT statut as name, COUNT(*) as value 
-    FROM factures 
+    SELECT statut AS name, COUNT(*) AS value
+    FROM factures
     GROUP BY statut
+    ORDER BY value DESC
   `);
 
   const topClients = await db.all(`
-    SELECT c.nom_entreprise as name, SUM(l.quantite * l.prix_unitaire * (1 + COALESCE(f.taux_taxe_1, 0) + COALESCE(f.taux_taxe_2, 0))) as revenu
-    FROM factures f
-    JOIN clients c ON f.client_id = c.id
-    JOIN lignes_facture l ON f.id = l.facture_id
-    WHERE f.statut != 'Annulée'
-    GROUP BY c.id
-    ORDER BY revenu DESC
-    LIMIT 5
-  `);
-
-  const lateInvoicesQuery = `
-    WITH total_lignes AS (
-      SELECT facture_id, SUM(quantite * prix_unitaire) as sous_total
-      FROM lignes_facture
-      GROUP BY facture_id
-    ),
-    total_paiements AS (
-      SELECT facture_id, SUM(montant) as total_paye
-      FROM paiements
-      GROUP BY facture_id
-    )
-    SELECT 
-      f.id,
-      f.numero_facture,
-      c.nom_entreprise as client,
-      f.date_echeance,
-      f.devise,
-      f.taux_change,
-      ((COALESCE(tl.sous_total, 0) * (1 + COALESCE(f.taux_taxe_1, 0) + COALESCE(f.taux_taxe_2, 0))) - COALESCE(tp.total_paye, 0)) * COALESCE(f.taux_change, 1.0) as solde_restant
+    ${CTE_TOTAUX}
+    SELECT
+      c.nom_entreprise AS name,
+      COALESCE(SUM(ROUND(${T.montantTotal} * ${TAUX}, 2)), 0) AS revenu
     FROM factures f
     JOIN clients c ON f.client_id = c.id
     LEFT JOIN total_lignes tl ON tl.facture_id = f.id
     LEFT JOIN total_paiements tp ON tp.facture_id = f.id
-    WHERE f.date_echeance < date('now') 
-      AND f.statut != 'Annulée'
-      AND ((COALESCE(tl.sous_total, 0) * (1 + COALESCE(f.taux_taxe_1, 0) + COALESCE(f.taux_taxe_2, 0))) - COALESCE(tp.total_paye, 0)) > 0
-    ORDER BY f.date_echeance ASC
-  `;
-  const lateInvoices = await db.all(lateInvoicesQuery);
+    WHERE f.statut != '${STATUTS.ANNULEE}'
+    GROUP BY c.id
+    HAVING revenu > 0
+    ORDER BY revenu DESC
+    LIMIT 5
+  `);
 
-  return { ...stats, statusDistribution, topClients, lateInvoices };
+  const lateInvoices = await db.all(`
+    ${CTE_TOTAUX}
+    SELECT
+      f.id,
+      f.numero_facture,
+      c.nom_entreprise AS client,
+      f.date_echeance,
+      f.devise,
+      f.taux_change,
+      ROUND(${SOLDE} * ${TAUX}, 2) AS solde_restant
+    FROM factures f
+    JOIN clients c ON f.client_id = c.id
+    LEFT JOIN total_lignes tl ON tl.facture_id = f.id
+    LEFT JOIN total_paiements tp ON tp.facture_id = f.id
+    WHERE f.date_echeance < date('now')
+      AND f.statut != '${STATUTS.ANNULEE}'
+      AND ${SOLDE} > 0
+    ORDER BY f.date_echeance ASC
+  `);
+
+  return {
+    ...stats,
+    // `total_depenses` reste le montant TTC pour compatibilité d'affichage ;
+    // le bénéfice net doit s'appuyer sur le HT, les taxes étant récupérables.
+    total_depenses: depenses.total_depenses_ttc,
+    total_depenses_ht: depenses.total_depenses_ht,
+    total_taxes_recuperables: depenses.total_taxes_recuperables,
+    statusDistribution,
+    topClients,
+    lateInvoices
+  };
 }
 
+/** Source de numérotation des factures (voir sequences.js). */
+const SOURCE_NUMERO = { table: 'factures', column: 'numero_facture' };
+
 /**
- * Génère le prochain numéro de facture (SHT-YYYYMM-XXXX)
+ * Génère le prochain numéro de facture au format SHT-AAAAMM-NNNN.
+ * À appeler à l'intérieur d'une transaction.
  */
 async function generateInvoiceNumber(db, dateStr) {
-  const dateObj = new Date(dateStr);
-  const year = dateObj.getFullYear();
-  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const prefix = `SHT-${year}${month}-`;
-  
-  const lastInvoice = await db.get(
-    `SELECT numero_facture FROM factures WHERE numero_facture LIKE ? ORDER BY id DESC LIMIT 1`,
-    [`${prefix}%`]
-  );
-  
-  let sequence = 1;
-  if (lastInvoice && lastInvoice.numero_facture) {
-    const parts = lastInvoice.numero_facture.split('-');
-    if (parts.length === 3) {
-      sequence = parseInt(parts[2], 10) + 1;
-    }
-  }
-  
-  const paddedSequence = String(sequence).padStart(4, '0');
-  return `${prefix}${paddedSequence}`;
+  return nextDocumentNumber(db, 'SHT', dateStr, SOURCE_NUMERO);
 }
 
 /**
- * Crée une facture et ses lignes dans une transaction
+ * Crée une facture et ses lignes.
+ *
+ * Les taux de taxe sont figés à la création d'après la province du client : une
+ * facture émise reste cohérente même si le client déménage ou si les taux changent.
+ *
+ * @param {import('sqlite').Database} db
+ * Appelable depuis une transaction existante : `withTransaction` est réentrant
+ * et ouvre alors un point de sauvegarde plutôt qu'une nouvelle transaction.
+ *
+ * @param {Object} factureData
+ * @param {Array} lignes
+ * @returns {Promise<Object>} facture créée, avec ses montants
  */
 async function createFacture(db, factureData, lignes) {
   const { client_id, date_emission, date_echeance, devise = 'CAD', taux_change = 1.0 } = factureData;
-  const statut = 'En attente';
-  
-  await db.exec('BEGIN TRANSACTION;');
-  
-  try {
+
+  return withTransaction(db, async () => {
+    const client = await db.get('SELECT id, province FROM clients WHERE id = ?', [client_id]);
+    if (!client) {
+      throw Object.assign(new Error('Client introuvable.'), { status: 400 });
+    }
+
+    const taxes = getTaxRatesForProvince(client.province);
     const numero_facture = await generateInvoiceNumber(db, date_emission);
-    
-    const client = await db.get('SELECT province FROM clients WHERE id = ?', [client_id]);
-    const taxes = getTaxRatesForProvince(client ? client.province : '');
-    const { taxe_1_nom, taxe_1_taux, taxe_2_nom, taxe_2_taux } = taxes;
 
     const result = await db.run(
-      'INSERT INTO factures (numero_facture, client_id, date_emission, date_echeance, statut, taux_taxe_1, taux_taxe_2, taxe_1_nom, taxe_2_nom, devise, taux_change) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [numero_facture, client_id, date_emission, date_echeance, statut, taxe_1_taux, taxe_2_taux, taxe_1_nom, taxe_2_nom, devise, taux_change]
+      `INSERT INTO factures (numero_facture, client_id, date_emission, date_echeance, statut,
+                             taux_taxe_1, taux_taxe_2, taxe_1_nom, taxe_2_nom, devise, taux_change)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [numero_facture, client_id, date_emission, date_echeance, STATUTS.EN_ATTENTE,
+        taxes.taxe_1_taux, taxes.taxe_2_taux, taxes.taxe_1_nom, taxes.taxe_2_nom, devise, taux_change]
     );
     const factureId = result.lastID;
-    
-    for (const ligne of lignes) {
-      await db.run(
-        'INSERT INTO lignes_facture (facture_id, description, quantite, prix_unitaire) VALUES (?, ?, ?, ?)',
-        [factureId, ligne.description, ligne.quantite, ligne.prix_unitaire]
-      );
-    }
-    
-    await db.exec('COMMIT;');
-    return await getSoldeFacture(db, factureId);
-  } catch (err) {
-    await db.exec('ROLLBACK;');
-    throw err;
+
+    await insertLignes(db, factureId, lignes);
+    return getSoldeFacture(db, factureId);
+  });
+}
+
+/** Insère les lignes d'une facture. */
+async function insertLignes(db, factureId, lignes) {
+  for (const ligne of lignes) {
+    await db.run(
+      'INSERT INTO lignes_facture (facture_id, description, quantite, prix_unitaire) VALUES (?, ?, ?, ?)',
+      [factureId, ligne.description, ligne.quantite, ligne.prix_unitaire]
+    );
   }
 }
 
 /**
- * Récupère tous les détails d'une facture, incluant le client et les lignes.
+ * Détails complets d'une facture : client, lignes, paramètres d'entreprise.
+ * Utilisé pour l'impression et l'envoi par courriel.
  */
 async function getFactureDetails(db, factureId) {
   const factureInfo = await getSoldeFacture(db, factureId);
   if (!factureInfo) return null;
 
   const factureRow = await db.get('SELECT * FROM factures WHERE id = ?', [factureId]);
-  const client = await db.get('SELECT * FROM clients WHERE id = ?', [factureRow.client_id]);
-  const lignes = await db.all('SELECT * FROM lignes_facture WHERE facture_id = ?', [factureId]);
-
-  const settings = await db.get('SELECT * FROM settings LIMIT 1');
+  const [client, lignes, settings] = await Promise.all([
+    db.get('SELECT * FROM clients WHERE id = ?', [factureRow.client_id]),
+    db.all('SELECT * FROM lignes_facture WHERE facture_id = ? ORDER BY id ASC', [factureId]),
+    db.get('SELECT * FROM settings LIMIT 1')
+  ]);
+  const paiements = await db.all(
+    'SELECT date_paiement, montant, note FROM paiements WHERE facture_id = ? ORDER BY date_paiement ASC, id ASC',
+    [factureId]
+  );
 
   return {
     ...factureInfo,
     date_emission: factureRow.date_emission,
     date_echeance: factureRow.date_echeance,
-    taux_taxe_1: factureRow.taux_taxe_1,
-    taux_taxe_2: factureRow.taux_taxe_2,
-    taxe_1_nom: factureRow.taxe_1_nom,
-    taxe_2_nom: factureRow.taxe_2_nom,
     client_details: client,
-    lignes: lignes,
-    settings: settings
+    lignes,
+    paiements,
+    settings
   };
 }
 
+/** Annule une facture. Seule une facture sans paiement encaissé peut l'être. */
 async function cancelFacture(db, factureId) {
-  const factureInfo = await getSoldeFacture(db, factureId);
-  if (!factureInfo) throw new Error('Facture non trouvée');
-  if (factureInfo.statut !== 'En attente') {
-    throw new Error('Seules les factures "En attente" peuvent être annulées.');
+  const facture = await getSoldeFacture(db, factureId);
+  if (!facture) {
+    throw Object.assign(new Error('Facture non trouvée.'), { status: 404 });
   }
-  await db.run('UPDATE factures SET statut = ? WHERE id = ?', ['Annulée', factureId]);
-  return { message: 'Facture annulée avec succès' };
+  if (facture.statut === STATUTS.ANNULEE) {
+    throw Object.assign(new Error('Cette facture est déjà annulée.'), { status: 400 });
+  }
+  if (facture.montant_paye > EPSILON) {
+    throw Object.assign(
+      new Error('Une facture comportant un paiement ne peut pas être annulée. Émettez une note de crédit.'),
+      { status: 400 }
+    );
+  }
+
+  await db.run('UPDATE factures SET statut = ? WHERE id = ?', [STATUTS.ANNULEE, factureId]);
+  return { message: 'Facture annulée avec succès.' };
 }
 
+/** Modifie une facture. Interdit dès qu'un paiement a été encaissé. */
 async function updateFacture(db, factureId, factureData, lignes) {
   const { client_id, date_echeance, devise = 'CAD', taux_change = 1.0 } = factureData;
-  const factureInfo = await getSoldeFacture(db, factureId);
-  
-  if (!factureInfo) throw new Error('Facture non trouvée');
-  if (factureInfo.statut !== 'En attente') {
-    throw new Error('Seules les factures "En attente" peuvent être modifiées.');
-  }
 
-  await db.exec('BEGIN TRANSACTION;');
-  try {
-    const client = await db.get('SELECT province FROM clients WHERE id = ?', [client_id]);
-    const taxes = getTaxRatesForProvince(client ? client.province : '');
-
-    await db.run(
-      'UPDATE factures SET client_id = ?, date_echeance = ?, taux_taxe_1 = ?, taux_taxe_2 = ?, taxe_1_nom = ?, taxe_2_nom = ?, devise = ?, taux_change = ? WHERE id = ?',
-      [client_id, date_echeance, taxes.taxe_1_taux, taxes.taxe_2_taux, taxes.taxe_1_nom, taxes.taxe_2_nom, devise, taux_change, factureId]
-    );
-    await db.run('DELETE FROM lignes_facture WHERE facture_id = ?', [factureId]);
-    for (const ligne of lignes) {
-      await db.run(
-        'INSERT INTO lignes_facture (facture_id, description, quantite, prix_unitaire) VALUES (?, ?, ?, ?)',
-        [factureId, ligne.description, ligne.quantite, ligne.prix_unitaire]
+  return withTransaction(db, async () => {
+    const facture = await getSoldeFacture(db, factureId);
+    if (!facture) {
+      throw Object.assign(new Error('Facture non trouvée.'), { status: 404 });
+    }
+    if (facture.statut !== STATUTS.EN_ATTENTE) {
+      throw Object.assign(
+        new Error(`Seules les factures « ${STATUTS.EN_ATTENTE} » peuvent être modifiées.`),
+        { status: 400 }
       );
     }
-    await db.exec('COMMIT;');
-    return await getSoldeFacture(db, factureId);
-  } catch (err) {
-    await db.exec('ROLLBACK;');
-    throw err;
-  }
-}
-
-async function deleteFacture(db, factureId) {
-  await db.run('DELETE FROM factures WHERE id = ?', [factureId]);
-  return { message: 'Facture supprimée avec succès' };
-}
-
-async function getDashboardStats(db) {
-  const factures = await getFacturesAvecSoldes(db);
-  
-  let chiffreAffaires = 0;
-  let facturesEnAttente = 0;
-  let facturesEnRetard = 0;
-
-  const today = new Date().toISOString().split('T')[0];
-  const monthlyData = {};
-
-  factures.forEach(f => {
-    if (f.statut === 'Payée' || f.statut === 'Partiellement payée') {
-      chiffreAffaires += f.montant_paye_cad;
-    }
-    if (f.statut !== 'Annulée' && f.solde_restant_cad > 0) {
-      if (f.date_echeance < today) {
-        facturesEnRetard += f.solde_restant_cad;
-      } else {
-        facturesEnAttente += f.solde_restant_cad;
-      }
+    if (facture.montant_paye > EPSILON) {
+      throw Object.assign(new Error('Une facture comportant un paiement ne peut pas être modifiée.'), { status: 400 });
     }
 
-    // Chart data (Revenue by month based on date_emission)
-    if (f.statut === 'Payée' || f.statut === 'Partiellement payée') {
-      const month = f.date_emission.substring(0, 7); // YYYY-MM
-      if (!monthlyData[month]) monthlyData[month] = 0;
-      monthlyData[month] += f.montant_paye_cad;
+    const client = await db.get('SELECT id, province FROM clients WHERE id = ?', [client_id]);
+    if (!client) {
+      throw Object.assign(new Error('Client introuvable.'), { status: 400 });
     }
+    const taxes = getTaxRatesForProvince(client.province);
+
+    await db.run(
+      `UPDATE factures SET client_id = ?, date_echeance = ?, taux_taxe_1 = ?, taux_taxe_2 = ?,
+                           taxe_1_nom = ?, taxe_2_nom = ?, devise = ?, taux_change = ?
+       WHERE id = ?`,
+      [client_id, date_echeance, taxes.taxe_1_taux, taxes.taxe_2_taux,
+        taxes.taxe_1_nom, taxes.taxe_2_nom, devise, taux_change, factureId]
+    );
+    await db.run('DELETE FROM lignes_facture WHERE facture_id = ?', [factureId]);
+    await insertLignes(db, factureId, lignes);
+
+    return getSoldeFacture(db, factureId);
   });
-
-  const chartData = Object.keys(monthlyData).sort().map(month => ({
-    name: month,
-    revenu: monthlyData[month]
-  }));
-
-  return {
-    chiffreAffaires,
-    facturesEnAttente,
-    facturesEnRetard,
-    chartData
-  };
 }
 
+/**
+ * Supprime définitivement une facture.
+ *
+ * Réservé à l'administration et interdit dès qu'un paiement est rattaché : une
+ * pièce comptable encaissée doit être conservée (six ans au Canada), et sa
+ * suppression emportait jusqu'ici les paiements en cascade, faussant
+ * silencieusement tout l'historique d'encaissement.
+ */
+async function deleteFacture(db, factureId) {
+  const facture = await getSoldeFacture(db, factureId);
+  if (!facture) {
+    throw Object.assign(new Error('Facture non trouvée.'), { status: 404 });
+  }
+  if (facture.montant_paye > EPSILON) {
+    throw Object.assign(
+      new Error('Cette facture comporte un paiement encaissé et ne peut pas être supprimée. Annulez-la ou émettez une note de crédit.'),
+      { status: 400 }
+    );
+  }
+
+  const lien = await db.get('SELECT id FROM devis WHERE facture_id = ?', [factureId]);
+  if (lien) {
+    throw Object.assign(
+      new Error('Cette facture provient d\'un devis converti et ne peut pas être supprimée.'),
+      { status: 400 }
+    );
+  }
+
+  await db.run('DELETE FROM factures WHERE id = ?', [factureId]);
+  return { message: 'Facture supprimée avec succès.' };
+}
+
+/**
+ * Indicateurs du tableau de bord, calculés en SQL.
+ *
+ * Le chiffre d'affaires correspond à tout ce qui a été réellement encaissé,
+ * quel que soit le statut de la facture : l'ancienne version filtrait sur les
+ * statuts « Payée » et « Partiellement payée », et un acompte sur facture en
+ * attente n'apparaissait donc nulle part.
+ */
+async function getDashboardStats(db) {
+  const totaux = await db.get(`
+    ${CTE_TOTAUX}
+    SELECT
+      COALESCE(SUM(ROUND(${PAYE} * ${TAUX}, 2)), 0) AS chiffreAffaires,
+      COALESCE(SUM(CASE WHEN ${SOLDE} > 0 AND f.date_echeance >= date('now')
+                        THEN ROUND(${SOLDE} * ${TAUX}, 2) ELSE 0 END), 0) AS facturesEnAttente,
+      COALESCE(SUM(CASE WHEN ${SOLDE} > 0 AND f.date_echeance < date('now')
+                        THEN ROUND(${SOLDE} * ${TAUX}, 2) ELSE 0 END), 0) AS facturesEnRetard
+    FROM factures f
+    LEFT JOIN total_lignes tl ON tl.facture_id = f.id
+    LEFT JOIN total_paiements tp ON tp.facture_id = f.id
+    WHERE f.statut != '${STATUTS.ANNULEE}'
+  `);
+
+  // Revenus par mois d'encaissement (et non d'émission) : c'est la trésorerie
+  // réellement entrée sur la période.
+  const chartData = await db.all(`
+    SELECT
+      substr(p.date_paiement, 1, 7) AS name,
+      COALESCE(SUM(ROUND(p.montant * COALESCE(f.taux_change, 1.0), 2)), 0) AS revenu
+    FROM paiements p
+    JOIN factures f ON f.id = p.facture_id
+    WHERE f.statut != '${STATUTS.ANNULEE}'
+    GROUP BY name
+    ORDER BY name ASC
+  `);
+
+  return { ...totaux, chartData };
+}
+
+/**
+ * Rapport de taxes pour une déclaration ARC / Revenu Québec.
+ *
+ * Les taxes sont ventilées par régime (TPS, TVH, TVQ, TVP) et non additionnées
+ * en un chiffre unique : une entreprise facturant au Québec et en Ontario doit
+ * déclarer sa TPS, sa TVH et sa TVQ séparément.
+ *
+ * @param {import('sqlite').Database} db
+ * @param {string} [annee] filtre AAAA
+ * @param {string} [mois]  filtre MM
+ */
 async function getTaxReport(db, annee, mois) {
-  let whereClause = "WHERE f.statut != 'Annulée'";
+  let where = `WHERE f.statut != '${STATUTS.ANNULEE}'`;
   const params = [];
-  
   if (annee) {
-    whereClause += " AND strftime('%Y', f.date_emission) = ?";
-    params.push(annee);
+    where += " AND strftime('%Y', f.date_emission) = ?";
+    params.push(String(annee));
   }
   if (mois) {
-    // mois in 'MM' format
-    whereClause += " AND strftime('%m', f.date_emission) = ?";
-    params.push(mois);
+    where += " AND strftime('%m', f.date_emission) = ?";
+    params.push(String(mois).padStart(2, '0'));
   }
 
-  const query = `
-    WITH total_lignes AS (
-      SELECT facture_id, SUM(quantite * prix_unitaire) as sous_total
-      FROM lignes_facture
-      GROUP BY facture_id
-    )
-    SELECT 
-      COALESCE(SUM(tl.sous_total * COALESCE(f.taux_change, 1.0)), 0) as total_revenus_taxables,
-      COALESCE(SUM(tl.sous_total * COALESCE(f.taux_taxe_1, 0) * COALESCE(f.taux_change, 1.0)), 0) as total_taxe_1,
-      COALESCE(SUM(tl.sous_total * COALESCE(f.taux_taxe_2, 0) * COALESCE(f.taux_change, 1.0)), 0) as total_taxe_2
+  const summary = await db.get(`
+    ${CTE_TOTAUX}
+    SELECT
+      COALESCE(SUM(ROUND(${T.sousTotal} * ${TAUX}, 2)), 0) AS total_revenus_taxables,
+      COALESCE(SUM(ROUND(${T.taxe1} * ${TAUX}, 2)), 0) AS total_taxe_1,
+      COALESCE(SUM(ROUND(${T.taxe2} * ${TAUX}, 2)), 0) AS total_taxe_2
     FROM factures f
     LEFT JOIN total_lignes tl ON tl.facture_id = f.id
-    ${whereClause}
-  `;
-  
-  const result = await db.get(query, params);
-  
-  const queryGrouped = `
-    WITH total_lignes AS (
-      SELECT facture_id, SUM(quantite * prix_unitaire) as sous_total
-      FROM lignes_facture
-      GROUP BY facture_id
-    )
-    SELECT 
-      f.taxe_1_nom,
-      COALESCE(SUM(tl.sous_total * COALESCE(f.taux_taxe_1, 0) * COALESCE(f.taux_change, 1.0)), 0) as montant_taxe_1,
-      f.taxe_2_nom,
-      COALESCE(SUM(tl.sous_total * COALESCE(f.taux_taxe_2, 0) * COALESCE(f.taux_change, 1.0)), 0) as montant_taxe_2
-    FROM factures f
-    LEFT JOIN total_lignes tl ON tl.facture_id = f.id
-    ${whereClause}
-    GROUP BY f.taxe_1_nom, f.taxe_2_nom
-  `;
-  const details = await db.all(queryGrouped, params);
+    ${where}
+  `, params);
 
-  // Dépenses taxes (CTI / RTI)
-  let depensesWhereClause = "WHERE 1=1";
+  // Une même taxe peut occuper le premier ou le second emplacement selon la
+  // province : on réunit les deux colonnes avant de regrouper par nom de taxe.
+  const parRegime = await db.all(`
+    ${CTE_TOTAUX}
+    SELECT nom, ROUND(SUM(montant), 2) AS montant FROM (
+      SELECT f.taxe_1_nom AS nom, ROUND(${T.taxe1} * ${TAUX}, 2) AS montant
+      FROM factures f LEFT JOIN total_lignes tl ON tl.facture_id = f.id
+      ${where}
+      UNION ALL
+      SELECT f.taxe_2_nom AS nom, ROUND(${T.taxe2} * ${TAUX}, 2) AS montant
+      FROM factures f LEFT JOIN total_lignes tl ON tl.facture_id = f.id
+      ${where}
+    )
+    WHERE nom IS NOT NULL AND nom != ''
+    GROUP BY nom
+    HAVING SUM(montant) != 0
+    ORDER BY nom ASC
+  `, [...params, ...params]);
+
+  let depensesWhere = 'WHERE 1 = 1';
   const depensesParams = [];
   if (annee) {
-    depensesWhereClause += " AND strftime('%Y', date_depense) = ?";
-    depensesParams.push(annee);
+    depensesWhere += " AND strftime('%Y', date_depense) = ?";
+    depensesParams.push(String(annee));
   }
   if (mois) {
-    depensesWhereClause += " AND strftime('%m', date_depense) = ?";
-    depensesParams.push(mois);
+    depensesWhere += " AND strftime('%m', date_depense) = ?";
+    depensesParams.push(String(mois).padStart(2, '0'));
   }
 
-  const queryDepenses = `
-    SELECT 
-      COALESCE(SUM(montant_ht), 0) as total_depenses_ht,
-      COALESCE(SUM(tps), 0) as total_tps_payee,
-      COALESCE(SUM(tvq), 0) as total_tvq_payee
+  const depenses = await db.get(`
+    SELECT
+      COALESCE(SUM(montant_ht), 0) AS total_depenses_ht,
+      COALESCE(SUM(tps), 0) AS total_tps_payee,
+      COALESCE(SUM(tvq), 0) AS total_tvq_payee
     FROM depenses
-    ${depensesWhereClause}
-  `;
-  const depensesResult = await db.get(queryDepenses, depensesParams);
-  
-  return { summary: result, details, depenses: depensesResult };
+    ${depensesWhere}
+  `, depensesParams);
+
+  const taxesFacturees = roundCents(summary.total_taxe_1 + summary.total_taxe_2);
+  const taxesPayees = roundCents(depenses.total_tps_payee + depenses.total_tvq_payee);
+
+  return {
+    summary,
+    parRegime,
+    depenses,
+    taxes_facturees: taxesFacturees,
+    taxes_payees: taxesPayees,
+    taxes_nettes: roundCents(taxesFacturees - taxesPayees)
+  };
 }
 
 module.exports = {
@@ -500,5 +625,10 @@ module.exports = {
   deleteFacture,
   getReportStats,
   getDashboardStats,
-  getTaxReport
+  getTaxReport,
+  getTaxRatesForProvince,
+  resolveStatut,
+  syncStatut,
+  computeTotals,
+  STATUTS
 };

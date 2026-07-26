@@ -1,23 +1,29 @@
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
+const { getJwtSecret } = require('./config.js');
 
-const getJwtSecret = () => process.env.JWT_SECRET || 'safequick_local_secret_key_2026';
+/** Rôles reconnus, du plus large au plus restreint. */
+const ROLES = ['admin', 'comptable', 'employe'];
 
 const authMiddleware = (req, res, next) => {
-  const token = req.cookies.token;
+  const token = req.cookies && req.cookies.token;
   if (!token) {
     return res.status(401).json({ error: 'Accès refusé. Aucun jeton fourni.' });
   }
 
   try {
-    const decoded = jwt.verify(token, getJwtSecret());
-    req.user = decoded;
+    req.user = jwt.verify(token, getJwtSecret());
     next();
   } catch (err) {
     res.status(401).json({ error: 'Jeton invalide ou expiré.' });
   }
 };
 
+/**
+ * Restreint une route à une liste de rôles.
+ *
+ * À utiliser sur *toute* route métier : sans cela, un compte `employe`
+ * authentifié atteint indifféremment n'importe quel point d'entrée de l'API.
+ */
 const requireRole = (roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
@@ -27,4 +33,9 @@ const requireRole = (roles) => {
   };
 };
 
-module.exports = { authMiddleware, requireRole };
+/** Raccourcis de lisibilité pour les groupes de rôles les plus fréquents. */
+const anyRole = () => requireRole(ROLES);
+const adminOnly = () => requireRole(['admin']);
+const adminOrAccountant = () => requireRole(['admin', 'comptable']);
+
+module.exports = { authMiddleware, requireRole, anyRole, adminOnly, adminOrAccountant, ROLES };
