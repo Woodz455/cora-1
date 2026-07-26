@@ -25,6 +25,8 @@ Au premier lancement, l'application demande de créer un compte administrateur.
 | `npm run build` | Compile l'interface et produit l'installateur |
 | `npm test` | Suite de tests (calculs financiers, rôles, API) |
 | `npm run doctor` | Diagnostique les anomalies dans les données comptables |
+| `npm run doctor -- --corriger-statuts` | Réaligne le statut des factures sur leurs montants |
+| `npm run doctor -- --refiger-montants` | Recalcule les montants depuis les lignes, en cas de dérive signalée |
 | `npm run db:init` | Crée ou met à jour le schéma de la base |
 | `npm run seed:demo` | Insère un jeu de données de démonstration (base vide seulement) |
 | `node reset_data.js --confirmer` | Efface factures, devis et paiements (sauvegarde automatique) |
@@ -82,12 +84,17 @@ client/src/        Interface React
 
 ## Règles comptables
 
+- **Montants arrêtés à l'émission.** Sous-total, taxes et total sont calculés
+  une fois, au moment où le document est créé, puis conservés tels quels. Ils ne
+  sont jamais recalculés depuis les lignes à la lecture : une facture remise à un
+  client garde son montant, quelles que soient les évolutions ultérieures des
+  taux ou de la règle d'arrondi. Ils ne sont réarrêtés que si le document est
+  modifié dans l'application, ce qu'un paiement encaissé interdit.
 - **Taxes par province.** Les taux découlent de la province du client
-  (TPS/TVQ au Québec, TVH en Ontario, TPS/TVP dans l'Ouest…) et sont figés à
-  l'émission du document : une facture passée ne change jamais de montant.
+  (TPS/TVQ au Québec, TVH en Ontario, TPS/TVP dans l'Ouest…) et sont eux aussi
+  figés à l'émission.
 - **Arrondi.** Chaque taxe est calculée sur le sous-total hors taxes et arrondie
-  au cent séparément ; le total est la somme de ces valeurs arrondies. La base
-  et l'interface appliquent la même règle, vérifiée par les tests.
+  au cent séparément ; le total est la somme de ces valeurs arrondies.
 - **Devises.** Une facture porte sa devise et le taux de change appliqué à
   l'émission. Les rapports consolident tout en dollars canadiens.
 - **Conservation.** Une facture comportant un paiement ne peut être ni modifiée,

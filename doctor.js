@@ -9,10 +9,61 @@
  *   npm run doctor
  */
 
-const { initDb } = require('./database.js');
+const { initDb, reprendreMontants } = require('./database.js');
 const { getFacturesAvecSoldes, resolveStatut, STATUTS } = require('./invoiceService.js');
+const { roundCents } = require('./money.js');
 
 const argent = (n) => `${Number(n || 0).toFixed(2)} $`;
+
+/**
+ * Compare les montants figés d'un document à ce que donneraient ses lignes.
+ *
+ * Les totaux étant arrêtés à l'émission, ils ne peuvent plus diverger par le
+ * fonctionnement normal de l'application. Un écart signale donc une écriture
+ * directe en base, une restauration partielle ou une corruption — précisément
+ * ce qu'un diagnostic doit savoir repérer.
+ */
+async function detecterDerives(db, table) {
+  const tableLignes = table === 'devis' ? 'lignes_devis' : 'lignes_facture';
+  const cle = table === 'devis' ? 'devis_id' : 'facture_id';
+  const numero = table === 'devis' ? 'numero_devis' : 'numero_facture';
+
+  const documents = await db.all(`
+    SELECT d.id, d.${numero} AS numero, d.sous_total, d.montant_total,
+           d.taux_taxe_1, d.taux_taxe_2,
+           (SELECT COALESCE(SUM(l.quantite * l.prix_unitaire), 0)
+            FROM ${tableLignes} l WHERE l.${cle} = d.id) AS brut
+    FROM ${table} d
+  `);
+
+  const anomalies = [];
+  for (const doc of documents) {
+    const attenduSousTotal = roundCents(doc.brut);
+    const t1 = roundCents(attenduSousTotal * (doc.taux_taxe_1 || 0));
+    const t2 = roundCents(attenduSousTotal * (doc.taux_taxe_2 || 0));
+    const attenduTotal = roundCents(attenduSousTotal + t1 + t2);
+
+    if (doc.montant_total === null) {
+      anomalies.push({
+        gravite: 'ÉLEVÉE',
+        objet: doc.numero || `${table} #${doc.id}`,
+        probleme: 'Aucun montant enregistré.',
+        action: 'Lancez « npm run doctor -- --refiger-montants » pour les calculer depuis les lignes.'
+      });
+      continue;
+    }
+
+    if (Math.abs(doc.montant_total - attenduTotal) > 0.005) {
+      anomalies.push({
+        gravite: 'ÉLEVÉE',
+        objet: doc.numero || `${table} #${doc.id}`,
+        probleme: `Montant figé à ${argent(doc.montant_total)} alors que les lignes donnent ${argent(attenduTotal)}.`,
+        action: "Les lignes ont probablement été modifiées hors de l'application. Vérifiez le document, puis « npm run doctor -- --refiger-montants »."
+      });
+    }
+  }
+  return anomalies;
+}
 
 async function diagnostiquer(db) {
   const anomalies = [];
@@ -77,6 +128,9 @@ async function diagnostiquer(db) {
     });
   }
 
+  anomalies.push(...await detecterDerives(db, 'factures'));
+  anomalies.push(...await detecterDerives(db, 'devis'));
+
   const sansLigne = await db.all(`
     SELECT numero_facture FROM factures f
     WHERE statut != '${STATUTS.ANNULEE}'
@@ -131,6 +185,13 @@ async function main() {
       const n = await corrigerStatuts(db);
       console.log(n === 0 ? '  Aucun statut à corriger.' : `  ${n} facture(s) mise(s) à jour.`);
     }
+
+    if (process.argv.includes('--refiger-montants')) {
+      console.log('\nRecalcul des montants depuis les lignes :');
+      const factures = await reprendreMontants(db, 'factures', { toutes: true });
+      const devis = await reprendreMontants(db, 'devis', { toutes: true });
+      console.log(`  ${factures} facture(s) et ${devis} devis mis à jour.`);
+    }
   } finally {
     await db.close();
   }
@@ -143,4 +204,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { diagnostiquer, corrigerStatuts };
+module.exports = { diagnostiquer, corrigerStatuts, detecterDerives };

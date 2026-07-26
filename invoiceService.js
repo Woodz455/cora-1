@@ -2,7 +2,7 @@
  * Service gérant les factures, les paiements et les calculs financiers.
  */
 
-const { roundCents, computeTotals, sqlTotals } = require('./money.js');
+const { roundCents, computeTotals } = require('./money.js');
 const { withTransaction } = require('./dbUtils.js');
 const { nextDocumentNumber } = require('./sequences.js');
 
@@ -41,19 +41,25 @@ function getTaxRatesForProvince(province) {
   }
 }
 
-// Expressions SQL partagées, alignées sur `computeTotals` de money.js.
-const T = sqlTotals('tl.sous_total', 'f');
+/**
+ * Expressions SQL partagées.
+ *
+ * Les montants d'une facture sont lus tels qu'ils ont été arrêtés à l'émission,
+ * et non recalculés depuis les lignes : une pièce comptable remise à un client
+ * ne doit jamais changer de montant, quelles que soient les évolutions
+ * ultérieures des taux de taxe ou de la règle d'arrondi. Seuls les paiements,
+ * qui s'ajoutent dans le temps, restent agrégés à la lecture.
+ */
+const SOUS_TOTAL = 'COALESCE(f.sous_total, 0)';
+const TAXE_1 = 'COALESCE(f.montant_taxe_1, 0)';
+const TAXE_2 = 'COALESCE(f.montant_taxe_2, 0)';
+const TOTAL = 'COALESCE(f.montant_total, 0)';
 const PAYE = 'ROUND(COALESCE(tp.total_paye, 0), 2)';
-const SOLDE = `ROUND(${T.montantTotal} - ${PAYE}, 2)`;
+const SOLDE = `ROUND(${TOTAL} - ${PAYE}, 2)`;
 const TAUX = 'COALESCE(f.taux_change, 1.0)';
 
 const CTE_TOTAUX = `
-  WITH total_lignes AS (
-    SELECT facture_id, SUM(quantite * prix_unitaire) AS sous_total
-    FROM lignes_facture
-    GROUP BY facture_id
-  ),
-  total_paiements AS (
+  WITH total_paiements AS (
     SELECT facture_id, SUM(montant) AS total_paye
     FROM paiements
     GROUP BY facture_id
@@ -62,13 +68,13 @@ const CTE_TOTAUX = `
 
 /** Colonnes financières communes aux listes et aux détails de facture. */
 const COLONNES_FINANCIERES = `
-  ${T.sousTotal} AS sous_total,
-  ${T.taxe1} AS montant_taxe_1,
-  ${T.taxe2} AS montant_taxe_2,
-  ${T.montantTotal} AS montant_total,
+  ${SOUS_TOTAL} AS sous_total,
+  ${TAXE_1} AS montant_taxe_1,
+  ${TAXE_2} AS montant_taxe_2,
+  ${TOTAL} AS montant_total,
   ${PAYE} AS montant_paye,
   ${SOLDE} AS solde_restant,
-  ROUND(${T.montantTotal} * ${TAUX}, 2) AS montant_total_cad,
+  ROUND(${TOTAL} * ${TAUX}, 2) AS montant_total_cad,
   ROUND(${PAYE} * ${TAUX}, 2) AS montant_paye_cad,
   ROUND(${SOLDE} * ${TAUX}, 2) AS solde_restant_cad
 `;
@@ -76,8 +82,9 @@ const COLONNES_FINANCIERES = `
 /**
  * Récupère toutes les factures avec leur total, le montant payé et le solde.
  *
- * Les CTE évitent le produit cartésien qui multiplierait les lignes quand une
- * facture a plusieurs lignes *et* plusieurs paiements.
+ * L'agrégation des paiements passe par une CTE plutôt que par une jointure
+ * directe : sans cela, une facture réglée en plusieurs versements verrait ses
+ * lignes multipliées.
  *
  * @param {import('sqlite').Database} db
  * @returns {Promise<Array>}
@@ -104,7 +111,6 @@ async function getFacturesAvecSoldes(db) {
       ${COLONNES_FINANCIERES}
     FROM factures f
     JOIN clients c ON f.client_id = c.id
-    LEFT JOIN total_lignes tl ON tl.facture_id = f.id
     LEFT JOIN total_paiements tp ON tp.facture_id = f.id
     ORDER BY f.date_emission DESC, f.id DESC
   `);
@@ -132,7 +138,6 @@ async function getSoldeFacture(db, factureId) {
       f.taxe_2_nom,
       ${COLONNES_FINANCIERES}
     FROM factures f
-    LEFT JOIN total_lignes tl ON tl.facture_id = f.id
     LEFT JOIN total_paiements tp ON tp.facture_id = f.id
     WHERE f.id = ?
   `, [factureId]);
@@ -234,11 +239,10 @@ async function getReportStats(db) {
   const stats = await db.get(`
     ${CTE_TOTAUX}
     SELECT
-      COALESCE(SUM(ROUND(${T.montantTotal} * ${TAUX}, 2)), 0) AS revenu_total,
+      COALESCE(SUM(ROUND(${TOTAL} * ${TAUX}, 2)), 0) AS revenu_total,
       COALESCE(SUM(ROUND(${PAYE} * ${TAUX}, 2)), 0) AS total_encaisse,
       COALESCE(SUM(ROUND(${SOLDE} * ${TAUX}, 2)), 0) AS solde_a_percevoir
     FROM factures f
-    LEFT JOIN total_lignes tl ON tl.facture_id = f.id
     LEFT JOIN total_paiements tp ON tp.facture_id = f.id
     WHERE f.statut != '${STATUTS.ANNULEE}'
   `);
@@ -262,10 +266,9 @@ async function getReportStats(db) {
     ${CTE_TOTAUX}
     SELECT
       c.nom_entreprise AS name,
-      COALESCE(SUM(ROUND(${T.montantTotal} * ${TAUX}, 2)), 0) AS revenu
+      COALESCE(SUM(ROUND(${TOTAL} * ${TAUX}, 2)), 0) AS revenu
     FROM factures f
     JOIN clients c ON f.client_id = c.id
-    LEFT JOIN total_lignes tl ON tl.facture_id = f.id
     LEFT JOIN total_paiements tp ON tp.facture_id = f.id
     WHERE f.statut != '${STATUTS.ANNULEE}'
     GROUP BY c.id
@@ -286,7 +289,6 @@ async function getReportStats(db) {
       ROUND(${SOLDE} * ${TAUX}, 2) AS solde_restant
     FROM factures f
     JOIN clients c ON f.client_id = c.id
-    LEFT JOIN total_lignes tl ON tl.facture_id = f.id
     LEFT JOIN total_paiements tp ON tp.facture_id = f.id
     WHERE f.date_echeance < date('now')
       AND f.statut != '${STATUTS.ANNULEE}'
@@ -344,12 +346,17 @@ async function createFacture(db, factureData, lignes) {
     const taxes = getTaxRatesForProvince(client.province);
     const numero_facture = await generateInvoiceNumber(db, date_emission);
 
+    // Les montants sont arrêtés ici, une fois pour toutes.
+    const montants = computeTotals(lignes, taxes.taxe_1_taux, taxes.taxe_2_taux);
+
     const result = await db.run(
       `INSERT INTO factures (numero_facture, client_id, date_emission, date_echeance, statut,
-                             taux_taxe_1, taux_taxe_2, taxe_1_nom, taxe_2_nom, devise, taux_change)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                             taux_taxe_1, taux_taxe_2, taxe_1_nom, taxe_2_nom, devise, taux_change,
+                             sous_total, montant_taxe_1, montant_taxe_2, montant_total)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [numero_facture, client_id, date_emission, date_echeance, STATUTS.EN_ATTENTE,
-        taxes.taxe_1_taux, taxes.taxe_2_taux, taxes.taxe_1_nom, taxes.taxe_2_nom, devise, taux_change]
+        taxes.taxe_1_taux, taxes.taxe_2_taux, taxes.taxe_1_nom, taxes.taxe_2_nom, devise, taux_change,
+        montants.sous_total, montants.taxe_1, montants.taxe_2, montants.montant_total]
     );
     const factureId = result.lastID;
 
@@ -443,12 +450,17 @@ async function updateFacture(db, factureId, factureData, lignes) {
     }
     const taxes = getTaxRatesForProvince(client.province);
 
+    // La facture n'a pas encore été encaissée : ses montants sont réarrêtés.
+    const montants = computeTotals(lignes, taxes.taxe_1_taux, taxes.taxe_2_taux);
+
     await db.run(
       `UPDATE factures SET client_id = ?, date_echeance = ?, taux_taxe_1 = ?, taux_taxe_2 = ?,
-                           taxe_1_nom = ?, taxe_2_nom = ?, devise = ?, taux_change = ?
+                           taxe_1_nom = ?, taxe_2_nom = ?, devise = ?, taux_change = ?,
+                           sous_total = ?, montant_taxe_1 = ?, montant_taxe_2 = ?, montant_total = ?
        WHERE id = ?`,
       [client_id, date_echeance, taxes.taxe_1_taux, taxes.taxe_2_taux,
-        taxes.taxe_1_nom, taxes.taxe_2_nom, devise, taux_change, factureId]
+        taxes.taxe_1_nom, taxes.taxe_2_nom, devise, taux_change,
+        montants.sous_total, montants.taxe_1, montants.taxe_2, montants.montant_total, factureId]
     );
     await db.run('DELETE FROM lignes_facture WHERE facture_id = ?', [factureId]);
     await insertLignes(db, factureId, lignes);
@@ -507,7 +519,6 @@ async function getDashboardStats(db) {
       COALESCE(SUM(CASE WHEN ${SOLDE} > 0 AND f.date_echeance < date('now')
                         THEN ROUND(${SOLDE} * ${TAUX}, 2) ELSE 0 END), 0) AS facturesEnRetard
     FROM factures f
-    LEFT JOIN total_lignes tl ON tl.facture_id = f.id
     LEFT JOIN total_paiements tp ON tp.facture_id = f.id
     WHERE f.statut != '${STATUTS.ANNULEE}'
   `);
@@ -554,11 +565,10 @@ async function getTaxReport(db, annee, mois) {
   const summary = await db.get(`
     ${CTE_TOTAUX}
     SELECT
-      COALESCE(SUM(ROUND(${T.sousTotal} * ${TAUX}, 2)), 0) AS total_revenus_taxables,
-      COALESCE(SUM(ROUND(${T.taxe1} * ${TAUX}, 2)), 0) AS total_taxe_1,
-      COALESCE(SUM(ROUND(${T.taxe2} * ${TAUX}, 2)), 0) AS total_taxe_2
+      COALESCE(SUM(ROUND(${SOUS_TOTAL} * ${TAUX}, 2)), 0) AS total_revenus_taxables,
+      COALESCE(SUM(ROUND(${TAXE_1} * ${TAUX}, 2)), 0) AS total_taxe_1,
+      COALESCE(SUM(ROUND(${TAXE_2} * ${TAUX}, 2)), 0) AS total_taxe_2
     FROM factures f
-    LEFT JOIN total_lignes tl ON tl.facture_id = f.id
     ${where}
   `, params);
 
@@ -567,12 +577,12 @@ async function getTaxReport(db, annee, mois) {
   const parRegime = await db.all(`
     ${CTE_TOTAUX}
     SELECT nom, ROUND(SUM(montant), 2) AS montant FROM (
-      SELECT f.taxe_1_nom AS nom, ROUND(${T.taxe1} * ${TAUX}, 2) AS montant
-      FROM factures f LEFT JOIN total_lignes tl ON tl.facture_id = f.id
+      SELECT f.taxe_1_nom AS nom, ROUND(${TAXE_1} * ${TAUX}, 2) AS montant
+      FROM factures f
       ${where}
       UNION ALL
-      SELECT f.taxe_2_nom AS nom, ROUND(${T.taxe2} * ${TAUX}, 2) AS montant
-      FROM factures f LEFT JOIN total_lignes tl ON tl.facture_id = f.id
+      SELECT f.taxe_2_nom AS nom, ROUND(${TAXE_2} * ${TAUX}, 2) AS montant
+      FROM factures f
       ${where}
     )
     WHERE nom IS NOT NULL AND nom != ''

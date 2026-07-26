@@ -1,14 +1,12 @@
 /**
- * Arithmétique monétaire : l'arrondi et la cohérence entre le calcul JavaScript
- * et le calcul SQL, dont dépend l'égalité entre le total imprimé sur la facture
- * et la somme de ses lignes.
+ * Arithmétique monétaire : la règle d'arrondi dont dépend l'égalité entre le
+ * total imprimé sur une facture et la somme de ses lignes.
  */
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { roundCents, sumLignes, computeTaxes, computeTotals, sqlTotals } = require('../money.js');
-const { createTestDb } = require('./helpers.js');
+const { roundCents, sumLignes, computeTaxes, computeTotals } = require('../money.js');
 
 test('roundCents corrige les artefacts de représentation binaire', () => {
   assert.equal(roundCents(2.675), 2.68);
@@ -56,56 +54,4 @@ test('le total est toujours la somme exacte des lignes affichées', () => {
 test('un sous-total de 100 $ au Québec donne 114,98 $', () => {
   const totaux = computeTotals([{ quantite: 1, prix_unitaire: 100 }], 0.05, 0.09975);
   assert.deepEqual(totaux, { sous_total: 100, taxe_1: 5, taxe_2: 9.98, montant_total: 114.98 });
-});
-
-test('SQL et JavaScript produisent des montants identiques', async () => {
-  const db = await createTestDb();
-  try {
-    const T = sqlTotals('t.sous_total', 'f');
-    await db.exec(`
-      CREATE TABLE t_sous (sous_total REAL);
-      CREATE TABLE f_taux (taux_taxe_1 REAL, taux_taxe_2 REAL);
-    `);
-
-    // Un échantillon large de montants, dont les valeurs limites d'arrondi.
-    const montants = [];
-    for (let c = 1; c <= 5000; c++) montants.push(c / 100);
-    for (const m of [0.015, 0.05, 1.005, 2.675, 9.995, 99.99, 1234.56, 19999.99]) montants.push(m);
-
-    // Chaque combinaison de taux provinciaux est éprouvée sur tout l'échantillon.
-    const jeuxDeTaux = [
-      [0.05, 0.09975], // Québec
-      [0.13, 0], // Ontario
-      [0.15, 0], // Provinces maritimes
-      [0.05, 0.07] // Colombie-Britannique
-    ];
-
-    await db.exec('BEGIN');
-    for (const montant of montants) await db.run('INSERT INTO t_sous VALUES (?)', [montant]);
-    await db.exec('COMMIT');
-
-    for (const [taux1, taux2] of jeuxDeTaux) {
-      await db.run('DELETE FROM f_taux');
-      await db.run('INSERT INTO f_taux VALUES (?, ?)', [taux1, taux2]);
-
-      const lignes = await db.all(`
-        SELECT t.sous_total AS brut,
-               ${T.sousTotal} AS sous_total, ${T.taxe1} AS taxe_1,
-               ${T.taxe2} AS taxe_2, ${T.montantTotal} AS montant_total
-        FROM t_sous t, f_taux f
-      `);
-      assert.equal(lignes.length, montants.length);
-
-      for (const ligne of lignes) {
-        const attendu = computeTotals([{ quantite: 1, prix_unitaire: ligne.brut }], taux1, taux2);
-        const contexte = `${ligne.brut} à ${taux1}/${taux2}`;
-        assert.equal(ligne.sous_total, attendu.sous_total, `sous-total pour ${contexte}`);
-        assert.equal(ligne.taxe_1, attendu.taxe_1, `taxe 1 pour ${contexte}`);
-        assert.equal(ligne.taxe_2, attendu.taxe_2, `taxe 2 pour ${contexte}`);
-        assert.equal(ligne.montant_total, attendu.montant_total, `total pour ${contexte}`);
-      }
-    }
-  } finally {
-    await db.__cleanup();
-  }
 });

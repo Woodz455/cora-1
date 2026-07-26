@@ -191,6 +191,71 @@ async function runMigrations(db) {
   // dans `settings`. Conservées le temps de la migration vers `users`.
   await addColumn(db, 'settings', 'admin_username', 'TEXT');
   await addColumn(db, 'settings', 'admin_password', 'TEXT');
+
+  await figerMontants(db);
+}
+
+/**
+ * Montants figés à l'émission.
+ *
+ * Les totaux étaient recalculés depuis les lignes à chaque lecture. Un document
+ * remis à un client aurait donc changé de montant si la règle d'arrondi ou les
+ * taux de taxe évoluaient — ce qui est inadmissible pour une pièce comptable.
+ * Sous-total, taxes et total sont désormais arrêtés au moment de l'émission.
+ *
+ * Les documents antérieurs sont repris une seule fois, avec la règle d'arrondi
+ * en vigueur au moment de la migration.
+ */
+async function figerMontants(db) {
+  for (const table of ['factures', 'devis']) {
+    const ajoutees = [
+      await addColumn(db, table, 'sous_total', 'REAL'),
+      await addColumn(db, table, 'montant_taxe_1', 'REAL'),
+      await addColumn(db, table, 'montant_taxe_2', 'REAL'),
+      await addColumn(db, table, 'montant_total', 'REAL')
+    ];
+    if (!ajoutees.some(Boolean)) continue;
+
+    const reprises = await reprendreMontants(db, table);
+    log(`Migration : montants figés pour ${reprises} ${table === 'devis' ? 'devis' : 'facture(s)'}.`);
+  }
+}
+
+/**
+ * Calcule et enregistre les montants des documents qui n'en ont pas encore.
+ * Utilisé par la migration, et par le diagnostic pour réparer une dérive.
+ *
+ * @param {import('sqlite').Database} db
+ * @param {'factures'|'devis'} table
+ * @param {{toutes?: boolean}} [options] `toutes` recalcule aussi les documents déjà figés
+ * @returns {Promise<number>} nombre de documents mis à jour
+ */
+async function reprendreMontants(db, table, options = {}) {
+  const { roundCents } = require('./money.js');
+  const tableLignes = table === 'devis' ? 'lignes_devis' : 'lignes_facture';
+  const cle = table === 'devis' ? 'devis_id' : 'facture_id';
+  const filtre = options.toutes ? '' : 'WHERE d.montant_total IS NULL';
+
+  const documents = await db.all(`
+    SELECT d.id, d.taux_taxe_1, d.taux_taxe_2,
+           (SELECT COALESCE(SUM(l.quantite * l.prix_unitaire), 0)
+            FROM ${tableLignes} l WHERE l.${cle} = d.id) AS brut
+    FROM ${table} d
+    ${filtre}
+  `);
+
+  for (const doc of documents) {
+    const sousTotal = roundCents(doc.brut);
+    const taxe1 = roundCents(sousTotal * (doc.taux_taxe_1 || 0));
+    const taxe2 = roundCents(sousTotal * (doc.taux_taxe_2 || 0));
+
+    await db.run(
+      `UPDATE ${table} SET sous_total = ?, montant_taxe_1 = ?, montant_taxe_2 = ?, montant_total = ? WHERE id = ?`,
+      [sousTotal, taxe1, taxe2, roundCents(sousTotal + taxe1 + taxe2), doc.id]
+    );
+  }
+
+  return documents.length;
 }
 
 /**
@@ -273,8 +338,14 @@ async function seedDemoData(db) {
     [factureId, 'Développement module RPA', 1, 1000.0]);
   await db.run('INSERT INTO lignes_facture (facture_id, description, quantite, prix_unitaire) VALUES (?, ?, ?, ?)',
     [factureId, 'Ajustement design', 8, 90.0]);
+
+  // Les montants sont arrêtés une fois les lignes en place, comme le ferait
+  // une véritable émission.
+  await reprendreMontants(db, 'factures', { toutes: true });
+
   await db.run('INSERT INTO paiements (facture_id, date_paiement, montant, note) VALUES (?, ?, ?, ?)',
     [factureId, '2026-01-13', 500.0, 'Virement partiel']);
+  await db.run('UPDATE factures SET statut = ? WHERE id = ?', ['Partiellement payée', factureId]);
 
   log('Jeu de démonstration inséré : 1 client, 1 facture de 1720 $ HT, 1 acompte de 500 $.');
 }
@@ -323,4 +394,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { initDb, seedDemoData, addColumn, columnExists };
+module.exports = { initDb, seedDemoData, addColumn, columnExists, reprendreMontants };

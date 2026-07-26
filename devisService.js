@@ -3,7 +3,7 @@
  */
 
 const { createFacture, getTaxRatesForProvince } = require('./invoiceService.js');
-const { sqlTotals } = require('./money.js');
+const { computeTotals } = require('./money.js');
 const { withTransaction } = require('./dbUtils.js');
 const { nextDocumentNumber } = require('./sequences.js');
 
@@ -17,26 +17,25 @@ const STATUTS = {
 /** Nombre de jours accordés au paiement d'une facture issue d'un devis. */
 const DELAI_PAIEMENT_JOURS = 30;
 
-const T = sqlTotals('tl.sous_total', 'd');
-
-const CTE_LIGNES = `
-  WITH total_lignes AS (
-    SELECT devis_id, SUM(quantite * prix_unitaire) AS sous_total
-    FROM lignes_devis
-    GROUP BY devis_id
-  )
+/**
+ * Comme pour les factures, les montants d'un devis sont arrêtés à l'émission :
+ * le montant accepté par le client ne doit pas bouger ensuite.
+ */
+const COLONNES_MONTANTS = `
+  COALESCE(d.sous_total, 0) AS sous_total,
+  COALESCE(d.montant_taxe_1, 0) AS montant_taxe_1,
+  COALESCE(d.montant_taxe_2, 0) AS montant_taxe_2,
+  COALESCE(d.montant_total, 0) AS montant_total
 `;
 
 /**
  * Liste des devis avec leurs totaux.
  *
- * Les montants sont calculés par la base en une seule requête : la version
- * précédente rechargeait les lignes devis par devis (N+1 requêtes) pour un
- * résultat identique.
+ * Une seule requête : la version précédente rechargeait les lignes devis par
+ * devis (N+1 requêtes) pour recalculer des montants désormais figés.
  */
 async function getDevis(db) {
   return db.all(`
-    ${CTE_LIGNES}
     SELECT
       d.id,
       d.numero_devis,
@@ -52,13 +51,9 @@ async function getDevis(db) {
       d.taux_taxe_2,
       d.taxe_1_nom,
       d.taxe_2_nom,
-      ${T.sousTotal} AS sous_total,
-      ${T.taxe1} AS montant_taxe_1,
-      ${T.taxe2} AS montant_taxe_2,
-      ${T.montantTotal} AS montant_total
+      ${COLONNES_MONTANTS}
     FROM devis d
     JOIN clients c ON d.client_id = c.id
-    LEFT JOIN total_lignes tl ON tl.devis_id = d.id
     ORDER BY d.date_emission DESC, d.id DESC
   `);
 }
@@ -66,15 +61,10 @@ async function getDevis(db) {
 /** Détails complets d'un devis, pour l'impression et le courriel. */
 async function getDevisDetails(db, devisId) {
   const devis = await db.get(`
-    ${CTE_LIGNES}
     SELECT
       d.*,
-      ${T.sousTotal} AS sous_total,
-      ${T.taxe1} AS montant_taxe_1,
-      ${T.taxe2} AS montant_taxe_2,
-      ${T.montantTotal} AS montant_total
+      ${COLONNES_MONTANTS}
     FROM devis d
-    LEFT JOIN total_lignes tl ON tl.devis_id = d.id
     WHERE d.id = ?
   `, [devisId]);
 
@@ -137,13 +127,16 @@ async function createDevis(db, devisData, lignes) {
 
     const taxes = getTaxRatesForProvince(client.province);
     const numero_devis = await generateDevisNumber(db, date_emission);
+    const montants = computeTotals(lignes, taxes.taxe_1_taux, taxes.taxe_2_taux);
 
     const result = await db.run(
       `INSERT INTO devis (numero_devis, client_id, date_emission, date_validite, statut,
-                          taux_taxe_1, taux_taxe_2, taxe_1_nom, taxe_2_nom, devise, taux_change)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                          taux_taxe_1, taux_taxe_2, taxe_1_nom, taxe_2_nom, devise, taux_change,
+                          sous_total, montant_taxe_1, montant_taxe_2, montant_total)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [numero_devis, client_id, date_emission, date_validite, STATUTS.EN_ATTENTE,
-        taxes.taxe_1_taux, taxes.taxe_2_taux, taxes.taxe_1_nom, taxes.taxe_2_nom, devise, taux_change]
+        taxes.taxe_1_taux, taxes.taxe_2_taux, taxes.taxe_1_nom, taxes.taxe_2_nom, devise, taux_change,
+        montants.sous_total, montants.taxe_1, montants.taxe_2, montants.montant_total]
     );
     const devisId = result.lastID;
 
@@ -170,13 +163,16 @@ async function updateDevis(db, devisId, devisData, lignes) {
       throw Object.assign(new Error('Client introuvable.'), { status: 400 });
     }
     const taxes = getTaxRatesForProvince(client.province);
+    const montants = computeTotals(lignes, taxes.taxe_1_taux, taxes.taxe_2_taux);
 
     await db.run(
       `UPDATE devis SET client_id = ?, date_validite = ?, devise = ?, taux_change = ?,
-                        taux_taxe_1 = ?, taux_taxe_2 = ?, taxe_1_nom = ?, taxe_2_nom = ?
+                        taux_taxe_1 = ?, taux_taxe_2 = ?, taxe_1_nom = ?, taxe_2_nom = ?,
+                        sous_total = ?, montant_taxe_1 = ?, montant_taxe_2 = ?, montant_total = ?
        WHERE id = ?`,
       [client_id, date_validite, devise, taux_change,
-        taxes.taxe_1_taux, taxes.taxe_2_taux, taxes.taxe_1_nom, taxes.taxe_2_nom, devisId]
+        taxes.taxe_1_taux, taxes.taxe_2_taux, taxes.taxe_1_nom, taxes.taxe_2_nom,
+        montants.sous_total, montants.taxe_1, montants.taxe_2, montants.montant_total, devisId]
     );
     await db.run('DELETE FROM lignes_devis WHERE devis_id = ?', [devisId]);
     await insertLignes(db, devisId, lignes);

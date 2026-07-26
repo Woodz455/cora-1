@@ -79,46 +79,11 @@ function computeTotals(lignes, taux1, taux2) {
   };
 }
 
-/**
- * Biais appliqué avant l'arrondi SQL.
- *
- * `ROUND` de SQLite arrondit la valeur binaire réelle : 0,015 est stocké
- * 0,014999999… et donne 0,01, là où `roundCents` — et la convention comptable —
- * donne 0,02. Un biais de 1e-9 ramène les demi-cents exacts du bon côté sans
- * jamais déplacer un montant qui n'est pas sur la frontière, l'application ne
- * manipulant que des dollars à deux ou trois décimales.
+/*
+ * Les montants ne sont plus calculés en SQL. Ils sont arrêtés en JavaScript au
+ * moment de l'émission d'un document, puis stockés — voir `invoiceService.js`.
+ * Les anciens fragments SQL qui reproduisaient `computeTotals` ont donc été
+ * retirés : les conserver aurait invité à recalculer un total déjà arrêté.
  */
-const SQL_BIAIS = '1e-9';
 
-/** Arrondi SQL au cent, aligné sur `roundCents`. */
-function sqlRound(expr) {
-  return `ROUND(${expr} + (CASE WHEN (${expr}) >= 0 THEN ${SQL_BIAIS} ELSE -${SQL_BIAIS} END), 2)`;
-}
-
-/**
- * Fragments SQL partagés par toutes les requêtes de calcul de solde.
- *
- * Ils reproduisent exactement `computeTotals` afin que la base et le PDF
- * n'affichent jamais deux totaux différents pour la même facture. Une seule
- * définition du « montant total » existe dans l'application, et c'est celle-ci.
- * Le test `money.test.js` vérifie l'égalité des deux implémentations sur
- * l'ensemble des montants au cent jusqu'à 50 $, plus les valeurs limites.
- *
- * @param {string} sousTotalExpr expression SQL donnant le sous-total brut
- * @param {string} tauxPrefix    alias de la table portant taux_taxe_1/2
- */
-function sqlTotals(sousTotalExpr, tauxPrefix = 'f') {
-  const sousTotal = sqlRound(`COALESCE(${sousTotalExpr}, 0)`);
-  const taxe1 = sqlRound(`${sousTotal} * COALESCE(${tauxPrefix}.taux_taxe_1, 0)`);
-  const taxe2 = sqlRound(`${sousTotal} * COALESCE(${tauxPrefix}.taux_taxe_2, 0)`);
-  return {
-    sousTotal,
-    taxe1,
-    taxe2,
-    // L'addition finale est arrondie : la somme de trois flottants déjà arrondis
-    // redonne sinon des valeurs comme 0.06999999999999999.
-    montantTotal: `ROUND(${sousTotal} + ${taxe1} + ${taxe2}, 2)`
-  };
-}
-
-module.exports = { roundCents, sumLignes, computeTaxes, computeTotals, sqlTotals, sqlRound };
+module.exports = { roundCents, sumLignes, computeTaxes, computeTotals };
