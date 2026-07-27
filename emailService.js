@@ -69,29 +69,61 @@ function extractBase64(input) {
 }
 
 /**
- * Envoie un courriel avec une pièce jointe.
+ * Construit l'en-tête d'expéditeur.
  *
- * L'expéditeur affiché reprend le nom d'entreprise des paramètres : il était
- * auparavant codé en dur, ce qui empêchait toute autre entreprise d'utiliser le
- * logiciel sous son propre nom.
+ * Le nom affiché reprend la raison sociale des paramètres : il était auparavant
+ * codé en dur, ce qui empêchait toute autre entreprise d'utiliser le logiciel
+ * sous son propre nom.
+ */
+function expediteurFrom(expediteur = {}) {
+  const nomAffiche = (expediteur.entreprise_nom || '').trim();
+  const adresse = process.env.SMTP_USER;
+  return nomAffiche ? `"${nomAffiche.replace(/"/g, '')}" <${adresse}>` : adresse;
+}
+
+/** Message unique : les routes et le service doivent dire la même chose. */
+const SMTP_NON_CONFIGURE =
+  "L'envoi de courriels n'est pas configuré : renseignez SMTP_HOST, SMTP_USER et SMTP_PASS dans le fichier .env.";
+
+function exigerConfiguration() {
+  if (!isConfigured()) {
+    throw Object.assign(new Error(SMTP_NON_CONFIGURE), { status: 503, expose: true });
+  }
+}
+
+/**
+ * Envoie un courriel simple, sans pièce jointe.
+ * Utilisé par les relances automatiques, qui s'exécutent côté serveur, là où le
+ * PDF — produit par le navigateur — n'est pas disponible.
+ *
+ * @param {{to: string, cc?: string, subject: string, text: string}} message
+ * @param {{entreprise_nom?: string}} [expediteur]
+ */
+async function sendEmail({ to, cc, subject, text }, expediteur = {}) {
+  exigerConfiguration();
+
+  return getTransporter().sendMail({
+    from: expediteurFrom(expediteur),
+    to,
+    cc: cc || undefined,
+    subject,
+    text
+  });
+}
+
+/**
+ * Envoie un courriel avec une pièce jointe.
  *
  * @param {Object} params
  * @param {{entreprise_nom?: string}} [expediteur] paramètres de l'entreprise
  */
 async function sendEmailWithAttachment({ to, cc, subject, text, attachmentBase64, filename }, expediteur = {}) {
-  if (!isConfigured()) {
-    throw Object.assign(
-      new Error("La configuration SMTP est incomplète : renseignez SMTP_HOST, SMTP_USER et SMTP_PASS dans le fichier .env."),
-      { status: 503 }
-    );
-  }
+  exigerConfiguration();
 
   const content = extractBase64(attachmentBase64);
-  const nomAffiche = (expediteur.entreprise_nom || '').trim();
-  const adresse = process.env.SMTP_USER;
 
   return getTransporter().sendMail({
-    from: nomAffiche ? `"${nomAffiche.replace(/"/g, '')}" <${adresse}>` : adresse,
+    from: expediteurFrom(expediteur),
     to,
     cc: cc || undefined,
     subject,
@@ -100,4 +132,4 @@ async function sendEmailWithAttachment({ to, cc, subject, text, attachmentBase64
   });
 }
 
-module.exports = { sendEmailWithAttachment, isConfigured, MAX_ATTACHMENT_BYTES };
+module.exports = { sendEmail, sendEmailWithAttachment, isConfigured, SMTP_NON_CONFIGURE, MAX_ATTACHMENT_BYTES };

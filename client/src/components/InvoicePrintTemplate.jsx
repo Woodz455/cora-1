@@ -31,6 +31,8 @@ function construireDictionnaire(isEn, nomEntreprise) {
     totalInvoice: isEn ? 'Invoice Total' : 'Total de la facture',
     alreadyPaid: isEn ? 'Already Paid' : 'Déjà payé',
     balanceDue: isEn ? 'Balance Due' : 'Solde dû',
+    creditNote: isEn ? 'Credit note' : 'Note de crédit',
+    refundDue: isEn ? 'Refund Due' : 'À vous rembourser',
     thanks: societe
       ? (isEn ? `Thank you for your business — ${societe}.` : `Merci de votre confiance — ${societe}.`)
       : (isEn ? 'Thank you for your business.' : 'Merci de votre confiance.'),
@@ -289,13 +291,23 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
             </div>
             {!estDevis && (
               <>
+                {/* Les notes de crédit apparaissent sur la facture : le client
+                    doit pouvoir rapprocher le solde demandé de ce qu'il a reçu. */}
+                {(details.notes_credit || []).map((note) => (
+                  <div key={note.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', color: '#ea580c' }}>
+                    <span>{dict.creditNote} {note.numero_note}</span>
+                    <span>- {montant(note.montant_total)}</span>
+                  </div>
+                ))}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', color: '#10b981' }}>
                   <span>{dict.alreadyPaid}</span>
                   <span>- {montant(details.montant_paye)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderTop: '2px solid #e2e8f0', marginTop: '5px', fontWeight: 'bold', fontSize: '1.2rem', color: '#0f172a' }}>
-                  <span>{dict.balanceDue}</span>
-                  <span>{montant(details.solde_restant)}</span>
+                  <span>{details.montant_a_rembourser > 0 ? dict.refundDue : dict.balanceDue}</span>
+                  <span>
+                    {montant(details.montant_a_rembourser > 0 ? details.montant_a_rembourser : details.solde_restant)}
+                  </span>
                 </div>
               </>
             )}

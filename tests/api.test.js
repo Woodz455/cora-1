@@ -247,3 +247,47 @@ test('les en-têtes de sécurité sont présents et aucun en-tête CORS ne l\'es
   assert.equal(res.headers.get('x-frame-options'), 'DENY');
   assert.equal(res.headers.get('x-powered-by'), null);
 });
+
+test('un 503 délibéré parvient à l\'utilisateur, un 500 imprévu reste opaque', async (t) => {
+  const api = await withAdmin(t);
+
+  // Sans SMTP, le message doit dire quoi faire : « Erreur interne du serveur »
+  // renverrait l'utilisateur d'un logiciel de bureau lire des journaux.
+  const res = await api.post('/api/emails/send', {
+    to: 'client@exemple.ca',
+    subject: 'Facture',
+    body: 'Bonjour',
+    attachmentBase64: 'data:application/pdf;base64,JVBERi0='
+  });
+  assert.equal(res.status, 503, JSON.stringify(res.data));
+  assert.match(res.data.error, /SMTP_HOST/);
+
+  // Une anomalie non prévue ne divulgue toujours rien.
+  const { errorHandler, httpError } = require('../httpUtils.js');
+  const reponse = () => {
+    const r = { code: null, corps: null };
+    r.status = (c) => { r.code = c; return r; };
+    r.json = (b) => { r.corps = b; return r; };
+    return r;
+  };
+
+  const requete = { method: 'GET', originalUrl: '/api/test' };
+  const erreurJournalisee = [];
+  const consoleError = console.error;
+  console.error = (...args) => erreurJournalisee.push(args);
+  try {
+    const imprevu = reponse();
+    errorHandler(new Error('SELECT * FROM users a échoué : disque plein'), requete, imprevu, () => {});
+    assert.equal(imprevu.code, 500);
+    assert.equal(imprevu.corps.error, 'Erreur interne du serveur.');
+
+    const delibere = reponse();
+    errorHandler(httpError(503, 'Service indisponible : réessayez.'), requete, delibere, () => {});
+    assert.equal(delibere.code, 503);
+    assert.equal(delibere.corps.error, 'Service indisponible : réessayez.');
+  } finally {
+    console.error = consoleError;
+  }
+
+  assert.equal(erreurJournalisee.length, 2, 'les deux 5xx restent journalisés côté serveur');
+});

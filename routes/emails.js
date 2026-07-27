@@ -4,7 +4,7 @@
 
 const express = require('express');
 
-const { sendEmailWithAttachment, isConfigured } = require('../emailService.js');
+const { sendEmailWithAttachment, isConfigured, SMTP_NON_CONFIGURE } = require('../emailService.js');
 const { anyRole } = require('../authMiddleware.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { isValidEmailList, sanitizeText } = require('../validators.js');
@@ -27,7 +27,7 @@ module.exports = function emailRoutes(getDb) {
       throw httpError(400, 'La pièce jointe est requise.');
     }
     if (!isConfigured()) {
-      throw httpError(503, "L'envoi de courriels n'est pas configuré : renseignez SMTP_HOST, SMTP_USER et SMTP_PASS dans le fichier .env.");
+      throw httpError(503, SMTP_NON_CONFIGURE);
     }
 
     // L'expéditeur affiché reprend la raison sociale des paramètres plutôt qu'un

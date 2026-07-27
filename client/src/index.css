@@ -263,6 +263,8 @@ textarea:focus-visible {
 /* Cette variante était utilisée par le JSX sans être définie : les factures
    annulées s'affichaient sans couleur de statut. */
 .status-badge.annulee { color: var(--text-muted); background: var(--hover-subtle); }
+/* Facture neutralisée par une note de crédit : ni payée, ni annulée. */
+.status-badge.creditee { color: var(--status-warning); background: var(--status-warning-bg); }
 
 /* =========================================
    NAVIGATION LATÉRALE

@@ -7,6 +7,7 @@ const express = require('express');
 const { anyRole, adminOnly } = require('../authMiddleware.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { sanitizeText } = require('../validators.js');
+const { parsePaliers: analyserPaliers } = require('../relanceService.js');
 
 /** Taille maximale du logo, encodé en data-URI. */
 const MAX_LOGO_CHARS = 3 * 1024 * 1024;
@@ -28,6 +29,21 @@ function parseTaux(valeur, libelle) {
     throw httpError(400, `${libelle} doit être une fraction entre 0 et 1 (0.05 pour 5 %).`);
   }
   return n;
+}
+
+/**
+ * Normalise les paliers de relance en une liste de jours triée.
+ * Réutilise l'analyse du service, pour que ce qui est enregistré soit
+ * exactement ce que le planificateur appliquera.
+ */
+function parsePaliers(valeur) {
+  if (valeur === undefined || valeur === null) return null;
+
+  const paliers = analyserPaliers(String(valeur));
+  if (paliers.length === 0) {
+    throw httpError(400, 'Indiquez au moins un palier de relance, en jours après échéance (par exemple 7, 15, 30).');
+  }
+  return paliers.join(',');
 }
 
 module.exports = function settingsRoutes(getDb) {
@@ -69,7 +85,9 @@ module.exports = function settingsRoutes(getDb) {
       taxe_2_taux: parseTaux(body.taxe_2_taux ?? 0, 'Le taux de la taxe 2'),
       taxe_2_numero: sanitizeText(body.taxe_2_numero, 60),
       payment_instructions: sanitizeText(body.payment_instructions, 2000),
-      entreprise_logo: logo
+      entreprise_logo: logo,
+      relances_actives: body.relances_actives ? 1 : 0,
+      relances_paliers: parsePaliers(body.relances_paliers)
     };
 
     if (!valeurs.entreprise_nom) {
@@ -77,7 +95,9 @@ module.exports = function settingsRoutes(getDb) {
     }
 
     const existant = await db.get('SELECT id FROM settings LIMIT 1');
-    const colonnes = Object.keys(valeurs);
+    // Un champ absent de la requête garde sa valeur : ne pas filtrer reviendrait
+    // à effacer un réglage que le formulaire n'a simplement pas envoyé.
+    const colonnes = Object.keys(valeurs).filter((c) => valeurs[c] !== null);
 
     if (existant) {
       await db.run(

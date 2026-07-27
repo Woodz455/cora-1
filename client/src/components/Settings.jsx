@@ -38,8 +38,12 @@ function Settings() {
     entreprise_nom: '', entreprise_adresse: '', entreprise_email: '',
     taxe_1_nom: '', taxe_1_taux: 0, taxe_1_numero: '',
     taxe_2_nom: '', taxe_2_taux: 0, taxe_2_numero: '',
-    payment_instructions: '', entreprise_logo: ''
+    payment_instructions: '', entreprise_logo: '',
+    relances_actives: 0, relances_paliers: '7,15,30'
   });
+  const [relancesDues, setRelancesDues] = useState(null);
+  const [relanceMessage, setRelanceMessage] = useState(null); // { texte, erreur }
+  const [relanceEnCours, setRelanceEnCours] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
@@ -61,6 +65,7 @@ function Settings() {
       .finally(() => setLoading(false));
 
     api.get('/api/users').then(setUsers).catch(() => setUsers([]));
+    api.get('/api/relances/dues').then(setRelancesDues).catch(() => setRelancesDues(null));
     api.get('/api/auth/setup-status')
       .then((data) => { if (data.minPasswordLength) setMinLength(data.minPasswordLength); })
       .catch(() => {});
@@ -204,6 +209,95 @@ function Settings() {
             <label htmlFor="payment_instructions" style={{ position: 'absolute', left: '-9999px' }}>Instructions de paiement</label>
             <textarea id="payment_instructions" className="form-control" name="payment_instructions" value={settings.payment_instructions || ''} onChange={handleChange} rows="4" placeholder="Ex. : virement Interac à comptabilite@exemple.ca, ou paiement en ligne à l'adresse…"></textarea>
           </div>
+        </div>
+
+        <div>
+          <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
+            Relances automatiques
+          </h3>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
+            Un rappel de paiement est envoyé au client dès qu'une facture impayée dépasse l'un des
+            paliers ci-dessous. Chaque palier ne part qu'une fois par facture, et plus rien n'est
+            envoyé dès que la facture est réglée ou créditée.
+          </p>
+
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={Boolean(settings.relances_actives)}
+                onChange={(e) => setSettings((prev) => ({ ...prev, relances_actives: e.target.checked ? 1 : 0 }))}
+                style={{ width: '18px', height: '18px' }}
+              />
+              Activer l'envoi automatique des rappels
+            </label>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="relances_paliers">Paliers, en jours après l'échéance</label>
+            <input
+              id="relances_paliers" type="text" className="form-control" name="relances_paliers"
+              value={settings.relances_paliers || ''} onChange={handleChange}
+              placeholder="7, 15, 30"
+            />
+          </div>
+
+          {/* Le rappel automatique part en texte : le PDF est produit par le
+              navigateur au moment de l'impression et n'existe pas côté serveur. */}
+          <p className="alert alert-info">
+            Le rappel automatique est un courriel texte reprenant le numéro, le solde dû et
+            l'échéance. Pour envoyer la facture en pièce jointe, utilisez le bouton « Relancer »
+            depuis la liste des factures.
+          </p>
+
+          {relancesDues && (
+            <div style={{ marginTop: '15px' }}>
+              {relanceMessage && (
+                <p
+                  className={`alert ${relanceMessage.erreur ? 'alert-error' : 'alert-success'}`}
+                  role={relanceMessage.erreur ? 'alert' : 'status'}
+                >
+                  {relanceMessage.texte}
+                </p>
+              )}
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                {relancesDues.factures.length === 0
+                  ? 'Aucune facture n\'atteint actuellement un palier de relance.'
+                  : `${relancesDues.factures.length} facture(s) atteignent un palier et seraient relancées au prochain passage :`}
+              </p>
+              {relancesDues.factures.length > 0 && (
+                <ul style={{ color: 'var(--text-muted)', fontSize: '0.9rem', paddingLeft: '20px' }}>
+                  {relancesDues.factures.slice(0, 8).map((f) => (
+                    <li key={f.id}>
+                      {f.numero_facture} — {f.client} ({f.retard} jours de retard, palier {f.palier})
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <button
+                type="button" className="btn-secondary"
+                disabled={relanceEnCours || relancesDues.factures.length === 0}
+                onClick={async () => {
+                  setRelanceMessage(null);
+                  setRelanceEnCours(true);
+                  try {
+                    const r = await api.post('/api/relances/envoyer');
+                    setRelanceMessage({
+                      texte: `${r.envoyees} rappel(s) envoyé(s), ${r.erreurs} en échec.`,
+                      erreur: r.erreurs > 0
+                    });
+                    setRelancesDues(await api.get('/api/relances/dues'));
+                  } catch (err) {
+                    setRelanceMessage({ texte: err.message, erreur: true });
+                  } finally {
+                    setRelanceEnCours(false);
+                  }
+                }}
+              >
+                {relanceEnCours ? 'Envoi en cours…' : 'Envoyer maintenant'}
+              </button>
+            </div>
+          )}
         </div>
 
         <div>

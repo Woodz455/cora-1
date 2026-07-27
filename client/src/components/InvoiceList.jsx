@@ -2,11 +2,12 @@ import { useState, useMemo } from 'react';
 import PaymentModal from './PaymentModal';
 import InvoiceModal from './InvoiceModal';
 import InvoicePrintTemplate from './InvoicePrintTemplate';
+import CreditNoteModal from './CreditNoteModal';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useUser } from '../UserContext';
 
-const STATUTS = ['Tous', 'En attente', 'Partiellement payée', 'Payée', 'Annulée'];
+const STATUTS = ['Tous', 'En attente', 'Partiellement payée', 'Payée', 'Créditée', 'Annulée'];
 const PAR_PAGE = 15;
 
 function InvoiceList() {
@@ -21,6 +22,8 @@ function InvoiceList() {
   const [printingFactureId, setPrintingFactureId] = useState(null);
   const [isRelance, setIsRelance] = useState(false);
   const [factureIdToEdit, setFactureIdToEdit] = useState(null);
+  const [factureACrediter, setFactureACrediter] = useState(null);
+  const [message, setMessage] = useState(null);
 
   const [recherche, setRecherche] = useState('');
   const [filtreStatut, setFiltreStatut] = useState('Tous');
@@ -82,6 +85,7 @@ function InvoiceList() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {error && <p className="alert alert-error" role="alert">{error}</p>}
+      {message && <p className="alert alert-success" role="status">{message}</p>}
 
       <div className="toolbar">
         <div className="toolbar-group">
@@ -123,7 +127,8 @@ function InvoiceList() {
           const isAnnulee = facture.statut === 'Annulée';
           const classeStatut = facture.statut === 'Payée' ? 'payee'
             : facture.statut === 'Partiellement payée' ? 'partielle'
-              : isAnnulee ? 'annulee' : 'pending';
+              : facture.statut === 'Créditée' ? 'creditee'
+                : isAnnulee ? 'annulee' : 'pending';
 
           return (
             <div
@@ -149,6 +154,13 @@ function InvoiceList() {
                   Client : <strong style={{ color: 'var(--text-main)' }}>{facture.client}</strong>
                   {' '}| Émise le {facture.date_emission} | Échéance {facture.date_echeance}
                 </p>
+                {facture.montant_credite > 0 && (
+                  <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--status-warning)' }}>
+                    Note(s) de crédit : − {formatMontant(facture.montant_credite, facture.devise)}
+                    {facture.montant_a_rembourser > 0
+                      && ` — ${formatMontant(facture.montant_a_rembourser, facture.devise)} à rembourser au client`}
+                  </p>
+                )}
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -201,6 +213,17 @@ function InvoiceList() {
                   </button>
                 )}
 
+                {gereTresorerie && !isAnnulee && facture.statut !== 'Créditée' && (
+                  <button
+                    type="button"
+                    className="btn-icon"
+                    onClick={() => setFactureACrediter(facture)}
+                    title="Corriger cette facture par une note de crédit"
+                  >
+                    ↩️ Note de crédit
+                  </button>
+                )}
+
                 {gereTresorerie && (
                   <button
                     type="button"
@@ -232,6 +255,18 @@ function InvoiceList() {
 
       {selectedFacture && (
         <PaymentModal facture={selectedFacture} onClose={closeAndRefresh} />
+      )}
+
+      {factureACrediter && (
+        <CreditNoteModal
+          facture={factureACrediter}
+          onClose={() => setFactureACrediter(null)}
+          onSuccess={(note) => {
+            setFactureACrediter(null);
+            setMessage(`Note de crédit ${note.numero_note} émise.`);
+            fetchFactures();
+          }}
+        />
       )}
 
       {(isCreateModalOpen || factureIdToEdit) && (

@@ -40,7 +40,7 @@ Un fichier `.env` optionnel, à la racine, permet de régler :
 # (fichier .jwt-secret) si absent. 32 caractères minimum.
 JWT_SECRET=
 
-# Envoi des factures par courriel
+# Envoi des factures et des relances par courriel
 SMTP_HOST=smtp.exemple.ca
 SMTP_PORT=587
 SMTP_USER=compta@exemple.ca
@@ -75,7 +75,7 @@ sequences.js       Numérotation des documents, jamais réattribuée
 dbUtils.js         Transactions sérialisées et réentrantes
 validators.js      Validation des données entrantes
 rateLimit.js       Limitation des tentatives de connexion
-scheduler.js       Génération périodique des factures récurrentes
+scheduler.js       Passage horaire : factures récurrentes et relances dues
 *Service.js        Logique métier par domaine
 routes/            Points d'entrée HTTP, avec leurs contraintes de rôle
 tests/             Tests exécutés par `npm test`
@@ -100,6 +100,49 @@ client/src/        Interface React
 - **Conservation.** Une facture comportant un paiement ne peut être ni modifiée,
   ni annulée, ni supprimée : elle doit faire l'objet d'une note de crédit.
 
+## Notes de crédit
+
+Une facture émise ne se corrige pas : on lui oppose un second document, qui
+porte son propre numéro (`NC-AAAAMM-NNNN`) et sa propre date. C'est ce document
+qui réduit ce que le client doit, sans jamais toucher à la pièce d'origine.
+
+- Les taux de taxe de la note sont **ceux de la facture créditée**, pas ceux des
+  paramètres du jour : créditer en janvier une facture de l'an dernier applique
+  bien les taux de l'an dernier.
+- Le cumul des crédits ne peut pas dépasser le total de la facture.
+- Une facture portant une note de crédit ne peut plus être modifiée, annulée ni
+  supprimée : ses montants sont désormais engagés dans un autre document.
+- Une facture intégralement créditée passe au statut `Créditée`. Si les
+  paiements dépassent le montant net dû, la facture affiche le montant à
+  rembourser au client.
+- L'émission est réservée à l'administrateur et au comptable ; l'annulation
+  d'une note, au seul administrateur.
+- Dans les rapports de taxes, les crédits sont déduits sur **la période de la
+  note**, et non sur celle de la facture d'origine.
+
+## Relances automatiques
+
+Activées dans les paramètres, elles envoient un rappel de paiement dès qu'une
+facture impayée franchit l'un des paliers de retard configurés (`7,15,30` jours
+par défaut).
+
+- Un palier ne part **qu'une fois par facture** ; c'est le palier le plus élevé
+  franchi qui est retenu, jamais plusieurs d'un coup.
+- Une facture annulée, soldée, entièrement créditée, non échue, ou dont le
+  client n'a pas d'adresse courriel, est écartée.
+- Le rappel reprend le solde **net des notes de crédit** et suit la langue du
+  client (français ou anglais).
+- Chaque envoi — réussi ou en échec — est consigné ; un échec SMTP n'interrompt
+  pas les suivants et le palier reste à envoyer au prochain passage.
+- Le rappel automatique est un courriel **texte** : le PDF est produit par le
+  navigateur et n'existe pas côté serveur. Pour l'envoyer en pièce jointe,
+  utiliser le bouton « Relancer » de la liste des factures.
+- Le passage a lieu chaque heure (`scheduler.js`) ; les paramètres permettent
+  aussi de le déclencher à la demande, après avoir prévisualisé les factures
+  concernées.
+
+L'envoi exige une configuration SMTP (voir la section Configuration).
+
 ## Tests
 
 ```bash
@@ -108,5 +151,6 @@ npm test
 
 La suite couvre l'arithmétique monétaire (dont l'égalité entre les calculs
 JavaScript et SQL sur plusieurs milliers de montants), le cycle de vie des
-factures, la conversion des devis, la facturation récurrente, le rapprochement
-bancaire et le cloisonnement des rôles.
+factures, les notes de crédit, les relances automatiques, la conversion des
+devis, la facturation récurrente, le rapprochement bancaire et le cloisonnement
+des rôles.

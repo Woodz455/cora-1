@@ -142,6 +142,53 @@ async function createTables(db) {
       FOREIGN KEY (facture_id) REFERENCES factures (id) ON DELETE SET NULL
     );
 
+    -- Notes de crédit. Une facture encaissée ne peut être ni modifiée ni
+    -- supprimée : la corriger passe par l'émission d'une note de crédit, qui
+    -- est elle-même une pièce comptable, avec son numéro et ses taxes.
+    CREATE TABLE IF NOT EXISTS notes_credit (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      numero_note TEXT UNIQUE NOT NULL,
+      facture_id INTEGER NOT NULL,
+      date_emission TEXT NOT NULL,
+      motif TEXT,
+      -- Taux repris de la facture d'origine : une note de crédit doit annuler
+      -- exactement les taxes qui ont été facturées.
+      taux_taxe_1 REAL DEFAULT 0,
+      taux_taxe_2 REAL DEFAULT 0,
+      taxe_1_nom TEXT DEFAULT '',
+      taxe_2_nom TEXT DEFAULT '',
+      devise TEXT DEFAULT 'CAD',
+      taux_change REAL DEFAULT 1.0,
+      sous_total REAL,
+      montant_taxe_1 REAL,
+      montant_taxe_2 REAL,
+      montant_total REAL,
+      FOREIGN KEY (facture_id) REFERENCES factures (id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS lignes_note_credit (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      note_id INTEGER,
+      description TEXT NOT NULL,
+      quantite REAL DEFAULT 1,
+      prix_unitaire REAL NOT NULL,
+      FOREIGN KEY (note_id) REFERENCES notes_credit (id) ON DELETE CASCADE
+    );
+
+    -- Journal des relances envoyées. Une ligne par palier et par facture :
+    -- c'est ce qui garantit qu'un même rappel n'est jamais envoyé deux fois.
+    CREATE TABLE IF NOT EXISTS relances (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      facture_id INTEGER NOT NULL,
+      palier_jours INTEGER NOT NULL,
+      date_envoi TEXT NOT NULL,
+      destinataire TEXT,
+      origine TEXT NOT NULL DEFAULT 'automatique',
+      statut TEXT NOT NULL DEFAULT 'Envoyée',
+      erreur TEXT,
+      FOREIGN KEY (facture_id) REFERENCES factures (id) ON DELETE CASCADE
+    );
+
     -- Compteurs de numérotation des documents. Jamais décrémentés, afin qu'un
     -- numéro déjà émis ne puisse pas être réattribué (voir sequences.js).
     CREATE TABLE IF NOT EXISTS document_sequences (
@@ -191,6 +238,11 @@ async function runMigrations(db) {
   // dans `settings`. Conservées le temps de la migration vers `users`.
   await addColumn(db, 'settings', 'admin_username', 'TEXT');
   await addColumn(db, 'settings', 'admin_password', 'TEXT');
+
+  // Relances automatiques : désactivées par défaut, pour qu'aucun courriel ne
+  // parte sans que l'entreprise l'ait explicitement demandé.
+  await addColumn(db, 'settings', 'relances_actives', 'INTEGER DEFAULT 0');
+  await addColumn(db, 'settings', 'relances_paliers', "TEXT DEFAULT '7,15,30'");
 
   await figerMontants(db);
 }
@@ -276,6 +328,9 @@ async function createIndexes(db) {
     CREATE INDEX IF NOT EXISTS idx_transactions_statut ON transactions_bancaires (statut);
     CREATE INDEX IF NOT EXISTS idx_depenses_date ON depenses (date_depense);
     CREATE INDEX IF NOT EXISTS idx_abonnements_statut ON abonnements (statut, date_prochaine_generation);
+    CREATE INDEX IF NOT EXISTS idx_notes_credit_facture_id ON notes_credit (facture_id);
+    CREATE INDEX IF NOT EXISTS idx_lignes_note_credit_note_id ON lignes_note_credit (note_id);
+    CREATE INDEX IF NOT EXISTS idx_relances_facture_palier ON relances (facture_id, palier_jours);
   `);
 }
 

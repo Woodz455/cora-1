@@ -24,21 +24,30 @@ function apiNotFound(req, res) {
  * Les services attachent un `status` à leurs erreurs métier ; tout le reste est
  * une anomalie serveur, journalisée intégralement mais renvoyée sans détail
  * technique au client.
+ *
+ * Une erreur 5xx délibérée (`expose`) fait exception : « SMTP n'est pas
+ * configuré » dit à l'utilisateur quoi faire, alors que « Erreur interne du
+ * serveur » l'envoie chercher dans les journaux d'un logiciel de bureau.
  */
 function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-vars
   const status = Number.isInteger(err.status) ? err.status : 500;
 
   if (status >= 500) {
     console.error(`[${req.method} ${req.originalUrl}]`, err);
-    return res.status(status).json({ error: 'Erreur interne du serveur.' });
+    return res.status(status).json({ error: err.expose ? err.message : 'Erreur interne du serveur.' });
   }
 
   res.status(status).json({ error: err.message });
 }
 
-/** Crée une erreur métier portant un code de statut HTTP. */
+/**
+ * Crée une erreur métier portant un code de statut HTTP.
+ *
+ * Le message est ici choisi pour être lu par l'utilisateur : il est donc
+ * transmis tel quel, quel que soit le statut.
+ */
 function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
+  return Object.assign(new Error(message), { status, expose: true });
 }
 
 module.exports = { asyncRoute, apiNotFound, errorHandler, httpError };

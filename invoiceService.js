@@ -11,7 +11,11 @@ const STATUTS = {
   EN_ATTENTE: 'En attente',
   PARTIELLE: 'Partiellement payée',
   PAYEE: 'Payée',
-  ANNULEE: 'Annulée'
+  ANNULEE: 'Annulée',
+  // Intégralement neutralisée par une ou plusieurs notes de crédit, sans
+  // qu'aucun encaissement n'ait eu lieu : la distinguer de « Payée » évite de
+  // faire croire à une rentrée d'argent qui n'a pas eu lieu.
+  CREDITEE: 'Créditée'
 };
 
 /** Tolérance d'un demi-cent, pour absorber les résidus de calcul flottant. */
@@ -55,7 +59,12 @@ const TAXE_1 = 'COALESCE(f.montant_taxe_1, 0)';
 const TAXE_2 = 'COALESCE(f.montant_taxe_2, 0)';
 const TOTAL = 'COALESCE(f.montant_total, 0)';
 const PAYE = 'ROUND(COALESCE(tp.total_paye, 0), 2)';
-const SOLDE = `ROUND(${TOTAL} - ${PAYE}, 2)`;
+const CREDITE = 'ROUND(COALESCE(tc.total_credite, 0), 2)';
+/** Montant réellement dû par le client, une fois les notes de crédit déduites. */
+const NET = `ROUND(${TOTAL} - ${CREDITE}, 2)`;
+const SOLDE = `ROUND(${NET} - ${PAYE}, 2)`;
+/** Trop-perçu à restituer, lorsqu'un crédit intervient après encaissement. */
+const A_REMBOURSER = `ROUND(MAX(0, ${PAYE} - ${NET}), 2)`;
 const TAUX = 'COALESCE(f.taux_change, 1.0)';
 
 const CTE_TOTAUX = `
@@ -63,7 +72,18 @@ const CTE_TOTAUX = `
     SELECT facture_id, SUM(montant) AS total_paye
     FROM paiements
     GROUP BY facture_id
+  ),
+  total_credits AS (
+    SELECT facture_id, SUM(montant_total) AS total_credite
+    FROM notes_credit
+    GROUP BY facture_id
   )
+`;
+
+/** Jointures que toute requête utilisant COLONNES_FINANCIERES doit inclure. */
+const JOINTURES_FINANCIERES = `
+  LEFT JOIN total_paiements tp ON tp.facture_id = f.id
+  LEFT JOIN total_credits tc ON tc.facture_id = f.id
 `;
 
 /** Colonnes financières communes aux listes et aux détails de facture. */
@@ -72,9 +92,12 @@ const COLONNES_FINANCIERES = `
   ${TAXE_1} AS montant_taxe_1,
   ${TAXE_2} AS montant_taxe_2,
   ${TOTAL} AS montant_total,
+  ${CREDITE} AS montant_credite,
+  ${NET} AS montant_net,
   ${PAYE} AS montant_paye,
   ${SOLDE} AS solde_restant,
-  ROUND(${TOTAL} * ${TAUX}, 2) AS montant_total_cad,
+  ${A_REMBOURSER} AS montant_a_rembourser,
+  ROUND(${NET} * ${TAUX}, 2) AS montant_total_cad,
   ROUND(${PAYE} * ${TAUX}, 2) AS montant_paye_cad,
   ROUND(${SOLDE} * ${TAUX}, 2) AS solde_restant_cad
 `;
@@ -111,7 +134,7 @@ async function getFacturesAvecSoldes(db) {
       ${COLONNES_FINANCIERES}
     FROM factures f
     JOIN clients c ON f.client_id = c.id
-    LEFT JOIN total_paiements tp ON tp.facture_id = f.id
+    ${JOINTURES_FINANCIERES}
     ORDER BY f.date_emission DESC, f.id DESC
   `);
 }
@@ -138,7 +161,7 @@ async function getSoldeFacture(db, factureId) {
       f.taxe_2_nom,
       ${COLONNES_FINANCIERES}
     FROM factures f
-    LEFT JOIN total_paiements tp ON tp.facture_id = f.id
+    ${JOINTURES_FINANCIERES}
     WHERE f.id = ?
   `, [factureId]);
 }
@@ -155,10 +178,19 @@ async function getSoldeFacture(db, factureId) {
  * @param {string} statutActuel
  * @param {number} soldeRestant
  * @param {number} montantPaye
+ * @param {number} [montantCredite] cumul des notes de crédit
+ * @param {number} [montantTotal] montant facturé à l'origine
  * @returns {string}
  */
-function resolveStatut(statutActuel, soldeRestant, montantPaye) {
+function resolveStatut(statutActuel, soldeRestant, montantPaye, montantCredite = 0, montantTotal = 0) {
   if (statutActuel === STATUTS.ANNULEE) return STATUTS.ANNULEE;
+
+  // Une facture entièrement créditée et jamais encaissée n'est pas « Payée » :
+  // aucun argent n'est entré, elle a simplement été annulée par une note.
+  if (montantCredite > EPSILON && montantCredite >= montantTotal - EPSILON && montantPaye <= EPSILON) {
+    return STATUTS.CREDITEE;
+  }
+
   if (soldeRestant <= EPSILON) return STATUTS.PAYEE;
   if (montantPaye > EPSILON) return STATUTS.PARTIELLE;
   return STATUTS.EN_ATTENTE;
@@ -169,7 +201,9 @@ async function syncStatut(db, factureId) {
   const info = await getSoldeFacture(db, factureId);
   if (!info) return null;
 
-  const attendu = resolveStatut(info.statut, info.solde_restant, info.montant_paye);
+  const attendu = resolveStatut(
+    info.statut, info.solde_restant, info.montant_paye, info.montant_credite, info.montant_total
+  );
   if (attendu !== info.statut) {
     await db.run('UPDATE factures SET statut = ? WHERE id = ?', [attendu, factureId]);
     info.statut = attendu;
@@ -239,11 +273,12 @@ async function getReportStats(db) {
   const stats = await db.get(`
     ${CTE_TOTAUX}
     SELECT
-      COALESCE(SUM(ROUND(${TOTAL} * ${TAUX}, 2)), 0) AS revenu_total,
+      COALESCE(SUM(ROUND(${NET} * ${TAUX}, 2)), 0) AS revenu_total,
+      COALESCE(SUM(ROUND(${CREDITE} * ${TAUX}, 2)), 0) AS total_credite,
       COALESCE(SUM(ROUND(${PAYE} * ${TAUX}, 2)), 0) AS total_encaisse,
       COALESCE(SUM(ROUND(${SOLDE} * ${TAUX}, 2)), 0) AS solde_a_percevoir
     FROM factures f
-    LEFT JOIN total_paiements tp ON tp.facture_id = f.id
+    ${JOINTURES_FINANCIERES}
     WHERE f.statut != '${STATUTS.ANNULEE}'
   `);
 
@@ -266,10 +301,10 @@ async function getReportStats(db) {
     ${CTE_TOTAUX}
     SELECT
       c.nom_entreprise AS name,
-      COALESCE(SUM(ROUND(${TOTAL} * ${TAUX}, 2)), 0) AS revenu
+      COALESCE(SUM(ROUND(${NET} * ${TAUX}, 2)), 0) AS revenu
     FROM factures f
     JOIN clients c ON f.client_id = c.id
-    LEFT JOIN total_paiements tp ON tp.facture_id = f.id
+    ${JOINTURES_FINANCIERES}
     WHERE f.statut != '${STATUTS.ANNULEE}'
     GROUP BY c.id
     HAVING revenu > 0
@@ -289,7 +324,7 @@ async function getReportStats(db) {
       ROUND(${SOLDE} * ${TAUX}, 2) AS solde_restant
     FROM factures f
     JOIN clients c ON f.client_id = c.id
-    LEFT JOIN total_paiements tp ON tp.facture_id = f.id
+    ${JOINTURES_FINANCIERES}
     WHERE f.date_echeance < date('now')
       AND f.statut != '${STATUTS.ANNULEE}'
       AND ${SOLDE} > 0
@@ -394,8 +429,14 @@ async function getFactureDetails(db, factureId) {
     [factureId]
   );
 
+  // Import tardif : noteCreditService dépend lui-même de ce module (il appelle
+  // syncStatut). Le charger ici évite un cycle de require au démarrage.
+  const { getNotesCreditPourFacture } = require('./noteCreditService.js');
+  const notes_credit = await getNotesCreditPourFacture(db, factureId);
+
   return {
     ...factureInfo,
+    notes_credit,
     date_emission: factureRow.date_emission,
     date_echeance: factureRow.date_echeance,
     client_details: client,
@@ -417,6 +458,12 @@ async function cancelFacture(db, factureId) {
   if (facture.montant_paye > EPSILON) {
     throw Object.assign(
       new Error('Une facture comportant un paiement ne peut pas être annulée. Émettez une note de crédit.'),
+      { status: 400 }
+    );
+  }
+  if (facture.montant_credite > EPSILON) {
+    throw Object.assign(
+      new Error('Cette facture porte déjà une note de crédit : elle ne peut plus être annulée.'),
       { status: 400 }
     );
   }
@@ -442,6 +489,12 @@ async function updateFacture(db, factureId, factureData, lignes) {
     }
     if (facture.montant_paye > EPSILON) {
       throw Object.assign(new Error('Une facture comportant un paiement ne peut pas être modifiée.'), { status: 400 });
+    }
+    if (facture.montant_credite > EPSILON) {
+      throw Object.assign(
+        new Error('Cette facture porte une note de crédit : modifier ses montants rendrait ce crédit incohérent.'),
+        { status: 400 }
+      );
     }
 
     const client = await db.get('SELECT id, province FROM clients WHERE id = ?', [client_id]);
@@ -489,6 +542,13 @@ async function deleteFacture(db, factureId) {
     );
   }
 
+  if (facture.montant_credite > EPSILON) {
+    throw Object.assign(
+      new Error('Cette facture porte une note de crédit, qui est elle-même une pièce comptable : elle ne peut pas être supprimée.'),
+      { status: 400 }
+    );
+  }
+
   const lien = await db.get('SELECT id FROM devis WHERE facture_id = ?', [factureId]);
   if (lien) {
     throw Object.assign(
@@ -519,7 +579,7 @@ async function getDashboardStats(db) {
       COALESCE(SUM(CASE WHEN ${SOLDE} > 0 AND f.date_echeance < date('now')
                         THEN ROUND(${SOLDE} * ${TAUX}, 2) ELSE 0 END), 0) AS facturesEnRetard
     FROM factures f
-    LEFT JOIN total_paiements tp ON tp.facture_id = f.id
+    ${JOINTURES_FINANCIERES}
     WHERE f.statut != '${STATUTS.ANNULEE}'
   `);
 
@@ -562,20 +622,37 @@ async function getTaxReport(db, annee, mois) {
     params.push(String(mois).padStart(2, '0'));
   }
 
+  // Les notes de crédit annulent de la taxe déjà déclarée : elles entrent dans
+  // le rapport en négatif, sur la période de leur propre émission. Sans cela,
+  // l'entreprise remettrait à l'État une taxe qu'elle a remboursée au client.
+  const NOTE_TAUX = 'COALESCE(n.taux_change, 1.0)';
+  let whereNotes = 'WHERE 1 = 1';
+  const paramsNotes = [];
+  if (annee) {
+    whereNotes += " AND strftime('%Y', n.date_emission) = ?";
+    paramsNotes.push(String(annee));
+  }
+  if (mois) {
+    whereNotes += " AND strftime('%m', n.date_emission) = ?";
+    paramsNotes.push(String(mois).padStart(2, '0'));
+  }
+
   const summary = await db.get(`
-    ${CTE_TOTAUX}
     SELECT
-      COALESCE(SUM(ROUND(${SOUS_TOTAL} * ${TAUX}, 2)), 0) AS total_revenus_taxables,
-      COALESCE(SUM(ROUND(${TAXE_1} * ${TAUX}, 2)), 0) AS total_taxe_1,
-      COALESCE(SUM(ROUND(${TAXE_2} * ${TAUX}, 2)), 0) AS total_taxe_2
-    FROM factures f
-    ${where}
-  `, params);
+      COALESCE((SELECT SUM(ROUND(${SOUS_TOTAL} * ${TAUX}, 2)) FROM factures f ${where}), 0)
+        - COALESCE((SELECT SUM(ROUND(COALESCE(n.sous_total, 0) * ${NOTE_TAUX}, 2)) FROM notes_credit n ${whereNotes}), 0)
+        AS total_revenus_taxables,
+      COALESCE((SELECT SUM(ROUND(${TAXE_1} * ${TAUX}, 2)) FROM factures f ${where}), 0)
+        - COALESCE((SELECT SUM(ROUND(COALESCE(n.montant_taxe_1, 0) * ${NOTE_TAUX}, 2)) FROM notes_credit n ${whereNotes}), 0)
+        AS total_taxe_1,
+      COALESCE((SELECT SUM(ROUND(${TAXE_2} * ${TAUX}, 2)) FROM factures f ${where}), 0)
+        - COALESCE((SELECT SUM(ROUND(COALESCE(n.montant_taxe_2, 0) * ${NOTE_TAUX}, 2)) FROM notes_credit n ${whereNotes}), 0)
+        AS total_taxe_2
+  `, [...params, ...paramsNotes, ...params, ...paramsNotes, ...params, ...paramsNotes]);
 
   // Une même taxe peut occuper le premier ou le second emplacement selon la
   // province : on réunit les deux colonnes avant de regrouper par nom de taxe.
   const parRegime = await db.all(`
-    ${CTE_TOTAUX}
     SELECT nom, ROUND(SUM(montant), 2) AS montant FROM (
       SELECT f.taxe_1_nom AS nom, ROUND(${TAXE_1} * ${TAUX}, 2) AS montant
       FROM factures f
@@ -584,12 +661,20 @@ async function getTaxReport(db, annee, mois) {
       SELECT f.taxe_2_nom AS nom, ROUND(${TAXE_2} * ${TAUX}, 2) AS montant
       FROM factures f
       ${where}
+      UNION ALL
+      SELECT n.taxe_1_nom AS nom, -ROUND(COALESCE(n.montant_taxe_1, 0) * ${NOTE_TAUX}, 2) AS montant
+      FROM notes_credit n
+      ${whereNotes}
+      UNION ALL
+      SELECT n.taxe_2_nom AS nom, -ROUND(COALESCE(n.montant_taxe_2, 0) * ${NOTE_TAUX}, 2) AS montant
+      FROM notes_credit n
+      ${whereNotes}
     )
     WHERE nom IS NOT NULL AND nom != ''
     GROUP BY nom
     HAVING SUM(montant) != 0
     ORDER BY nom ASC
-  `, [...params, ...params]);
+  `, [...params, ...params, ...paramsNotes, ...paramsNotes]);
 
   let depensesWhere = 'WHERE 1 = 1';
   const depensesParams = [];

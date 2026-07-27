@@ -10,6 +10,7 @@
  */
 
 const { checkAndGenerateRecurringInvoices } = require('./subscriptionService.js');
+const { envoyerRelancesDues } = require('./relanceService.js');
 
 /** Intervalle entre deux vérifications. */
 const INTERVALLE_MS = 60 * 60 * 1000; // 1 heure
@@ -24,6 +25,15 @@ async function runOnce(db) {
     }
   } catch (error) {
     console.error('Échec de la vérification des abonnements :', error.message);
+  }
+
+  try {
+    const resultat = await envoyerRelancesDues(db);
+    if (resultat.envoyees > 0 || resultat.erreurs > 0) {
+      console.log(`Relances : ${resultat.envoyees} envoyée(s), ${resultat.erreurs} en échec.`);
+    }
+  } catch (error) {
+    console.error('Échec de l\'envoi des relances :', error.message);
   }
 }
 
