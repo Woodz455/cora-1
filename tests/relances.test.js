@@ -73,7 +73,7 @@ test('une facture échue déclenche le palier franchi', async (t) => {
   assert.equal(envoyes.length, 1);
   assert.equal(envoyes[0].to, 'client@exemple.ca');
   assert.match(envoyes[0].subject, /Rappel de paiement/);
-  assert.match(envoyes[0].text, /1149\.75 \$/);
+  assert.match(envoyes[0].text, /1\u00a0149,75\u00a0\$/, 'écriture française : 1 149,75 $');
 });
 
 test('le palier le plus élevé franchi est retenu, pas tous à la fois', async (t) => {
@@ -146,7 +146,7 @@ test('le rappel porte le solde net des crédits', async (t) => {
   await envoyerRelancesDues(db, { aujourdhui: AUJOURDHUI, envoyer });
 
   assert.equal(envoyes.length, 1);
-  assert.match(envoyes[0].text, /919\.80 \$/);
+  assert.match(envoyes[0].text, /919,80\u00a0\$/);
 });
 
 test('une facture non échue n\'est jamais relancée', async (t) => {
@@ -232,7 +232,7 @@ test('le rappel suit la langue du client', async (t) => {
 
   assert.match(envoyes[0].subject, /Payment reminder/);
   assert.match(envoyes[0].text, /Outstanding balance/);
-  assert.match(envoyes[0].text, /1149\.75 \$/, 'même écriture des montants que dans l\'application');
+  assert.match(envoyes[0].text, /\$1,149\.75/, 'écriture anglaise : $1,149.75');
 });
 
 test('le rappel reprend la raison sociale des paramètres', () => {

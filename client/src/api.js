@@ -46,9 +46,28 @@ export const api = {
   del: (url) => request('DELETE', url)
 };
 
-/** Formate un montant pour l'affichage. */
-export function formatMontant(valeur, devise = 'CAD') {
+/**
+ * Écrit un montant dans les conventions du lecteur.
+ *
+ * Français canadien : « 1 149,75 $ », virgule décimale et espace insécable comme
+ * séparateur de milliers. Anglais canadien : « $1,149.75 ». L'interface est en
+ * français ; la langue n'est précisée que pour les documents destinés au client,
+ * qui suivent la sienne.
+ *
+ * Cette fonction est dupliquée à l'identique dans `money.js` : le code de
+ * l'interface (module ES) et celui du serveur (CommonJS) ne partagent pas de
+ * module. Toute modification doit être reportée des deux côtés.
+ */
+export function formatMontant(valeur, devise = 'CAD', langue = 'fr') {
   const nombre = Number(valeur) || 0;
-  const symbole = devise === 'USD' ? 'US$' : '$';
-  return `${nombre.toFixed(2)} ${symbole}`;
+  const locale = langue === 'en' ? 'en-CA' : 'fr-CA';
+
+  // Intl lève une RangeError sur un code de devise inconnu. Les données saisies
+  // aujourd'hui sont validées, mais une ligne ancienne pourrait en porter un :
+  // mieux vaut une facture en dollars canadiens qu'une facture blanche.
+  try {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: devise || 'CAD' }).format(nombre);
+  } catch {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: 'CAD' }).format(nombre);
+  }
 }

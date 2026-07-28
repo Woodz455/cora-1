@@ -86,4 +86,33 @@ function computeTotals(lignes, taux1, taux2) {
  * retirés : les conserver aurait invité à recalculer un total déjà arrêté.
  */
 
-module.exports = { roundCents, sumLignes, computeTaxes, computeTotals };
+/**
+ * Écrit un montant dans les conventions du lecteur.
+ *
+ * Français canadien : « 1 149,75 $ », virgule décimale et espace insécable comme
+ * séparateur de milliers. Anglais canadien : « $1,149.75 ».
+ *
+ * Cette fonction est dupliquée à l'identique dans `client/src/api.js` : le code
+ * du serveur (CommonJS) et celui de l'interface (module ES, compilé à part) ne
+ * partagent pas de module. Toute modification doit être reportée des deux côtés.
+ *
+ * @param {number} valeur
+ * @param {string} [devise] code ISO, CAD par défaut
+ * @param {string} [langue] 'fr' ou 'en'
+ * @returns {string}
+ */
+function formatMontant(valeur, devise = 'CAD', langue = 'fr') {
+  const nombre = Number(valeur) || 0;
+  const locale = langue === 'en' ? 'en-CA' : 'fr-CA';
+
+  // Intl lève une RangeError sur un code de devise inconnu. Les données saisies
+  // aujourd'hui sont validées, mais une ligne ancienne pourrait en porter un :
+  // mieux vaut une facture en dollars canadiens qu'une facture blanche.
+  try {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: devise || 'CAD' }).format(nombre);
+  } catch {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: 'CAD' }).format(nombre);
+  }
+}
+
+module.exports = { roundCents, sumLignes, computeTaxes, computeTotals, formatMontant };

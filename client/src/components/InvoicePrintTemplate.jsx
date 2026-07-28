@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import EmailModal from './EmailModal';
-import { api } from '../api';
+import { api, formatMontant } from '../api';
 
 /**
  * Libellés du document, en français et en anglais.
@@ -115,10 +115,11 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
   const client = details.client_details || {};
   const isEn = client.langue === 'en';
   const dict = construireDictionnaire(isEn, settings.entreprise_nom);
-  const symbole = details.devise === 'USD' ? 'US$' : '$';
   const numero = estDevis ? details.numero_devis : details.numero_facture;
 
-  const montant = (valeur) => `${Number(valeur || 0).toFixed(2)} ${symbole}`;
+  // Le document part chez le client : les montants suivent sa langue, comme le
+  // reste de la mise en page.
+  const montant = (valeur) => formatMontant(valeur, details.devise, isEn ? 'en' : 'fr');
   const pourcentage = (taux) => `${(taux * 100).toFixed(3).replace(/\.?0+$/, '')} %`;
 
   const handleSendEmail = async (emailData) => {

@@ -13,6 +13,7 @@
  */
 
 const { sendEmail, isConfigured } = require('./emailService.js');
+const { formatMontant } = require('./money.js');
 
 /** Paliers utilisés lorsque les paramètres n'en définissent aucun (jours après échéance). */
 const PALIERS_PAR_DEFAUT = [7, 15, 30];
@@ -67,10 +68,9 @@ function composerRappel(facture, entreprise, jours) {
   const societe = (entreprise && entreprise.entreprise_nom) || '';
   const destinataire = facture.nom_contact || facture.nom_entreprise;
 
-  // Même écriture que dans l'application et sur la facture imprimée : le client
-  // doit retrouver un montant identique d'un document à l'autre.
-  const symbole = facture.devise === 'USD' ? 'US$' : '$';
-  const montant = `${Number(facture.solde_restant).toFixed(2)} ${symbole}`;
+  // Même écriture que sur la facture imprimée, et dans la langue du client :
+  // il doit retrouver un montant identique d'un document à l'autre.
+  const montant = formatMontant(facture.solde_restant, facture.devise, isEn ? 'en' : 'fr');
 
   if (isEn) {
     return {

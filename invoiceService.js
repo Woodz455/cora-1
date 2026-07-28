@@ -2,7 +2,7 @@
  * Service gérant les factures, les paiements et les calculs financiers.
  */
 
-const { roundCents, computeTotals } = require('./money.js');
+const { roundCents, computeTotals, formatMontant } = require('./money.js');
 const { withTransaction } = require('./dbUtils.js');
 const { nextDocumentNumber } = require('./sequences.js');
 
@@ -245,7 +245,8 @@ async function addPaiement(db, factureId, montant, note = '', datePaiement = nul
     }
     if (valeur > facture.solde_restant + EPSILON) {
       throw Object.assign(
-        new Error(`Le paiement (${valeur.toFixed(2)}) dépasse le solde restant (${facture.solde_restant.toFixed(2)}).`),
+        new Error(`Le paiement (${formatMontant(valeur, facture.devise)}) dépasse le solde restant`
+          + ` (${formatMontant(facture.solde_restant, facture.devise)}).`),
         { status: 400 }
       );
     }

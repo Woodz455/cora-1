@@ -7,7 +7,7 @@
  * vient en diminution du montant dû sans jamais toucher à la facture d'origine.
  */
 
-const { computeTotals, roundCents } = require('./money.js');
+const { computeTotals, roundCents, formatMontant } = require('./money.js');
 const { withTransaction } = require('./dbUtils.js');
 const { nextDocumentNumber } = require('./sequences.js');
 
@@ -129,8 +129,8 @@ async function createNoteCredit(db, factureId, donnees, lignes) {
     if (montants.montant_total > disponible + EPSILON) {
       throw Object.assign(
         new Error(
-          `Le crédit (${montants.montant_total.toFixed(2)}) dépasse le montant créditable de la facture `
-          + `${facture.numero_facture} (${disponible.toFixed(2)}).`
+          `Le crédit (${formatMontant(montants.montant_total, facture.devise)}) dépasse le montant `
+          + `créditable de la facture ${facture.numero_facture} (${formatMontant(disponible, facture.devise)}).`
         ),
         { status: 400 }
       );

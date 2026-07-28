@@ -11,9 +11,9 @@
 
 const { initDb, reprendreMontants } = require('./database.js');
 const { getFacturesAvecSoldes, resolveStatut, STATUTS } = require('./invoiceService.js');
-const { roundCents } = require('./money.js');
+const { roundCents, formatMontant } = require('./money.js');
 
-const argent = (n) => `${Number(n || 0).toFixed(2)} $`;
+const argent = (n) => formatMontant(n);
 
 /**
  * Compare les montants figés d'un document à ce que donneraient ses lignes.
