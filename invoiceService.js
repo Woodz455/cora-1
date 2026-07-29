@@ -298,14 +298,14 @@ async function annulerPaiement(db, paiementId, { motif = '', utilisateur = '' } 
     );
 
     // Un paiement issu du rapprochement bancaire laisserait sinon sa transaction
-    // marquée « Rapproché » sur une facture qu'elle ne règle plus. On la remet
-    // dans la file, où elle pourra être affectée correctement.
+    // marquée « Rapproché » sur une facture qu'elle ne règle plus. Son statut est
+    // recalculé : elle revient en attente, ou reste partiellement rapprochée si
+    // d'autres factures en retiennent une part.
     const transaction = await trouverTransactionLiee(db, paiement);
     if (transaction) {
-      await db.run(
-        "UPDATE transactions_bancaires SET statut = 'En attente', facture_id = NULL WHERE id = ?",
-        [transaction.id]
-      );
+      // Import tardif : bankService charge ce module pour enregistrer un paiement.
+      const { majStatutTransaction } = require('./bankService.js');
+      await majStatutTransaction(db, transaction.id);
     }
 
     return syncStatut(db, paiement.facture_id);

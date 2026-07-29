@@ -77,6 +77,7 @@ dbUtils.js         Transactions sérialisées et réentrantes
 validators.js      Validation des données entrantes
 rateLimit.js       Limitation des tentatives de connexion
 scheduler.js       Passage horaire : factures récurrentes et relances dues
+bankService.js     Rapprochement bancaire et imputation des dépôts
 *Service.js        Logique métier par domaine
 routes/            Points d'entrée HTTP, avec leurs contraintes de rôle
 tests/             Tests exécutés par `npm test`
@@ -129,10 +130,31 @@ figure l'historique complet.
   attente** et se détache de la facture : le dépôt retourne dans la file, prêt à
   être affecté correctement.
 
-> **Limite connue.** Une transaction bancaire ne peut être rapprochée que d'une
-> seule facture, pour son montant entier. Un dépôt qui règle plusieurs factures
-> ne peut donc pas être réparti : saisissez les encaissements à la main, facture
-> par facture, et marquez la transaction « Ignoré ».
+## Rapprochement bancaire
+
+Un relevé s'importe au format CSV : les colonnes de date, de description et de
+montant sont détectées automatiquement, seuls les dépôts sont retenus, et les
+lignes déjà présentes sont ignorées.
+
+**Un dépôt peut régler plusieurs factures.** Il s'impute autant de fois que
+nécessaire et reste dans la file tant qu'il lui demeure quelque chose à
+affecter : un virement global de 3 000 $ solde d'abord une facture de 113 $,
+puis une autre, et ainsi de suite.
+
+- La colonne **Part** permet d'imputer un montant précis. Laissée vide, elle
+  affecte le plus petit du reste du dépôt et du solde de la facture — le geste
+  courant, qui ne demande aucune saisie.
+- Une part ne peut dépasser ni le reste du dépôt, ni le solde de la facture.
+- Le statut suit l'imputation : `En attente`, `Partiellement rapproché`, puis
+  `Rapproché` une fois le dépôt épuisé.
+- **Le montant déjà imputé n'est pas stocké**, il se déduit des encaissements
+  qui désignent le dépôt. Un total conservé en base aurait fini par diverger —
+  annulation d'un encaissement, suppression d'une facture — sans que rien ne le
+  signale.
+- Annuler un encaissement libère aussitôt la part correspondante : le dépôt
+  redevient imputable pour ce montant.
+- Une facture en devise étrangère est refusée : un dépôt en dollars canadiens
+  imputé tel quel sur un solde en dollars américains fausserait les deux.
 
 ## Notes de crédit
 
@@ -187,4 +209,5 @@ La suite couvre l'arithmétique monétaire (dont l'égalité entre les calculs
 JavaScript et SQL sur plusieurs milliers de montants), le cycle de vie des
 factures, les encaissements et leur annulation, les notes de crédit, les
 relances automatiques, la conversion des devis, la facturation récurrente, le
-rapprochement bancaire et le cloisonnement des rôles.
+rapprochement bancaire — y compris la répartition d'un dépôt sur plusieurs
+factures — et le cloisonnement des rôles.

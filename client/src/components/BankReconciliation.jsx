@@ -68,6 +68,7 @@ export default function BankReconciliation() {
   const facturesRes = useApiResource('/api/factures', []);
 
   const [selections, setSelections] = useState({});
+  const [parts, setParts] = useState({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [erreurAction, setErreurAction] = useState(null);
@@ -136,13 +137,24 @@ export default function BankReconciliation() {
     }
     try {
       setErreurAction(null);
-      await api.post(`/api/banque/rapprocher/${transactionId}`, { facture_id: factureId });
+      // Sans part saisie, le serveur impute le plus petit du reste du dépôt et
+      // du solde de la facture : le geste courant ne demande aucune saisie.
+      const part = parts[transactionId];
+      const data = await api.post(`/api/banque/rapprocher/${transactionId}`, {
+        facture_id: factureId,
+        montant: part === undefined || part === '' ? undefined : parseFloat(part)
+      });
       setSelections((prev) => {
         const copie = { ...prev };
         delete copie[transactionId];
         return copie;
       });
-      setMessage('Transaction rapprochée.');
+      setParts((prev) => {
+        const copie = { ...prev };
+        delete copie[transactionId];
+        return copie;
+      });
+      setMessage(data.message || 'Transaction rapprochée.');
       charger();
     } catch (err) {
       setErreurAction(err.message);
@@ -163,7 +175,8 @@ export default function BankReconciliation() {
   const suggestions = useMemo(() => {
     const map = {};
     for (const t of transactions) {
-      const correspondances = factures.filter((f) => Math.abs(f.solde_restant - t.montant) < 0.01);
+      const restant = t.montant_restant ?? t.montant;
+      const correspondances = factures.filter((f) => Math.abs(f.solde_restant - restant) < 0.01);
       if (correspondances.length === 1) map[t.id] = correspondances[0].id;
     }
     return map;
@@ -192,7 +205,12 @@ export default function BankReconciliation() {
       </div>
 
       <div className="glass-panel" style={{ padding: '20px' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Dépôts en attente de rapprochement</h3>
+        <h3 style={{ marginTop: 0, marginBottom: '10px' }}>Dépôts à imputer</h3>
+        <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>
+          Un dépôt peut régler plusieurs factures : liez-le autant de fois que nécessaire.
+          La colonne « Part » permet d'imputer un montant précis ; laissée vide, elle affecte
+          le plus petit du reste du dépôt et du solde de la facture.
+        </p>
 
         {factures.length === 0 && transactions.length > 0 && (
           <p className="alert alert-info">
@@ -207,23 +225,35 @@ export default function BankReconciliation() {
                 <th>Date</th>
                 <th>Description</th>
                 <th className="numeric">Montant</th>
+                <th className="numeric">Reste à imputer</th>
                 <th>Facture associée</th>
+                <th className="numeric">Part</th>
                 <th style={{ textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {transactions.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="empty-state">Aucun dépôt en attente.</td>
+                  <td colSpan="7" className="empty-state">Aucun dépôt en attente.</td>
                 </tr>
               ) : transactions.map((t) => {
                 const valeur = selections[t.id] ?? suggestions[t.id] ?? '';
+                const restant = t.montant_restant ?? t.montant;
+                const partiel = restant < t.montant - 0.005;
                 return (
                   <tr key={t.id}>
                     <td>{t.date_transaction}</td>
                     <td>{t.description}</td>
                     <td className="numeric" style={{ fontWeight: 'bold', color: 'var(--status-paid)' }}>
                       + {formatMontant(t.montant)}
+                    </td>
+                    <td className="numeric" style={{ fontWeight: 'bold' }}>
+                      {formatMontant(restant)}
+                      {partiel && (
+                        <div style={{ fontSize: '0.8rem', fontWeight: 'normal', color: 'var(--status-warning)' }}>
+                          {formatMontant(t.montant_rapproche)} déjà imputés
+                        </div>
+                      )}
                     </td>
                     <td>
                       {/* La sélection est gérée par l'état React. Elle était lue
@@ -239,7 +269,7 @@ export default function BankReconciliation() {
                       >
                         <option value="">— Sélectionner —</option>
                         {factures.map((f) => {
-                          const exact = Math.abs(f.solde_restant - t.montant) < 0.01;
+                          const exact = Math.abs(f.solde_restant - restant) < 0.01;
                           return (
                             <option key={f.id} value={f.id}>
                               {f.numero_facture} — {f.client} (solde : {formatMontant(f.solde_restant)}){exact ? ' ⭐' : ''}
@@ -247,6 +277,19 @@ export default function BankReconciliation() {
                           );
                         })}
                       </select>
+                    </td>
+                    <td className="numeric">
+                      {/* Laissé vide, le serveur impute le plus petit du reste du
+                          dépôt et du solde de la facture. */}
+                      <input
+                        type="number" className="form-control"
+                        style={{ width: '120px', padding: '8px', textAlign: 'right' }}
+                        step="0.01" min="0.01" max={restant}
+                        placeholder="tout"
+                        aria-label={`Part du dépôt du ${t.date_transaction} à imputer`}
+                        value={parts[t.id] ?? ''}
+                        onChange={(e) => setParts((prev) => ({ ...prev, [t.id]: e.target.value }))}
+                      />
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>

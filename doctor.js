@@ -12,6 +12,7 @@
 const { initDb, reprendreMontants } = require('./database.js');
 const { getFacturesAvecSoldes, annulerPaiement, resolveStatut, STATUTS } = require('./invoiceService.js');
 const { roundCents, formatMontant } = require('./money.js');
+const { majStatutTransaction, resolveStatutTransaction } = require('./bankService.js');
 
 const argent = (n) => formatMontant(n);
 
@@ -120,19 +121,47 @@ async function diagnostiquer(db) {
     }
   }
 
+  // Un dépôt réparti sur plusieurs factures n'en désigne aucune : `facture_id`
+  // vaut alors NULL sans que ce soit une anomalie. Ce qui trahit un dépôt
+  // orphelin, c'est l'absence de tout paiement actif qui l'impute.
   const transactionsOrphelines = await db.all(`
-    SELECT t.id, t.date_transaction, t.description, t.montant
+    SELECT t.id, t.date_transaction, t.description, t.montant, t.statut
     FROM transactions_bancaires t
-    WHERE t.statut = 'Rapproché' AND (t.facture_id IS NULL
-      OR NOT EXISTS (SELECT 1 FROM factures f WHERE f.id = t.facture_id))
+    WHERE t.statut IN ('Rapproché', 'Partiellement rapproché')
+      AND NOT EXISTS (
+        SELECT 1 FROM paiements p
+        WHERE p.transaction_id = t.id AND p.annule_le IS NULL
+      )
   `);
   for (const t of transactionsOrphelines) {
     anomalies.push({
       gravite: 'MOYENNE',
       objet: `Transaction du ${t.date_transaction}`,
-      probleme: `Marquée « Rapproché » (${argent(t.montant)}) mais la facture liée n'existe plus.`,
-      action: 'Repassez-la en attente pour la rapprocher d\'une autre facture.'
+      probleme: `Marquée « ${t.statut} » (${argent(t.montant)}) alors qu'aucun encaissement ne s'y rattache.`,
+      action: 'Repassez-la en attente depuis le rapprochement bancaire, pour l\'affecter de nouveau.'
     });
+  }
+
+  // Le montant imputé se déduit des paiements ; le statut, lui, est enregistré.
+  // Un écart entre les deux signale une écriture directe en base.
+  const statutsIncoherents = await db.all(`
+    SELECT t.id, t.date_transaction, t.montant, t.statut,
+           COALESCE((SELECT ROUND(SUM(p.montant), 2) FROM paiements p
+                     WHERE p.transaction_id = t.id AND p.annule_le IS NULL), 0) AS alloue
+    FROM transactions_bancaires t
+    WHERE t.statut != 'Ignoré'
+  `);
+  for (const t of statutsIncoherents) {
+    const attendu = resolveStatutTransaction(t.statut, t.montant, t.alloue);
+    if (attendu !== t.statut) {
+      anomalies.push({
+        gravite: 'MOYENNE',
+        objet: `Transaction du ${t.date_transaction}`,
+        probleme: `Statut « ${t.statut} » alors que ${argent(t.alloue)} sur ${argent(t.montant)} sont imputés`
+          + ` — soit « ${attendu} ».`,
+        action: 'Le statut sera réaligné à la prochaine imputation, ou par « npm run doctor -- --corriger-statuts ».'
+      });
+    }
   }
 
   const devisIncoherents = await db.all(`
@@ -169,7 +198,7 @@ async function diagnostiquer(db) {
   return anomalies;
 }
 
-/** Réaligne le statut des factures sur leurs montants. */
+/** Réaligne le statut des factures et des dépôts sur leurs montants. */
 async function corrigerStatuts(db) {
   const factures = await getFacturesAvecSoldes(db);
   let corrigees = 0;
@@ -184,6 +213,20 @@ async function corrigerStatuts(db) {
       corrigees += 1;
     }
   }
+
+  const transactions = await db.all(
+    "SELECT id, date_transaction, statut FROM transactions_bancaires WHERE statut != 'Ignoré'"
+  );
+  for (const t of transactions) {
+    const avant = t.statut;
+    const apres = await majStatutTransaction(db, t.id);
+    const nouveauStatut = await db.get('SELECT statut FROM transactions_bancaires WHERE id = ?', [t.id]);
+    if (apres && nouveauStatut.statut !== avant) {
+      console.log(`  Transaction du ${t.date_transaction} : « ${avant} » -> « ${nouveauStatut.statut} »`);
+      corrigees += 1;
+    }
+  }
+
   return corrigees;
 }
 

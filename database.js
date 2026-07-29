@@ -253,6 +253,7 @@ async function runMigrations(db) {
   // Transaction bancaire à l'origine du paiement, s'il vient d'un
   // rapprochement : annuler le paiement doit la remettre en attente.
   await addColumn(db, 'paiements', 'transaction_id', 'INTEGER');
+  await rattacherPaiementsAuxTransactions(db);
 
   await figerMontants(db);
 }
@@ -268,6 +269,43 @@ async function runMigrations(db) {
  * Les documents antérieurs sont repris une seule fois, avec la règle d'arrondi
  * en vigueur au moment de la migration.
  */
+/**
+ * Relie les paiements issus d'un rapprochement à leur transaction bancaire.
+ *
+ * Les encaissements enregistrés avant l'existence de `paiements.transaction_id`
+ * ne portent que la note « Rapprochement bancaire : … ». Sans ce rattachement,
+ * le montant imputé d'un dépôt ancien — désormais déduit des paiements qui le
+ * désignent — vaudrait zéro : le dépôt paraîtrait entièrement disponible alors
+ * qu'il a déjà réglé une facture.
+ *
+ * Le rapprochement se fait sur la facture liée et le montant, seuls éléments
+ * dont on dispose. Une transaction sans correspondance reste telle quelle.
+ */
+async function rattacherPaiementsAuxTransactions(db) {
+  const resultat = await db.run(`
+    UPDATE paiements SET transaction_id = (
+      SELECT t.id FROM transactions_bancaires t
+      WHERE t.facture_id = paiements.facture_id
+        AND t.statut = 'Rapproché'
+        AND ABS(t.montant - paiements.montant) < 0.005
+      ORDER BY t.id ASC LIMIT 1
+    )
+    WHERE transaction_id IS NULL
+      AND note LIKE 'Rapprochement bancaire%'
+      AND EXISTS (
+        SELECT 1 FROM transactions_bancaires t
+        WHERE t.facture_id = paiements.facture_id
+          AND t.statut = 'Rapproché'
+          AND ABS(t.montant - paiements.montant) < 0.005
+      )
+  `);
+
+  if (resultat.changes > 0) {
+    log(`Migration : ${resultat.changes} paiement(s) rattaché(s) à leur transaction bancaire.`);
+  }
+  return resultat.changes;
+}
+
 async function figerMontants(db) {
   for (const table of ['factures', 'devis']) {
     const ajoutees = [
