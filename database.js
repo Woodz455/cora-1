@@ -244,6 +244,16 @@ async function runMigrations(db) {
   await addColumn(db, 'settings', 'relances_actives', 'INTEGER DEFAULT 0');
   await addColumn(db, 'settings', 'relances_paliers', "TEXT DEFAULT '7,15,30'");
 
+  // Annulation d'un encaissement saisi à tort. La ligne n'est jamais effacée :
+  // un mouvement d'argent qui disparaît sans laisser de trace serait
+  // injustifiable en vérification. `annule_le` NULL signifie « actif ».
+  await addColumn(db, 'paiements', 'annule_le', 'TEXT');
+  await addColumn(db, 'paiements', 'annule_par', 'TEXT');
+  await addColumn(db, 'paiements', 'motif_annulation', 'TEXT');
+  // Transaction bancaire à l'origine du paiement, s'il vient d'un
+  // rapprochement : annuler le paiement doit la remettre en attente.
+  await addColumn(db, 'paiements', 'transaction_id', 'INTEGER');
+
   await figerMontants(db);
 }
 

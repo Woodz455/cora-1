@@ -27,6 +27,7 @@ Au premier lancement, l'application demande de créer un compte administrateur.
 | `npm run doctor` | Diagnostique les anomalies dans les données comptables |
 | `npm run doctor -- --corriger-statuts` | Réaligne le statut des factures sur leurs montants |
 | `npm run doctor -- --refiger-montants` | Recalcule les montants depuis les lignes, en cas de dérive signalée |
+| `npm run doctor -- --annuler-surpaiements` | Défait les encaissements issus d'un rapprochement qui dépassent le total de la facture |
 | `npm run db:init` | Crée ou met à jour le schéma de la base |
 | `npm run seed:demo` | Insère un jeu de données de démonstration (base vide seulement) |
 | `node reset_data.js --confirmer` | Efface factures, devis et paiements (sauvegarde automatique) |
@@ -99,6 +100,39 @@ client/src/        Interface React
   l'émission. Les rapports consolident tout en dollars canadiens.
 - **Conservation.** Une facture comportant un paiement ne peut être ni modifiée,
   ni annulée, ni supprimée : elle doit faire l'objet d'une note de crédit.
+- **Note de crédit ou annulation de paiement ?** La note de crédit corrige ce
+  que le client **doit**, et reprend les taxes correspondantes — elle vaut pour
+  un retour de marchandise ou une remise accordée après coup. L'annulation d'un
+  encaissement corrige ce que l'entreprise a **reçu**, sans toucher aux taxes :
+  elle vaut pour une erreur de saisie. Créditer une facture pour rattraper un
+  paiement mal saisi récupérerait à tort de la taxe sur un montant jamais
+  facturé.
+
+## Encaissements
+
+Un paiement est enregistré depuis la facture, ou par rapprochement d'une
+transaction bancaire. Il ne peut jamais dépasser le solde restant.
+
+Un encaissement saisi à tort — chèque sans provision, montant erroné, dépôt
+pointé sur la mauvaise facture — s'annule depuis la fenêtre de paiement, où
+figure l'historique complet.
+
+- **La ligne n'est jamais effacée** : elle reste visible, barrée, avec la date
+  de l'annulation, son auteur et son motif. Un mouvement d'argent qui
+  disparaîtrait sans trace serait injustifiable en vérification.
+- Un paiement annulé cesse aussitôt de compter dans le solde, le statut de la
+  facture, le chiffre d'affaires et le tableau de bord.
+- L'annulation est **réservée à l'administrateur** : le comptable enregistre les
+  encaissements, revenir sur l'un d'eux touche à un montant déjà porté aux
+  comptes.
+- Si le paiement venait du rapprochement bancaire, **la transaction repasse en
+  attente** et se détache de la facture : le dépôt retourne dans la file, prêt à
+  être affecté correctement.
+
+> **Limite connue.** Une transaction bancaire ne peut être rapprochée que d'une
+> seule facture, pour son montant entier. Un dépôt qui règle plusieurs factures
+> ne peut donc pas être réparti : saisissez les encaissements à la main, facture
+> par facture, et marquez la transaction « Ignoré ».
 
 ## Notes de crédit
 
@@ -151,6 +185,6 @@ npm test
 
 La suite couvre l'arithmétique monétaire (dont l'égalité entre les calculs
 JavaScript et SQL sur plusieurs milliers de montants), le cycle de vie des
-factures, les notes de crédit, les relances automatiques, la conversion des
-devis, la facturation récurrente, le rapprochement bancaire et le cloisonnement
-des rôles.
+factures, les encaissements et leur annulation, les notes de crédit, les
+relances automatiques, la conversion des devis, la facturation récurrente, le
+rapprochement bancaire et le cloisonnement des rôles.

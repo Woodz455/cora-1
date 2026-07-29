@@ -11,7 +11,7 @@ const express = require('express');
 
 const {
   getFacturesAvecSoldes, getSoldeFacture, getFactureDetails,
-  addPaiement, createFacture, updateFacture, cancelFacture, deleteFacture
+  addPaiement, annulerPaiement, createFacture, updateFacture, cancelFacture, deleteFacture
 } = require('../invoiceService.js');
 const { anyRole, adminOnly, adminOrAccountant } = require('../authMiddleware.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
@@ -97,6 +97,26 @@ module.exports = function factureRoutes(getDb) {
    * Suppression définitive : réservée à l'administration, et refusée par le
    * service dès qu'un paiement est rattaché à la facture.
    */
+  /**
+   * Annule un encaissement saisi à tort.
+   *
+   * Réservé à l'administrateur : le comptable enregistre les encaissements,
+   * revenir sur l'un d'eux touche à un montant déjà porté aux comptes.
+   *
+   * Déclarée avant `/:id`, sinon Express ferait correspondre « paiements » à un
+   * identifiant de facture et refuserait la requête.
+   */
+  router.delete('/paiements/:paiementId', adminOnly(), asyncRoute(async (req, res) => {
+    const paiementId = parseId(req.params.paiementId);
+    if (!paiementId) throw httpError(400, 'Identifiant de paiement invalide.');
+
+    const facture = await annulerPaiement(getDb(), paiementId, {
+      motif: sanitizeText(req.body && req.body.motif, 300),
+      utilisateur: req.user && req.user.username
+    });
+    res.json({ message: 'Paiement annulé.', facture });
+  }));
+
   router.delete('/:id', adminOnly(), asyncRoute(async (req, res) => {
     res.json(await deleteFacture(getDb(), requireId(req)));
   }));

@@ -10,10 +10,14 @@
  */
 
 const { initDb, reprendreMontants } = require('./database.js');
-const { getFacturesAvecSoldes, resolveStatut, STATUTS } = require('./invoiceService.js');
+const { getFacturesAvecSoldes, annulerPaiement, resolveStatut, STATUTS } = require('./invoiceService.js');
 const { roundCents, formatMontant } = require('./money.js');
 
 const argent = (n) => formatMontant(n);
+
+/** Un paiement né d'un rapprochement bancaire peut être défait sans ambiguïté. */
+const estIssuDunRapprochement = (p) =>
+  Boolean(p.transaction_id) || /^Rapprochement bancaire/i.test(p.note || '');
 
 /**
  * Compare les montants figés d'un document à ce que donneraient ses lignes.
@@ -71,15 +75,32 @@ async function diagnostiquer(db) {
 
   for (const f of factures) {
     if (f.solde_restant < -0.005) {
+      // Nommer le paiement fautif : « excédent de 2 887 $ » n'indique pas où
+      // regarder, alors que la note « Rapprochement bancaire : … » désigne
+      // immédiatement le dépôt mal affecté.
+      const paiements = await db.all(
+        `SELECT id, date_paiement, montant, note, transaction_id FROM paiements
+         WHERE facture_id = ? AND annule_le IS NULL ORDER BY date_paiement ASC, id ASC`,
+        [f.id]
+      );
+      const detail = paiements
+        .map((p) => `       #${p.id} du ${p.date_paiement} : ${argent(p.montant)}${p.note ? ` — ${p.note}` : ''}`)
+        .join('\n');
+
       anomalies.push({
         gravite: 'ÉLEVÉE',
         objet: f.numero_facture,
-        probleme: `Encaissé ${argent(f.montant_paye)} pour un total de ${argent(f.montant_total)} ; excédent de ${argent(-f.solde_restant)}.`,
-        action: "Vérifiez les paiements de cette facture : un montant a probablement été saisi en trop avant l'ajout du contrôle de sur-paiement."
+        probleme: `Encaissé ${argent(f.montant_paye)} pour un total de ${argent(f.montant_total)} ;`
+          + ` excédent de ${argent(-f.solde_restant)}.\n${detail}`,
+        action: paiements.some((p) => estIssuDunRapprochement(p))
+          ? "Ce paiement vient du rapprochement bancaire : « npm run doctor -- --annuler-surpaiements » l'annule et remet la transaction en attente."
+          : 'Annulez le paiement en trop depuis la facture, dans l\'application.'
       });
     }
 
-    const attendu = resolveStatut(f.statut, f.solde_restant, f.montant_paye);
+    const attendu = resolveStatut(
+      f.statut, f.solde_restant, f.montant_paye, f.montant_credite, f.montant_total
+    );
     if (attendu !== f.statut) {
       anomalies.push({
         gravite: 'MOYENNE',
@@ -154,7 +175,9 @@ async function corrigerStatuts(db) {
   let corrigees = 0;
 
   for (const f of factures) {
-    const attendu = resolveStatut(f.statut, f.solde_restant, f.montant_paye);
+    const attendu = resolveStatut(
+      f.statut, f.solde_restant, f.montant_paye, f.montant_credite, f.montant_total
+    );
     if (attendu !== f.statut) {
       await db.run('UPDATE factures SET statut = ? WHERE id = ?', [attendu, f.id]);
       console.log(`  ${f.numero_facture} : « ${f.statut} » -> « ${attendu} »`);
@@ -162,6 +185,50 @@ async function corrigerStatuts(db) {
     }
   }
   return corrigees;
+}
+
+/**
+ * Annule les encaissements issus d'un rapprochement bancaire qui rendent une
+ * facture excédentaire, et remet les transactions correspondantes en attente.
+ *
+ * Seuls ces paiements-là sont touchés : leur origine est certaine et rien n'est
+ * perdu, le dépôt retournant dans la file de rapprochement. Un sur-paiement
+ * saisi à la main peut recouvrir un vrai trop-perçu client, dont seule
+ * l'entreprise connaît le traitement — il est signalé, jamais défait d'office.
+ */
+async function annulerSurpaiements(db) {
+  const factures = await getFacturesAvecSoldes(db);
+  let annules = 0;
+
+  for (const f of factures) {
+    if (f.solde_restant >= -0.005) continue;
+
+    const paiements = await db.all(
+      `SELECT id, montant, note, transaction_id FROM paiements
+       WHERE facture_id = ? AND annule_le IS NULL ORDER BY date_paiement DESC, id DESC`,
+      [f.id]
+    );
+
+    // Du plus récent au plus ancien, tant que la facture reste excédentaire.
+    let excedent = -f.solde_restant;
+    for (const p of paiements) {
+      if (excedent <= 0.005) break;
+      if (!estIssuDunRapprochement(p)) continue;
+
+      await annulerPaiement(db, p.id, {
+        motif: 'Sur-paiement corrigé par le diagnostic ; transaction remise en attente.',
+        utilisateur: 'doctor'
+      });
+      console.log(`  ${f.numero_facture} : paiement #${p.id} de ${argent(p.montant)} annulé.`);
+      excedent -= p.montant;
+      annules += 1;
+    }
+
+    if (excedent > 0.005) {
+      console.log(`  ${f.numero_facture} : ${argent(excedent)} d'excédent subsistent, saisis à la main — à trancher dans l'application.`);
+    }
+  }
+  return annules;
 }
 
 async function main() {
@@ -186,6 +253,12 @@ async function main() {
       console.log(n === 0 ? '  Aucun statut à corriger.' : `  ${n} facture(s) mise(s) à jour.`);
     }
 
+    if (process.argv.includes('--annuler-surpaiements')) {
+      console.log('\nAnnulation des sur-paiements issus du rapprochement bancaire :');
+      const n = await annulerSurpaiements(db);
+      console.log(n === 0 ? '  Aucun paiement à annuler.' : `  ${n} paiement(s) annulé(s).`);
+    }
+
     if (process.argv.includes('--refiger-montants')) {
       console.log('\nRecalcul des montants depuis les lignes :');
       const factures = await reprendreMontants(db, 'factures', { toutes: true });
@@ -204,4 +277,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { diagnostiquer, corrigerStatuts, detecterDerives };
+module.exports = { diagnostiquer, corrigerStatuts, annulerSurpaiements, detecterDerives };

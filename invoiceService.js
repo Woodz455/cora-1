@@ -67,10 +67,17 @@ const SOLDE = `ROUND(${NET} - ${PAYE}, 2)`;
 const A_REMBOURSER = `ROUND(MAX(0, ${PAYE} - ${NET}), 2)`;
 const TAUX = 'COALESCE(f.taux_change, 1.0)';
 
+/**
+ * Un paiement annulé reste en base pour l'historique, mais ne compte plus dans
+ * aucun solde : ce filtre doit accompagner toute lecture de la table.
+ */
+const PAIEMENT_ACTIF = 'annule_le IS NULL';
+
 const CTE_TOTAUX = `
   WITH total_paiements AS (
     SELECT facture_id, SUM(montant) AS total_paye
     FROM paiements
+    WHERE ${PAIEMENT_ACTIF}
     GROUP BY facture_id
   ),
   total_credits AS (
@@ -222,9 +229,10 @@ async function syncStatut(db, factureId) {
  * @param {number} montant montant dans la devise de la facture
  * @param {string} note
  * @param {string} datePaiement format YYYY-MM-DD
+ * @param {number} [transactionId] transaction bancaire d'origine, le cas échéant
  * @returns {Promise<Object>} facture mise à jour
  */
-async function addPaiement(db, factureId, montant, note = '', datePaiement = null) {
+async function addPaiement(db, factureId, montant, note = '', datePaiement = null, transactionId = null) {
   const date = datePaiement || new Date().toISOString().split('T')[0];
   const valeur = roundCents(montant);
 
@@ -252,12 +260,78 @@ async function addPaiement(db, factureId, montant, note = '', datePaiement = nul
     }
 
     await db.run(
-      'INSERT INTO paiements (facture_id, date_paiement, montant, note) VALUES (?, ?, ?, ?)',
-      [factureId, date, valeur, note]
+      'INSERT INTO paiements (facture_id, date_paiement, montant, note, transaction_id) VALUES (?, ?, ?, ?, ?)',
+      [factureId, date, valeur, note, transactionId]
     );
 
     return syncStatut(db, factureId);
   });
+}
+
+/**
+ * Annule un encaissement saisi à tort.
+ *
+ * La ligne n'est pas effacée : elle est marquée annulée, avec son motif et son
+ * auteur. Un mouvement d'argent qui disparaîtrait sans laisser de trace serait
+ * injustifiable lors d'une vérification — et c'est précisément l'absence de
+ * toute correction possible qui laissait une facture de 113 $ porter 3 000 $
+ * d'encaissements, sans recours.
+ *
+ * @param {import('sqlite').Database} db
+ * @param {number} paiementId
+ * @param {{motif?: string, utilisateur?: string}} [contexte]
+ * @returns {Promise<Object>} facture mise à jour
+ */
+async function annulerPaiement(db, paiementId, { motif = '', utilisateur = '' } = {}) {
+  return withTransaction(db, async () => {
+    const paiement = await db.get('SELECT * FROM paiements WHERE id = ?', [paiementId]);
+    if (!paiement) {
+      throw Object.assign(new Error('Paiement non trouvé.'), { status: 404 });
+    }
+    if (paiement.annule_le) {
+      throw Object.assign(new Error('Ce paiement est déjà annulé.'), { status: 400 });
+    }
+
+    await db.run(
+      'UPDATE paiements SET annule_le = ?, annule_par = ?, motif_annulation = ? WHERE id = ?',
+      [new Date().toISOString().split('T')[0], utilisateur || null, motif || null, paiementId]
+    );
+
+    // Un paiement issu du rapprochement bancaire laisserait sinon sa transaction
+    // marquée « Rapproché » sur une facture qu'elle ne règle plus. On la remet
+    // dans la file, où elle pourra être affectée correctement.
+    const transaction = await trouverTransactionLiee(db, paiement);
+    if (transaction) {
+      await db.run(
+        "UPDATE transactions_bancaires SET statut = 'En attente', facture_id = NULL WHERE id = ?",
+        [transaction.id]
+      );
+    }
+
+    return syncStatut(db, paiement.facture_id);
+  });
+}
+
+/**
+ * Retrouve la transaction bancaire d'où provient un paiement.
+ *
+ * Les paiements créés depuis l'ajout de `transaction_id` la désignent
+ * directement. Les plus anciens ne portent que la note « Rapprochement
+ * bancaire : … » : on retombe alors sur la transaction rapprochée de cette
+ * facture pour ce montant.
+ */
+async function trouverTransactionLiee(db, paiement) {
+  if (paiement.transaction_id) {
+    return db.get('SELECT id FROM transactions_bancaires WHERE id = ?', [paiement.transaction_id]);
+  }
+  if (!/^Rapprochement bancaire/i.test(paiement.note || '')) return null;
+
+  return db.get(
+    `SELECT id FROM transactions_bancaires
+     WHERE facture_id = ? AND statut = 'Rapproché' AND ABS(montant - ?) < 0.005
+     ORDER BY id ASC LIMIT 1`,
+    [paiement.facture_id, paiement.montant]
+  );
 }
 
 /**
@@ -425,8 +499,11 @@ async function getFactureDetails(db, factureId) {
     db.all('SELECT * FROM lignes_facture WHERE facture_id = ? ORDER BY id ASC', [factureId]),
     db.get('SELECT * FROM settings LIMIT 1')
   ]);
+  // Les paiements annulés sont remontés eux aussi : l'écran doit montrer qu'un
+  // encaissement a été retiré, et pourquoi. Ils portent `annule_le`.
   const paiements = await db.all(
-    'SELECT date_paiement, montant, note FROM paiements WHERE facture_id = ? ORDER BY date_paiement ASC, id ASC',
+    `SELECT id, date_paiement, montant, note, annule_le, annule_par, motif_annulation
+     FROM paiements WHERE facture_id = ? ORDER BY date_paiement ASC, id ASC`,
     [factureId]
   );
 
@@ -593,6 +670,7 @@ async function getDashboardStats(db) {
     FROM paiements p
     JOIN factures f ON f.id = p.facture_id
     WHERE f.statut != '${STATUTS.ANNULEE}'
+      AND p.${PAIEMENT_ACTIF}
     GROUP BY name
     ORDER BY name ASC
   `);
@@ -715,6 +793,7 @@ module.exports = {
   getSoldeFacture,
   getFactureDetails,
   addPaiement,
+  annulerPaiement,
   createFacture,
   updateFacture,
   cancelFacture,

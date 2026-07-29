@@ -182,7 +182,7 @@ async function deleteNoteCredit(db, noteId) {
     }
 
     const { paye } = await db.get(
-      'SELECT COALESCE(SUM(montant), 0) AS paye FROM paiements WHERE facture_id = ?',
+      'SELECT COALESCE(SUM(montant), 0) AS paye FROM paiements WHERE facture_id = ? AND annule_le IS NULL',
       [note.facture_id]
     );
     if (paye > EPSILON) {

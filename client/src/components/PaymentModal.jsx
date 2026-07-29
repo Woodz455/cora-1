@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { api, formatMontant } from '../api';
+import { useApiResource } from '../useApiResource';
+import { useHasRole } from '../UserContext';
 
 function PaymentModal({ facture, onClose }) {
   // Le solde exact est pré-rempli pour faciliter le règlement complet.
@@ -8,6 +10,29 @@ function PaymentModal({ facture, onClose }) {
   const [datePaiement, setDatePaiement] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Historique des encaissements : sans lui, une saisie erronée restait
+  // invisible, et donc incorrigible.
+  const { data: details, refresh } = useApiResource(`/api/factures/${facture.id}/details`);
+  const paiements = (details && details.paiements) || [];
+  const solde = details ? details.solde_restant : facture.solde_restant;
+  const estAdmin = useHasRole('admin');
+
+  const handleAnnuler = async (paiement) => {
+    const motif = window.prompt(
+      `Annuler l'encaissement de ${formatMontant(paiement.montant, facture.devise)} ?\n`
+      + 'Le paiement restera visible, marqué annulé. Motif :'
+    );
+    if (motif === null) return;
+
+    setError(null);
+    try {
+      await api.del(`/api/factures/paiements/${paiement.id}`, { motif });
+      refresh();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,7 +56,7 @@ function PaymentModal({ facture, onClose }) {
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Saisir un paiement">
-      <div className="modal-content glass-panel">
+      <div className="modal-content glass-panel" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <h3 style={{ marginTop: 0, marginBottom: '25px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
           Saisir un paiement
         </h3>
@@ -48,24 +73,80 @@ function PaymentModal({ facture, onClose }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed var(--border-color)' }}>
             <span style={{ color: 'var(--text-main)', fontWeight: '600' }}>Solde actuel</span>
             <strong className="gradient-text" style={{ fontSize: '1.4rem' }}>
-              {formatMontant(facture.solde_restant, facture.devise)}
+              {formatMontant(solde, facture.devise)}
             </strong>
           </div>
         </div>
 
         {error && <p className="alert alert-error" role="alert">{error}</p>}
 
+        {paiements.length > 0 && (
+          <div style={{ marginBottom: '25px' }}>
+            <h4 style={{ margin: '0 0 12px 0', color: 'var(--text-main)', fontSize: '1rem' }}>
+              Encaissements enregistrés
+            </h4>
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, maxHeight: '240px', overflowY: 'auto' }}>
+              {paiements.map((p) => (
+                <li
+                  key={p.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '10px 0', borderBottom: '1px solid var(--glass-border)',
+                    opacity: p.annule_le ? 0.55 : 1
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: 'var(--text-main)', textDecoration: p.annule_le ? 'line-through' : 'none' }}>
+                      <strong>{formatMontant(p.montant, facture.devise)}</strong>
+                      <span style={{ color: 'var(--text-muted)' }}> — {p.date_paiement}</span>
+                    </div>
+                    {p.note && (
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{p.note}</div>
+                    )}
+                    {p.annule_le && (
+                      <div style={{ fontSize: '0.85rem', color: 'var(--status-warning)' }}>
+                        Annulé le {p.annule_le}
+                        {p.annule_par && ` par ${p.annule_par}`}
+                        {p.motif_annulation && ` — ${p.motif_annulation}`}
+                      </div>
+                    )}
+                  </div>
+                  {estAdmin && !p.annule_le && (
+                    <button
+                      type="button" className="btn-icon"
+                      onClick={() => handleAnnuler(p)}
+                      title="Annuler cet encaissement, en conservant sa trace"
+                    >
+                      Annuler l'encaissement
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {solde <= 0 ? (
+          <div>
+            <p className="alert alert-info">
+              Cette facture est soldée. Pour revenir sur un encaissement, annulez-le ci-dessus.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <button type="button" className="btn-secondary" onClick={onClose}>Fermer</button>
+            </div>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="paiement-montant">
-              Montant du paiement ({facture.devise === 'USD' ? 'US$' : '$'})
+              Montant du paiement ({facture.devise})
             </label>
             <input
               id="paiement-montant"
               type="number"
               step="0.01"
               min="0.01"
-              max={facture.solde_restant}
+              max={solde}
               className="form-control"
               value={montant}
               onChange={(e) => setMontant(e.target.value)}
@@ -110,6 +191,7 @@ function PaymentModal({ facture, onClose }) {
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

@@ -121,10 +121,13 @@ module.exports = function banqueRoutes(getDb) {
     // qu'un dépôt ne puisse jamais être encaissé sans être marqué rapproché.
     await withTransaction(db, async () => {
       // addPaiement valide le solde, refuse le dépassement et met le statut à jour.
+      // La transaction d'origine est mémorisée sur le paiement : annuler celui-ci
+      // doit pouvoir la remettre en attente, sans deviner d'où il venait.
       await addPaiement(
         db, factureId, transaction.montant,
         `Rapprochement bancaire : ${transaction.description}`,
-        transaction.date_transaction
+        transaction.date_transaction,
+        transactionId
       );
 
       await db.run(
