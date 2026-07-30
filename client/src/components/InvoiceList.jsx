@@ -224,15 +224,21 @@ function InvoiceList() {
                   </button>
                 )}
 
+                {/* Une facture soldée reste consultable : c'est par cette
+                    fenêtre que l'on revient sur un encaissement, et un
+                    sur-paiement rend justement la facture soldée. Le bouton
+                    désactivé la rendait inatteignable. */}
                 {gereTresorerie && (
                   <button
                     type="button"
                     className="btn-primary"
                     onClick={() => setSelectedFacture(facture)}
-                    disabled={facture.solde_restant <= 0 || isAnnulee}
+                    disabled={isAnnulee || (facture.solde_restant <= 0 && facture.montant_paye <= 0)}
                     style={{ width: '180px' }}
                   >
-                    {facture.solde_restant <= 0 ? '✓ Facture soldée' : '+ Ajouter paiement'}
+                    {facture.solde_restant > 0
+                      ? '+ Ajouter paiement'
+                      : facture.montant_paye > 0 ? '✓ Voir les encaissements' : '✓ Facture soldée'}
                   </button>
                 )}
               </div>
