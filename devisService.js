@@ -1,144 +1,257 @@
-const { createFacture } = require('./invoiceService.js');
+/**
+ * Service gérant les devis (soumissions) et leur conversion en facture.
+ */
 
+const { createFacture, getTaxRatesForProvince } = require('./invoiceService.js');
+const { computeTotals } = require('./money.js');
+const { withTransaction } = require('./dbUtils.js');
+const { nextDocumentNumber } = require('./sequences.js');
+
+/** Statuts possibles d'un devis. */
+const STATUTS = {
+  EN_ATTENTE: 'En attente',
+  REFUSE: 'Refusé',
+  CONVERTI: 'Converti'
+};
+
+/** Nombre de jours accordés au paiement d'une facture issue d'un devis. */
+const DELAI_PAIEMENT_JOURS = 30;
+
+/**
+ * Comme pour les factures, les montants d'un devis sont arrêtés à l'émission :
+ * le montant accepté par le client ne doit pas bouger ensuite.
+ */
+const COLONNES_MONTANTS = `
+  COALESCE(d.sous_total, 0) AS sous_total,
+  COALESCE(d.montant_taxe_1, 0) AS montant_taxe_1,
+  COALESCE(d.montant_taxe_2, 0) AS montant_taxe_2,
+  COALESCE(d.montant_total, 0) AS montant_total
+`;
+
+/**
+ * Liste des devis avec leurs totaux.
+ *
+ * Une seule requête : la version précédente rechargeait les lignes devis par
+ * devis (N+1 requêtes) pour recalculer des montants désormais figés.
+ */
 async function getDevis(db) {
-  const devis = await db.all(`
-    SELECT d.*, c.nom_entreprise as client
+  return db.all(`
+    SELECT
+      d.id,
+      d.numero_devis,
+      d.client_id,
+      c.nom_entreprise AS client,
+      d.date_emission,
+      d.date_validite,
+      d.statut,
+      d.facture_id,
+      d.devise,
+      d.taux_change,
+      d.taux_taxe_1,
+      d.taux_taxe_2,
+      d.taxe_1_nom,
+      d.taxe_2_nom,
+      ${COLONNES_MONTANTS}
     FROM devis d
     JOIN clients c ON d.client_id = c.id
-    ORDER BY d.date_emission DESC
+    ORDER BY d.date_emission DESC, d.id DESC
   `);
-
-  for (let d of devis) {
-    const lignes = await db.all('SELECT * FROM lignes_devis WHERE devis_id = ?', [d.id]);
-    const sous_total = lignes.reduce((acc, l) => acc + (l.quantite * l.prix_unitaire), 0);
-    const taxes = sous_total * ((d.taux_taxe_1 || 0) + (d.taux_taxe_2 || 0));
-    d.montant_total = sous_total + taxes;
-    d.lignes = lignes;
-  }
-
-  return devis;
 }
 
+/** Détails complets d'un devis, pour l'impression et le courriel. */
 async function getDevisDetails(db, devisId) {
-  const devisRow = await db.get('SELECT * FROM devis WHERE id = ?', [devisId]);
-  if (!devisRow) return null;
+  const devis = await db.get(`
+    SELECT
+      d.*,
+      ${COLONNES_MONTANTS}
+    FROM devis d
+    WHERE d.id = ?
+  `, [devisId]);
 
-  const client = await db.get('SELECT * FROM clients WHERE id = ?', [devisRow.client_id]);
-  const lignes = await db.all('SELECT * FROM lignes_devis WHERE devis_id = ?', [devisId]);
-  const settings = await db.get('SELECT * FROM settings LIMIT 1');
+  if (!devis) return null;
 
-  const sous_total = lignes.reduce((acc, l) => acc + (l.quantite * l.prix_unitaire), 0);
-  const montant_total = sous_total * (1 + (devisRow.taux_taxe_1 || 0) + (devisRow.taux_taxe_2 || 0));
+  const [client, lignes, settings] = await Promise.all([
+    db.get('SELECT * FROM clients WHERE id = ?', [devis.client_id]),
+    db.all('SELECT * FROM lignes_devis WHERE devis_id = ? ORDER BY id ASC', [devisId]),
+    db.get('SELECT * FROM settings LIMIT 1')
+  ]);
 
   return {
-    ...devisRow,
+    ...devis,
     client_details: client,
-    lignes: lignes,
-    settings: settings,
-    sous_total,
-    montant_total,
-    solde_restant: montant_total // Un devis n'a pas de paiements
+    lignes,
+    settings,
+    // Un devis n'enregistre pas de paiement : le solde vaut le total.
+    montant_paye: 0,
+    solde_restant: devis.montant_total
   };
 }
 
+/** Source de numérotation des devis (voir sequences.js). */
+const SOURCE_NUMERO = { table: 'devis', column: 'numero_devis' };
+
+/**
+ * Génère le prochain numéro de devis au format DEV-AAAAMM-NNNN.
+ * À appeler à l'intérieur d'une transaction.
+ */
+async function generateDevisNumber(db, dateStr) {
+  return nextDocumentNumber(db, 'DEV', dateStr, SOURCE_NUMERO);
+}
+
+async function insertLignes(db, devisId, lignes) {
+  for (const ligne of lignes) {
+    await db.run(
+      'INSERT INTO lignes_devis (devis_id, description, quantite, prix_unitaire) VALUES (?, ?, ?, ?)',
+      [devisId, ligne.description, ligne.quantite, ligne.prix_unitaire]
+    );
+  }
+}
+
+/**
+ * Crée un devis.
+ *
+ * Les taux de taxe proviennent de la province du client, exactement comme pour
+ * une facture. Les devis s'appuyaient auparavant sur les taux globaux des
+ * paramètres : un devis pour un client ontarien portait la TPS et la TVQ
+ * québécoises, puis la facture issue de ce devis affichait la TVH — le montant
+ * accepté par le client ne correspondait pas à celui facturé.
+ */
 async function createDevis(db, devisData, lignes) {
   const { client_id, date_emission, date_validite, devise = 'CAD', taux_change = 1.0 } = devisData;
-  
-  await db.exec('BEGIN TRANSACTION;');
-  try {
-    // Générer le numéro DEV-YYYYMM-XXXX
-    const dateObj = new Date(date_emission);
-    const yearMonth = `${dateObj.getFullYear()}${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
-    const countRow = await db.get('SELECT COUNT(*) as count FROM devis WHERE numero_devis LIKE ?', [`DEV-${yearMonth}-%`]);
-    const nextNum = (countRow.count + 1).toString().padStart(4, '0');
-    const numero_devis = `DEV-${yearMonth}-${nextNum}`;
 
-    const settings = await db.get('SELECT taxe_1_taux, taxe_2_taux, taxe_1_nom, taxe_2_nom FROM settings LIMIT 1');
-    const taux_taxe_1 = settings ? settings.taxe_1_taux : 0;
-    const taux_taxe_2 = settings ? settings.taxe_2_taux : 0;
-    const taxe_1_nom = settings ? settings.taxe_1_nom : '';
-    const taxe_2_nom = settings ? settings.taxe_2_nom : '';
-
-    const insertResult = await db.run(
-      'INSERT INTO devis (numero_devis, client_id, date_emission, date_validite, statut, taux_taxe_1, taux_taxe_2, taxe_1_nom, taxe_2_nom, devise, taux_change) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [numero_devis, client_id, date_emission, date_validite, 'En attente', taux_taxe_1, taux_taxe_2, taxe_1_nom, taxe_2_nom, devise, taux_change]
-    );
-    const devisId = insertResult.lastID;
-
-    for (const ligne of lignes) {
-      await db.run(
-        'INSERT INTO lignes_devis (devis_id, description, quantite, prix_unitaire) VALUES (?, ?, ?, ?)',
-        [devisId, ligne.description, ligne.quantite, ligne.prix_unitaire]
-      );
+  return withTransaction(db, async () => {
+    const client = await db.get('SELECT id, province FROM clients WHERE id = ?', [client_id]);
+    if (!client) {
+      throw Object.assign(new Error('Client introuvable.'), { status: 400 });
     }
 
-    await db.exec('COMMIT;');
+    const taxes = getTaxRatesForProvince(client.province);
+    const numero_devis = await generateDevisNumber(db, date_emission);
+    const montants = computeTotals(lignes, taxes.taxe_1_taux, taxes.taxe_2_taux);
+
+    const result = await db.run(
+      `INSERT INTO devis (numero_devis, client_id, date_emission, date_validite, statut,
+                          taux_taxe_1, taux_taxe_2, taxe_1_nom, taxe_2_nom, devise, taux_change,
+                          sous_total, montant_taxe_1, montant_taxe_2, montant_total)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [numero_devis, client_id, date_emission, date_validite, STATUTS.EN_ATTENTE,
+        taxes.taxe_1_taux, taxes.taxe_2_taux, taxes.taxe_1_nom, taxes.taxe_2_nom, devise, taux_change,
+        montants.sous_total, montants.taxe_1, montants.taxe_2, montants.montant_total]
+    );
+    const devisId = result.lastID;
+
+    await insertLignes(db, devisId, lignes);
     return { id: devisId, numero_devis };
-  } catch (err) {
-    await db.exec('ROLLBACK;');
-    throw err;
-  }
+  });
 }
 
+/** Modifie un devis en attente, en réalignant ses taxes sur le client retenu. */
 async function updateDevis(db, devisId, devisData, lignes) {
   const { client_id, date_validite, devise = 'CAD', taux_change = 1.0 } = devisData;
-  const devisRow = await db.get('SELECT * FROM devis WHERE id = ?', [devisId]);
-  if (!devisRow) throw new Error('Devis non trouvé');
-  if (devisRow.statut !== 'En attente') throw new Error('Seul un devis en attente peut être modifié');
 
-  await db.exec('BEGIN TRANSACTION;');
-  try {
+  return withTransaction(db, async () => {
+    const devis = await db.get('SELECT id, statut FROM devis WHERE id = ?', [devisId]);
+    if (!devis) {
+      throw Object.assign(new Error('Devis non trouvé.'), { status: 404 });
+    }
+    if (devis.statut !== STATUTS.EN_ATTENTE) {
+      throw Object.assign(new Error('Seul un devis en attente peut être modifié.'), { status: 400 });
+    }
+
+    const client = await db.get('SELECT id, province FROM clients WHERE id = ?', [client_id]);
+    if (!client) {
+      throw Object.assign(new Error('Client introuvable.'), { status: 400 });
+    }
+    const taxes = getTaxRatesForProvince(client.province);
+    const montants = computeTotals(lignes, taxes.taxe_1_taux, taxes.taxe_2_taux);
+
     await db.run(
-      'UPDATE devis SET client_id = ?, date_validite = ?, devise = ?, taux_change = ? WHERE id = ?',
-      [client_id, date_validite, devise, taux_change, devisId]
+      `UPDATE devis SET client_id = ?, date_validite = ?, devise = ?, taux_change = ?,
+                        taux_taxe_1 = ?, taux_taxe_2 = ?, taxe_1_nom = ?, taxe_2_nom = ?,
+                        sous_total = ?, montant_taxe_1 = ?, montant_taxe_2 = ?, montant_total = ?
+       WHERE id = ?`,
+      [client_id, date_validite, devise, taux_change,
+        taxes.taxe_1_taux, taxes.taxe_2_taux, taxes.taxe_1_nom, taxes.taxe_2_nom,
+        montants.sous_total, montants.taxe_1, montants.taxe_2, montants.montant_total, devisId]
     );
     await db.run('DELETE FROM lignes_devis WHERE devis_id = ?', [devisId]);
-    for (const ligne of lignes) {
-      await db.run(
-        'INSERT INTO lignes_devis (devis_id, description, quantite, prix_unitaire) VALUES (?, ?, ?, ?)',
-        [devisId, ligne.description, ligne.quantite, ligne.prix_unitaire]
+    await insertLignes(db, devisId, lignes);
+
+    return { message: 'Devis mis à jour.' };
+  });
+}
+
+/** Marque un devis comme refusé. */
+async function cancelDevis(db, devisId) {
+  const devis = await db.get('SELECT id, statut FROM devis WHERE id = ?', [devisId]);
+  if (!devis) {
+    throw Object.assign(new Error('Devis non trouvé.'), { status: 404 });
+  }
+  if (devis.statut === STATUTS.CONVERTI) {
+    throw Object.assign(new Error('Un devis converti en facture ne peut pas être refusé.'), { status: 400 });
+  }
+  if (devis.statut === STATUTS.REFUSE) {
+    throw Object.assign(new Error('Ce devis est déjà refusé.'), { status: 400 });
+  }
+
+  await db.run('UPDATE devis SET statut = ? WHERE id = ?', [STATUTS.REFUSE, devisId]);
+  return { message: 'Devis refusé.' };
+}
+
+/**
+ * Convertit un devis en facture.
+ *
+ * La création de la facture et la mise à jour du devis partagent une seule
+ * transaction. Auparavant la facture était validée par sa propre transaction
+ * avant que le lien vers le devis n'échoue : chaque tentative de conversion
+ * laissait une facture orpheline en base, et le devis restait « En attente ».
+ *
+ * @returns {Promise<Object>} la facture créée
+ */
+async function convertDevisToFacture(db, devisId) {
+  return withTransaction(db, async () => {
+    const devis = await db.get('SELECT * FROM devis WHERE id = ?', [devisId]);
+    if (!devis) {
+      throw Object.assign(new Error('Devis non trouvé.'), { status: 404 });
+    }
+    if (devis.statut === STATUTS.CONVERTI) {
+      throw Object.assign(new Error('Ce devis a déjà été converti en facture.'), { status: 400 });
+    }
+    if (devis.statut !== STATUTS.EN_ATTENTE) {
+      throw Object.assign(
+        new Error(`Un devis « ${devis.statut} » ne peut pas être converti en facture.`),
+        { status: 400 }
       );
     }
-    await db.exec('COMMIT;');
-    return { message: 'Devis mis à jour' };
-  } catch (err) {
-    await db.exec('ROLLBACK;');
-    throw err;
-  }
-}
 
-async function cancelDevis(db, devisId) {
-  const devisRow = await db.get('SELECT * FROM devis WHERE id = ?', [devisId]);
-  if (!devisRow) throw new Error('Devis non trouvé');
-  if (devisRow.statut === 'Converti') throw new Error('Un devis converti ne peut pas être annulé');
+    const lignes = await db.all(
+      'SELECT description, quantite, prix_unitaire FROM lignes_devis WHERE devis_id = ? ORDER BY id ASC',
+      [devisId]
+    );
+    if (lignes.length === 0) {
+      throw Object.assign(new Error('Un devis sans ligne ne peut pas être converti.'), { status: 400 });
+    }
 
-  await db.run('UPDATE devis SET statut = ? WHERE id = ?', ['Refusé', devisId]);
-  return { message: 'Devis refusé/annulé' };
-}
+    const dateEmission = new Date();
+    const dateEcheance = new Date(dateEmission);
+    dateEcheance.setDate(dateEcheance.getDate() + DELAI_PAIEMENT_JOURS);
+    const iso = (d) => d.toISOString().split('T')[0];
 
-async function convertDevisToFacture(db, devisId) {
-  const devisRow = await db.get('SELECT * FROM devis WHERE id = ?', [devisId]);
-  if (!devisRow) throw new Error('Devis non trouvé');
-  if (devisRow.statut === 'Converti') throw new Error('Devis déjà converti');
+    const facture = await createFacture(db, {
+      client_id: devis.client_id,
+      date_emission: iso(dateEmission),
+      date_echeance: iso(dateEcheance),
+      devise: devis.devise || 'CAD',
+      taux_change: devis.taux_change || 1.0
+    }, lignes);
 
-  const lignes = await db.all('SELECT * FROM lignes_devis WHERE devis_id = ?', [devisId]);
-  
-  // Create the facture
-  const date_emission = new Date().toISOString().split('T')[0];
-  const factureData = {
-    client_id: devisRow.client_id,
-    date_emission,
-    date_echeance: date_emission, // Default to same day or inherit
-    devise: devisRow.devise,
-    taux_change: devisRow.taux_change
-  };
+    await db.run(
+      'UPDATE devis SET statut = ?, facture_id = ? WHERE id = ?',
+      [STATUTS.CONVERTI, facture.id, devisId]
+    );
 
-  const facture = await createFacture(db, factureData, lignes);
-
-  // Link devis to facture and mark converted
-  await db.run('UPDATE devis SET statut = ?, facture_id = ? WHERE id = ?', ['Converti', facture.facture.id, devisId]);
-
-  return facture;
+    return facture;
+  });
 }
 
 module.exports = {
@@ -147,5 +260,6 @@ module.exports = {
   createDevis,
   updateDevis,
   cancelDevis,
-  convertDevisToFacture
+  convertDevisToFacture,
+  STATUTS
 };

@@ -1,105 +1,141 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
+import { api, formatMontant } from '../api';
+import { useApiResource } from '../useApiResource';
+
+const ARTICLE_VIDE = { nom: '', description: '', prix_unitaire: 0 };
 
 function CatalogueList() {
-  const [items, setItems] = useState([]);
+  const { data: items, loading, error, setError, refresh } = useApiResource('/api/catalogue', []);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentItem, setCurrentItem] = useState({ nom: '', description: '', prix_unitaire: 0 });
+  const [currentItem, setCurrentItem] = useState(ARTICLE_VIDE);
+  const [recherche, setRecherche] = useState('');
+  const [modalError, setModalError] = useState(null);
+  const [saving, setSaving] = useState(false);
 
-  const fetchCatalogue = async () => {
-    const response = await fetch('/api/catalogue');
-    const data = await response.json();
-    setItems(data);
-  };
-
-  useEffect(() => {
-    fetchCatalogue();
-  }, []);
+  const itemsFiltres = useMemo(() => {
+    const terme = recherche.trim().toLowerCase();
+    if (!terme) return items;
+    return items.filter((i) => [i.nom, i.description]
+      .some((champ) => (champ || '').toLowerCase().includes(terme)));
+  }, [items, recherche]);
 
   const handleSave = async (e) => {
     e.preventDefault();
-    const url = currentItem.id ? `/api/catalogue/${currentItem.id}` : '/api/catalogue';
-    const method = currentItem.id ? 'PUT' : 'POST';
+    setSaving(true);
+    setModalError(null);
 
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(currentItem)
-    });
+    try {
+      const payload = {
+        nom: currentItem.nom,
+        description: currentItem.description,
+        prix_unitaire: parseFloat(currentItem.prix_unitaire) || 0
+      };
+      // Le résultat du serveur n'était pas vérifié : un enregistrement refusé
+      // fermait quand même la fenêtre, sans rien signaler.
+      if (currentItem.id) await api.put(`/api/catalogue/${currentItem.id}`, payload);
+      else await api.post('/api/catalogue', payload);
 
-    setIsModalOpen(false);
-    fetchCatalogue();
+      setIsModalOpen(false);
+      refresh();
+    } catch (err) {
+      setModalError(err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Voulez-vous vraiment supprimer ce service du catalogue ?')) {
-      await fetch(`/api/catalogue/${id}`, { method: 'DELETE' });
-      fetchCatalogue();
+  const handleDelete = async (item) => {
+    if (!window.confirm(`Supprimer « ${item.nom} » du catalogue ?`)) return;
+    try {
+      setError(null);
+      await api.del(`/api/catalogue/${item.id}`);
+      refresh();
+    } catch (err) {
+      setError(err.message);
     }
   };
 
   const openModal = (item = null) => {
-    setCurrentItem(item || { nom: '', description: '', prix_unitaire: 0 });
+    setCurrentItem(item ? { ...item } : ARTICLE_VIDE);
+    setModalError(null);
     setIsModalOpen(true);
   };
 
   return (
     <div className="glass-panel" style={{ padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <h2>Catalogue de Services</h2>
-        <button className="btn-primary" onClick={() => openModal()}>+ Nouveau Service</button>
+      {error && <p className="alert alert-error" role="alert">{error}</p>}
+
+      <div className="toolbar">
+        <div className="toolbar-group">
+          <input
+            type="search"
+            className="search-input"
+            placeholder="Rechercher un service…"
+            aria-label="Rechercher un service"
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+          />
+        </div>
+        <button type="button" className="btn-primary" onClick={() => openModal()}>+ Nouveau service</button>
       </div>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
-            <th style={{ padding: '10px' }}>Nom du Service</th>
-            <th style={{ padding: '10px' }}>Description</th>
-            <th style={{ padding: '10px' }}>Prix / Tarif</th>
-            <th style={{ padding: '10px', textAlign: 'right' }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map(item => (
-            <tr key={item.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-              <td style={{ padding: '10px', fontWeight: '500' }}>{item.nom}</td>
-              <td style={{ padding: '10px', color: 'var(--text-muted)' }}>{item.description}</td>
-              <td style={{ padding: '10px' }}>{Number(item.prix_unitaire).toFixed(2)} $</td>
-              <td style={{ padding: '10px', textAlign: 'right' }}>
-                <button className="btn-secondary" onClick={() => openModal(item)} style={{ marginRight: '5px' }}>✏️</button>
-                <button className="btn-secondary" onClick={() => handleDelete(item.id)} style={{ color: '#ef4444' }}>🗑️</button>
-              </td>
-            </tr>
-          ))}
-          {items.length === 0 && (
+      <div className="table-scroll">
+        <table className="data-table">
+          <thead>
             <tr>
-              <td colSpan="4" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                Votre catalogue est vide.
-              </td>
+              <th>Nom du service</th>
+              <th>Description</th>
+              <th className="numeric">Prix / tarif</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan="4" className="empty-state">Chargement…</td></tr>
+            ) : itemsFiltres.length === 0 ? (
+              <tr>
+                <td colSpan="4" className="empty-state">
+                  {items.length === 0 ? 'Votre catalogue est vide.' : 'Aucun service ne correspond à votre recherche.'}
+                </td>
+              </tr>
+            ) : itemsFiltres.map((item) => (
+              <tr key={item.id}>
+                <td style={{ fontWeight: '500' }}>{item.nom}</td>
+                <td style={{ color: 'var(--text-muted)' }}>{item.description}</td>
+                <td className="numeric">{formatMontant(item.prix_unitaire)}</td>
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <button type="button" className="btn-icon" onClick={() => openModal(item)} aria-label={`Modifier ${item.nom}`} style={{ marginRight: '5px' }}>✏️</button>
+                  <button type="button" className="btn-danger" onClick={() => handleDelete(item)} aria-label={`Supprimer ${item.nom}`}>🗑️</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>{currentItem.id ? 'Modifier le service' : 'Ajouter un service'}</h3>
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={currentItem.id ? 'Modifier le service' : 'Ajouter un service'}>
+          <div className="modal-content glass-panel">
+            <h3 style={{ marginTop: 0 }}>{currentItem.id ? 'Modifier le service' : 'Ajouter un service'}</h3>
+
+            {modalError && <p className="alert alert-error" role="alert">{modalError}</p>}
+
             <form onSubmit={handleSave}>
               <div className="form-group">
-                <label>Nom du service *</label>
-                <input type="text" className="form-control" value={currentItem.nom} onChange={e => setCurrentItem({...currentItem, nom: e.target.value})} required />
+                <label htmlFor="service-nom">Nom du service *</label>
+                <input id="service-nom" type="text" className="form-control" value={currentItem.nom} onChange={(e) => setCurrentItem({ ...currentItem, nom: e.target.value })} required autoFocus />
               </div>
               <div className="form-group">
-                <label>Description</label>
-                <textarea className="form-control" value={currentItem.description} onChange={e => setCurrentItem({...currentItem, description: e.target.value})} rows="3" />
+                <label htmlFor="service-description">Description</label>
+                <textarea id="service-description" className="form-control" value={currentItem.description || ''} onChange={(e) => setCurrentItem({ ...currentItem, description: e.target.value })} rows="3" />
               </div>
               <div className="form-group">
-                <label>Prix ou Tarif ($) *</label>
-                <input type="number" step="0.01" className="form-control" value={currentItem.prix_unitaire} onChange={e => setCurrentItem({...currentItem, prix_unitaire: e.target.value})} required />
+                <label htmlFor="service-prix">Prix ou tarif ($) *</label>
+                <input id="service-prix" type="number" step="0.01" min="0" className="form-control" value={currentItem.prix_unitaire} onChange={(e) => setCurrentItem({ ...currentItem, prix_unitaire: e.target.value })} required />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>Annuler</button>
-                <button type="submit" className="btn-primary">Sauvegarder</button>
+                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)} disabled={saving}>Annuler</button>
+                <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Sauvegarde…' : 'Sauvegarder'}</button>
               </div>
             </form>
           </div>

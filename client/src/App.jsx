@@ -1,23 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import InvoiceList from './components/InvoiceList';
 import ClientList from './components/ClientList';
-import ReportDashboard from './components/ReportDashboard';
 import Settings from './components/Settings';
 import DevisList from './components/DevisList';
 import Login from './components/Login';
 import Setup from './components/Setup';
 import CatalogueList from './components/CatalogueList';
-import Dashboard from './components/Dashboard';
 import ExpenseList from './components/ExpenseList';
 import BankReconciliation from './components/BankReconciliation';
 import SubscriptionList from './components/SubscriptionList';
-import { 
-  LayoutDashboard, 
-  Receipt, 
-  FileSignature, 
-  Users, 
-  Package, 
-  BarChart3, 
+import { UserContext } from './UserContext';
+
+// Ces deux écrans embarquent la bibliothèque de graphiques : ils sont chargés à
+// la demande pour alléger le démarrage de l'application.
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const ReportDashboard = lazy(() => import('./components/ReportDashboard'));
+import { api } from './api';
+import {
+  LayoutDashboard,
+  Receipt,
+  FileSignature,
+  Users,
+  Package,
+  BarChart3,
   Settings as SettingsIcon,
   Sun,
   Moon,
@@ -26,37 +31,122 @@ import {
   Landmark,
   Repeat
 } from 'lucide-react';
+
+/**
+ * Description de la navigation.
+ *
+ * Regrouper libellé, icône, en-tête et rôles autorisés en un seul endroit évite
+ * que le menu, le titre de page et le rendu du contenu divergent : ils étaient
+ * décrits par trois `switch` distincts qu'il fallait penser à modifier ensemble.
+ * Les rôles ne servent qu'à masquer ce qui serait de toute façon refusé par le
+ * serveur, seul garant des permissions.
+ */
+const VUES = [
+  {
+    id: 'dashboard',
+    libelle: 'Tableau de bord',
+    icone: LayoutDashboard,
+    titre: 'Tableau de bord',
+    sousTitre: 'Aperçu de vos performances financières',
+    composant: Dashboard
+  },
+  {
+    id: 'factures',
+    libelle: 'Factures',
+    icone: Receipt,
+    titre: 'Factures',
+    sousTitre: 'Gérez vos factures et suivez les paiements',
+    composant: InvoiceList
+  },
+  {
+    id: 'devis',
+    libelle: 'Devis',
+    icone: FileSignature,
+    titre: 'Gestion des devis',
+    sousTitre: 'Vos propositions commerciales',
+    composant: DevisList
+  },
+  {
+    id: 'clients',
+    libelle: 'Clients',
+    icone: Users,
+    titre: 'Répertoire clients',
+    sousTitre: 'Gérez vos contacts et entreprises',
+    composant: ClientList
+  },
+  {
+    id: 'catalogue',
+    libelle: 'Catalogue',
+    icone: Package,
+    titre: 'Catalogue de services',
+    sousTitre: 'Vos produits et services fréquents',
+    composant: CatalogueList
+  },
+  {
+    id: 'abonnements',
+    libelle: 'Abonnements',
+    icone: Repeat,
+    titre: 'Facturation récurrente',
+    sousTitre: 'Gestion des abonnements et factures automatiques',
+    composant: SubscriptionList,
+    roles: ['admin', 'comptable']
+  },
+  {
+    id: 'banque',
+    libelle: 'Banque',
+    icone: Landmark,
+    titre: 'Rapprochement bancaire',
+    sousTitre: 'Importation et liaison des transactions',
+    composant: BankReconciliation,
+    roles: ['admin', 'comptable']
+  },
+  {
+    id: 'depenses',
+    libelle: 'Dépenses',
+    icone: CreditCard,
+    titre: 'Dépenses et achats',
+    sousTitre: 'Suivez vos charges et taxes payées',
+    composant: ExpenseList,
+    roles: ['admin', 'comptable']
+  },
+  {
+    id: 'rapports',
+    libelle: 'Rapports',
+    icone: BarChart3,
+    titre: 'Rapports',
+    sousTitre: 'Statistiques et performances financières',
+    composant: ReportDashboard,
+    roles: ['admin', 'comptable']
+  },
+  {
+    id: 'parametres',
+    libelle: 'Paramètres',
+    icone: SettingsIcon,
+    titre: 'Paramètres',
+    sousTitre: "Configuration de l'entreprise et des taxes",
+    composant: Settings,
+    roles: ['admin']
+  }
+];
+
+const COULEUR_ROLE = { admin: '#10b981', comptable: '#3b82f6', employe: '#f59e0b' };
+
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
-  const getNavStyle = (view) => {
-    const baseStyle = { display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 15px', textDecoration: 'none', cursor: 'pointer', borderRadius: '10px' };
-    if (currentView === view) {
-      return { ...baseStyle, color: 'var(--text-main)', fontWeight: '600', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' };
-    }
-    return { ...baseStyle, color: 'var(--text-muted)', fontWeight: '500', transition: 'color 0.2s', border: '1px solid transparent' };
-  };
+  const isAuthenticated = Boolean(user);
 
-  const renderContent = () => {
-    switch (currentView) {
-      case 'dashboard': return <Dashboard />;
-      case 'factures': return <InvoiceList />;
-      case 'devis': return <DevisList />;
-      case 'clients': return <ClientList />;
-      case 'catalogue': return <CatalogueList />;
-      case 'depenses': return <ExpenseList />;
-      case 'rapports': return <ReportDashboard />;
-      case 'parametres': return <Settings />;
-      case 'banque': return <BankReconciliation />;
-      case 'abonnements': return <SubscriptionList />;
-      default: return <InvoiceList />;
-    }
-  };
+  const vuesVisibles = useMemo(
+    () => VUES.filter((vue) => !vue.roles || (user && vue.roles.includes(user.role))),
+    [user]
+  );
+
+  // Un employé qui atteindrait une vue restreinte est ramené au tableau de bord.
+  const vueActive = vuesVisibles.find((v) => v.id === currentView) || vuesVisibles[0];
 
   useEffect(() => {
     if (isDarkMode) {
@@ -71,20 +161,17 @@ function App() {
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        const setupRes = await fetch('/api/auth/setup-status');
-        if (setupRes.ok) {
-          const setupData = await setupRes.json();
-          setSetupRequired(setupData.setupRequired);
-          
-          if (!setupData.setupRequired) {
-            const authRes = await fetch('/api/auth/check');
-            if (authRes.ok) {
-              const authData = await authRes.json();
-              setIsAuthenticated(authData.authenticated);
-              if (authData.authenticated) {
-                setUser({ username: authData.username, role: authData.role });
-              }
+        const setupData = await api.get('/api/auth/setup-status');
+        setSetupRequired(setupData.setupRequired);
+
+        if (!setupData.setupRequired) {
+          try {
+            const authData = await api.get('/api/auth/check');
+            if (authData.authenticated) {
+              setUser({ username: authData.username, role: authData.role });
             }
+          } catch {
+            // 401 attendu tant que l'utilisateur n'est pas connecté.
           }
         }
       } catch (err) {
@@ -97,144 +184,116 @@ function App() {
   }, []);
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    setIsAuthenticated(false);
-  };
-
-  const getHeaderTitle = () => {
-    switch (currentView) {
-      case 'dashboard': return { title: 'Tableau de bord', subtitle: "Aperçu de vos performances financières" };
-      case 'factures': return { title: 'Factures', subtitle: "Gérez vos factures et suivez les paiements" };
-      case 'devis': return { title: 'Gestion des devis', subtitle: "Vos propositions commerciales" };
-      case 'clients': return { title: 'Répertoire Clients', subtitle: "Gérez vos contacts et entreprises" };
-      case 'catalogue': return { title: 'Catalogue de Services', subtitle: "Vos produits et services fréquents" };
-      case 'depenses': return { title: 'Dépenses & Achats', subtitle: "Suivez vos charges et taxes payées" };
-      case 'rapports': return { title: 'Tableau de Bord', subtitle: "Statistiques et performances financières" };
-      case 'parametres': return { title: 'Paramètres', subtitle: "Configuration de l'entreprise et des taxes" };
-      case 'banque': return { title: 'Rapprochement Bancaire', subtitle: "Importation et liaison des transactions" };
-      case 'abonnements': return { title: 'Facturation Récurrente', subtitle: "Gestion des abonnements et factures automatiques" };
-      default: return { title: '', subtitle: '' };
+    try {
+      await api.post('/api/auth/logout');
+    } finally {
+      setUser(null);
+      setCurrentView('dashboard');
     }
   };
 
-  const headerInfo = getHeaderTitle();
-
   if (isCheckingAuth) {
-    return <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)' }}>Chargement...</div>;
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)' }}>
+        Chargement…
+      </div>
+    );
   }
 
   if (setupRequired) {
-    return <Setup onSetupComplete={() => { setSetupRequired(false); setIsAuthenticated(true); }} />;
+    return <Setup onSetupComplete={(compte) => { setSetupRequired(false); setUser(compte); }} />;
   }
 
   if (!isAuthenticated) {
-    return <Login onLogin={() => setIsAuthenticated(true)} />;
+    return <Login onLogin={(compte) => setUser(compte)} />;
   }
 
+  const ContenuActif = vueActive.composant;
+
   return (
-    <>
-      {/* Arrière-plan animé Light Aurora */}
-      <div className="aurora-bg-container">
+    <UserContext.Provider value={user}>
+      {/* Arrière-plan animé */}
+      <div className="aurora-bg-container" aria-hidden="true">
         <div className="aurora-blob aurora-blob-1"></div>
         <div className="aurora-blob aurora-blob-2"></div>
         <div className="aurora-blob aurora-blob-3"></div>
       </div>
 
-      <div style={{ display: 'flex', height: '100vh', backgroundColor: 'transparent', color: 'var(--text-main)', fontFamily: 'Inter, sans-serif' }}>
-        
-        {/* Sidebar Navigation (Flottante en verre) */}
+      <div style={{ display: 'flex', height: '100vh', backgroundColor: 'transparent', color: 'var(--text-main)' }}>
         <aside className="glass-panel" style={{ width: '260px', margin: '20px', padding: '30px 20px', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px', justifyContent: 'center' }}>
-          <img 
-            src="/images/logo.png" 
-            alt="Safehill Logo" 
-            style={{ width: '64px', height: '64px', objectFit: 'contain', backgroundColor: 'white', padding: '6px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} 
-            onError={(e) => { 
-              e.target.style.display = 'none'; 
-              e.target.nextSibling.style.display = 'flex'; 
-            }} 
-          />
-          <div style={{ display: 'none', width: '36px', height: '36px', background: 'var(--gradient-brand)', borderRadius: '10px', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2rem', color: 'white', boxShadow: '0 4px 10px rgba(0, 196, 180, 0.3)' }}>
-            C
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px', justifyContent: 'center' }}>
+            <img
+              src="/images/logo.png"
+              alt=""
+              style={{ width: '64px', height: '64px', objectFit: 'contain', backgroundColor: 'white', padding: '6px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+            <h1 style={{ fontSize: '1.5rem', margin: 0, fontWeight: '800' }}>
+              <span className="gradient-text">Clora</span>
+            </h1>
           </div>
-          <h1 style={{ fontSize: '1.5rem', margin: 0, fontWeight: '800' }}>
-            <span className="gradient-text">Clora</span>
-          </h1>
-        </div>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div onClick={() => setCurrentView('dashboard')} style={getNavStyle('dashboard')}>
-            <LayoutDashboard size={20} /> Tableau de bord
-          </div>
-          <div onClick={() => setCurrentView('factures')} style={getNavStyle('factures')}>
-            <Receipt size={20} /> Factures
-          </div>
-          <div onClick={() => setCurrentView('devis')} style={getNavStyle('devis')}>
-            <FileSignature size={20} /> Devis
-          </div>
-          <div onClick={() => setCurrentView('clients')} style={getNavStyle('clients')}>
-            <Users size={20} /> Clients
-          </div>
-          <div onClick={() => setCurrentView('catalogue')} style={getNavStyle('catalogue')}>
-            <Package size={20} /> Catalogue
-          </div>
-          {user && user.role !== 'employe' && (
-            <div onClick={() => setCurrentView('abonnements')} style={getNavStyle('abonnements')}>
-              <Repeat size={20} /> Abonnements
-            </div>
-          )}
-          {user && user.role !== 'employe' && (
-            <div onClick={() => setCurrentView('banque')} style={getNavStyle('banque')}>
-              <Landmark size={20} /> Banque
-            </div>
-          )}
-          {user && user.role !== 'employe' && (
-            <div onClick={() => setCurrentView('depenses')} style={getNavStyle('depenses')}>
-              <CreditCard size={20} /> Dépenses
-            </div>
-          )}
-          {user && user.role !== 'employe' && (
-            <div onClick={() => setCurrentView('rapports')} style={getNavStyle('rapports')}>
-              <BarChart3 size={20} /> Rapports
-            </div>
-          )}
-          {user && user.role === 'admin' && (
-            <div onClick={() => setCurrentView('parametres')} style={getNavStyle('parametres')}>
-              <SettingsIcon size={20} /> Paramètres
-            </div>
-          )}
-        </nav>
-        <div style={{ marginTop: 'auto', padding: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <button onClick={() => setIsDarkMode(!isDarkMode)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', borderColor: 'transparent', color: 'var(--text-muted)', background: 'var(--glass-card-bg)' }}>
-            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-            {isDarkMode ? 'Mode Clair' : 'Mode Sombre'}
-          </button>
-          <button onClick={handleLogout} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', borderColor: 'transparent', color: 'var(--text-muted)' }}>
-            <LogOut size={18} />
-            Quitter
-          </button>
-        </div>
-      </aside>
 
-      {/* Main Content Area */}
-      <main style={{ flex: 1, padding: '20px 40px 20px 20px', overflowY: 'auto' }}>
-        <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h2 style={{ fontSize: '2.2rem', fontWeight: '700', color: 'var(--text-main)', marginBottom: '5px' }}>{headerInfo.title}</h2>
-            <p style={{ color: 'var(--text-muted)', margin: 0 }}>{headerInfo.subtitle}</p>
-          </div>
-          <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '10px 20px', borderRadius: '30px', fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: user?.role === 'admin' ? '#10b981' : (user?.role === 'comptable' ? '#3b82f6' : '#f59e0b') }}></span>
-            {user ? `${user.username} (${user.role})` : 'Profil'}
-          </div>
-        </header>
+          {/* Des <button> et non des <div> : la navigation était inatteignable
+              au clavier et invisible pour un lecteur d'écran. */}
+          <nav aria-label="Navigation principale" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {vuesVisibles.map((vue) => {
+              const Icone = vue.icone;
+              return (
+                <button
+                  key={vue.id}
+                  type="button"
+                  className="nav-item"
+                  aria-current={vueActive.id === vue.id ? 'page' : undefined}
+                  onClick={() => setCurrentView(vue.id)}
+                >
+                  <Icone size={20} aria-hidden="true" /> {vue.libelle}
+                </button>
+              );
+            })}
+          </nav>
 
-        {/* Contenu dynamique basé sur currentView */}
-        <div style={{ position: 'relative', zIndex: 10 }}>
-          {renderContent()}
-        </div>
-      </main>
-    </div>
-    </>
+          <div style={{ marginTop: 'auto', padding: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="btn-secondary"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%' }}
+            >
+              {isDarkMode ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
+              {isDarkMode ? 'Mode clair' : 'Mode sombre'}
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="btn-secondary"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%' }}
+            >
+              <LogOut size={18} aria-hidden="true" />
+              Se déconnecter
+            </button>
+          </div>
+        </aside>
+
+        <main style={{ flex: 1, padding: '20px 40px 20px 20px', overflowY: 'auto' }}>
+          <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px' }}>
+            <div>
+              <h2 style={{ fontSize: '2.2rem', fontWeight: '700', color: 'var(--text-main)', marginBottom: '5px' }}>{vueActive.titre}</h2>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }}>{vueActive.sousTitre}</p>
+            </div>
+            <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '10px 20px', borderRadius: '30px', fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
+              <span aria-hidden="true" style={{ width: '8px', height: '8px', borderRadius: '50%', background: COULEUR_ROLE[user.role] || '#94a3b8' }}></span>
+              {`${user.username} (${user.role})`}
+            </div>
+          </header>
+
+          <div style={{ position: 'relative', zIndex: 10 }}>
+            <Suspense fallback={<p style={{ color: 'var(--text-muted)' }}>Chargement…</p>}>
+              <ContenuActif />
+            </Suspense>
+          </div>
+        </main>
+      </div>
+    </UserContext.Provider>
   );
 }
 

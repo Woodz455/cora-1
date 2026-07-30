@@ -1,203 +1,307 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Calendar, CheckCircle, XCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, Trash2, Calendar, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { api, formatMontant } from '../api';
+import { useApiResource } from '../useApiResource';
 
-function SubscriptionList() {
-  const [subs, setSubs] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  
-  const [newSub, setNewSub] = useState({
+let compteurLignes = 0;
+const nouvelleLigne = (valeurs = {}) => ({
+  cle: `abo-ligne-${++compteurLignes}`,
+  description: '',
+  quantite: 1,
+  prix_unitaire: 0,
+  ...valeurs
+});
+
+function abonnementVide() {
+  return {
     client_id: '',
-    titre: 'Abonnement Mensuel',
+    titre: 'Abonnement mensuel',
     cycle: 'Mensuel',
     date_prochaine_generation: new Date().toISOString().split('T')[0],
     devise: 'CAD',
-    lignes: [{ description: 'Services professionnels', quantite: 1, prix_unitaire: 100 }]
-  });
+    lignes: [nouvelleLigne({ description: 'Services professionnels', prix_unitaire: 100 })]
+  };
+}
 
-  useEffect(() => { fetchData(); }, []);
+function SubscriptionList() {
+  const abonnementsRes = useApiResource('/api/abonnements', []);
+  const clientsRes = useApiResource('/api/clients', []);
 
-  const fetchData = async () => {
-    try {
-      const [rSubs, rClients] = await Promise.all([
-        fetch('/api/abonnements'), fetch('/api/clients')
-      ]);
-      setSubs(await rSubs.json());
-      setClients(await rClients.json());
-      setLoading(false);
-    } catch (e) {
-      console.error(e);
-      setLoading(false);
-    }
+  const [showForm, setShowForm] = useState(false);
+  const [newSub, setNewSub] = useState(abonnementVide);
+  const [erreurAction, setErreurAction] = useState(null);
+  const [message, setMessage] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const subs = abonnementsRes.data;
+  const clients = clientsRes.data;
+  const loading = abonnementsRes.loading || clientsRes.loading;
+  const error = erreurAction || abonnementsRes.error || clientsRes.error;
+
+  const fetchData = () => {
+    abonnementsRes.refresh();
+    clientsRes.refresh();
+  };
+
+  const handleLineChange = (index, champs) => {
+    setNewSub((prev) => ({
+      ...prev,
+      lignes: prev.lignes.map((l, i) => (i === index ? { ...l, ...champs } : l))
+    }));
   };
 
   const handleAddLine = () => {
-    setNewSub({ ...newSub, lignes: [...newSub.lignes, { description: '', quantite: 1, prix_unitaire: 0 }] });
-  };
-
-  const handleLineChange = (index, field, value) => {
-    const newLignes = [...newSub.lignes];
-    newLignes[index][field] = field === 'description' ? value : parseFloat(value) || 0;
-    setNewSub({ ...newSub, lignes: newLignes });
+    setNewSub((prev) => ({ ...prev, lignes: [...prev.lignes, nouvelleLigne()] }));
   };
 
   const handleRemoveLine = (index) => {
-    setNewSub({ ...newSub, lignes: newSub.lignes.filter((_, i) => i !== index) });
+    setNewSub((prev) => (prev.lignes.length > 1
+      ? { ...prev, lignes: prev.lignes.filter((_, i) => i !== index) }
+      : prev));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newSub.client_id) return alert("Sélectionnez un client");
-    
+    setSaving(true);
+    setErreurAction(null);
+
     try {
-      const res = await fetch('/api/abonnements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newSub,
-          lignes_json: JSON.stringify(newSub.lignes)
-        })
+      await api.post('/api/abonnements', {
+        client_id: newSub.client_id,
+        titre: newSub.titre,
+        cycle: newSub.cycle,
+        date_prochaine_generation: newSub.date_prochaine_generation,
+        devise: newSub.devise,
+        lignes_json: JSON.stringify(newSub.lignes.map((l) => ({
+          description: l.description,
+          quantite: parseFloat(l.quantite) || 0,
+          prix_unitaire: parseFloat(l.prix_unitaire) || 0
+        })))
       });
-      if (res.ok) {
-        setShowForm(false);
-        fetchData();
-      }
+      setShowForm(false);
+      setNewSub(abonnementVide());
+      setMessage('Abonnement créé.');
+      fetchData();
     } catch (err) {
-      console.error(err);
+      setErreurAction(err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
   const toggleStatut = async (sub) => {
-    const newStatut = sub.statut === 'Actif' ? 'Inactif' : 'Actif';
-    await fetch(`/api/abonnements/${sub.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...sub, statut: newStatut })
-    });
-    fetchData();
+    try {
+      setErreurAction(null);
+      // Seul le statut est transmis : la mise à jour est partielle côté serveur,
+      // les lignes et le cycle sont conservés.
+      await api.put(`/api/abonnements/${sub.id}`, { statut: sub.statut === 'Actif' ? 'Inactif' : 'Actif' });
+      fetchData();
+    } catch (err) {
+      setErreurAction(err.message);
+    }
   };
 
-  const handleDelete = async (id) => {
-    if(!window.confirm("Êtes-vous sûr de vouloir supprimer cet abonnement ?")) return;
-    await fetch(`/api/abonnements/${id}`, { method: 'DELETE' });
-    fetchData();
+  const handleDelete = async (sub) => {
+    if (!window.confirm(`Supprimer l'abonnement « ${sub.titre} » ?`)) return;
+    try {
+      setErreurAction(null);
+      await api.del(`/api/abonnements/${sub.id}`);
+      fetchData();
+    } catch (err) {
+      setErreurAction(err.message);
+    }
   };
 
-  if (loading) return <p>Chargement...</p>;
+  /** Déclenche immédiatement la génération des factures dues. */
+  const genererMaintenant = async () => {
+    try {
+      setErreurAction(null);
+      setMessage(null);
+      await api.post('/api/abonnements/generer');
+      setMessage('Vérification effectuée. Les factures dues ont été générées.');
+      fetchData();
+    } catch (err) {
+      setErreurAction(err.message);
+    }
+  };
+
+  const aujourdhui = new Date().toISOString().split('T')[0];
+
+  const totalLignes = newSub.lignes.reduce(
+    (sum, l) => sum + ((parseFloat(l.quantite) || 0) * (parseFloat(l.prix_unitaire) || 0)), 0
+  );
+
+  if (loading) return <p style={{ color: 'var(--text-muted)' }}>Chargement…</p>;
 
   return (
-    <div style={{ padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <h2 style={{ color: 'var(--text-main)', margin: 0 }}>Facturation Récurrente</h2>
-        <button className="btn-primary" onClick={() => setShowForm(!showForm)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Plus size={18} /> {showForm ? 'Annuler' : 'Nouvel Abonnement'}
-        </button>
+    <div>
+      {error && <p className="alert alert-error" role="alert">{error}</p>}
+      {message && <p className="alert alert-success" role="status">{message}</p>}
+
+      <div className="toolbar">
+        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '540px' }}>
+          Les factures dues sont générées automatiquement, toutes les heures tant que
+          l'application est ouverte. Chaque période échue produit sa propre facture.
+        </p>
+        <div className="toolbar-group">
+          <button type="button" className="btn-secondary" onClick={genererMaintenant} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <RefreshCw size={16} aria-hidden="true" /> Générer maintenant
+          </button>
+          <button type="button" className="btn-primary" onClick={() => setShowForm(!showForm)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Plus size={18} aria-hidden="true" /> {showForm ? 'Annuler' : 'Nouvel abonnement'}
+          </button>
+        </div>
       </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} className="glass-panel" style={{ padding: '20px', marginBottom: '30px' }}>
-          <h3 style={{ margin: '0 0 15px 0' }}>Créer un Abonnement</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+          <h3 style={{ margin: '0 0 15px 0' }}>Créer un abonnement</h3>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px', marginBottom: '20px' }}>
             <div className="form-group">
-              <label>Client</label>
-              <select className="form-control" value={newSub.client_id} onChange={(e) => setNewSub({...newSub, client_id: e.target.value})} required>
-                <option value="">Sélectionner un client...</option>
-                {clients.map(c => <option key={c.id} value={c.id}>{c.nom_entreprise}</option>)}
+              <label htmlFor="abo-client">Client *</label>
+              <select id="abo-client" className="form-control" value={newSub.client_id} onChange={(e) => setNewSub({ ...newSub, client_id: e.target.value })} required>
+                <option value="">Sélectionner un client…</option>
+                {clients.map((c) => <option key={c.id} value={c.id}>{c.nom_entreprise}</option>)}
               </select>
             </div>
             <div className="form-group">
-              <label>Titre de l'abonnement</label>
-              <input type="text" className="form-control" value={newSub.titre} onChange={(e) => setNewSub({...newSub, titre: e.target.value})} required />
+              <label htmlFor="abo-titre">Titre de l'abonnement *</label>
+              <input id="abo-titre" type="text" className="form-control" value={newSub.titre} onChange={(e) => setNewSub({ ...newSub, titre: e.target.value })} required />
             </div>
             <div className="form-group">
-              <label>Devise</label>
-              <select className="form-control" value={newSub.devise} onChange={(e) => setNewSub({...newSub, devise: e.target.value})}>
+              <label htmlFor="abo-devise">Devise</label>
+              <select id="abo-devise" className="form-control" value={newSub.devise} onChange={(e) => setNewSub({ ...newSub, devise: e.target.value })}>
                 <option value="CAD">CAD</option>
                 <option value="USD">USD</option>
               </select>
             </div>
             <div className="form-group">
-              <label>Cycle</label>
-              <select className="form-control" value={newSub.cycle} onChange={(e) => setNewSub({...newSub, cycle: e.target.value})}>
+              <label htmlFor="abo-cycle">Cycle</label>
+              <select id="abo-cycle" className="form-control" value={newSub.cycle} onChange={(e) => setNewSub({ ...newSub, cycle: e.target.value })}>
                 <option value="Mensuel">Mensuel</option>
                 <option value="Annuel">Annuel</option>
               </select>
             </div>
             <div className="form-group">
-              <label>Prochaine Date de Génération</label>
-              <input type="date" className="form-control" value={newSub.date_prochaine_generation} onChange={(e) => setNewSub({...newSub, date_prochaine_generation: e.target.value})} required />
+              <label htmlFor="abo-date">Prochaine génération *</label>
+              <input id="abo-date" type="date" className="form-control" value={newSub.date_prochaine_generation} onChange={(e) => setNewSub({ ...newSub, date_prochaine_generation: e.target.value })} required />
             </div>
           </div>
 
           <h4 style={{ margin: '0 0 10px 0' }}>Lignes de la facture à générer</h4>
           {newSub.lignes.map((ligne, i) => (
-            <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'center' }}>
-              <input type="text" className="form-control" style={{ flex: 2 }} placeholder="Description (ex: Hébergement web)" value={ligne.description} onChange={(e) => handleLineChange(i, 'description', e.target.value)} required />
-              <input type="number" className="form-control" style={{ flex: 1 }} min="1" placeholder="Qté" value={ligne.quantite} onChange={(e) => handleLineChange(i, 'quantite', e.target.value)} required />
-              <input type="number" className="form-control" style={{ flex: 1 }} step="0.01" placeholder="Prix" value={ligne.prix_unitaire} onChange={(e) => handleLineChange(i, 'prix_unitaire', e.target.value)} required />
-              <button type="button" className="btn-secondary" style={{ padding: '8px', color: '#ef4444' }} onClick={() => handleRemoveLine(i)}><Trash2 size={16} /></button>
+            <div key={ligne.cle} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="text" className="form-control" style={{ flex: 2, minWidth: '220px' }}
+                placeholder="Description (ex. : hébergement web)"
+                aria-label={`Description de la ligne ${i + 1}`}
+                value={ligne.description}
+                onChange={(e) => handleLineChange(i, { description: e.target.value })}
+                required
+              />
+              <input
+                type="number" className="form-control" style={{ flex: 1, minWidth: '90px' }}
+                min="0.01" step="0.01" placeholder="Qté"
+                aria-label={`Quantité de la ligne ${i + 1}`}
+                value={ligne.quantite}
+                onChange={(e) => handleLineChange(i, { quantite: e.target.value })}
+                required
+              />
+              <input
+                type="number" className="form-control" style={{ flex: 1, minWidth: '110px' }}
+                min="0" step="0.01" placeholder="Prix"
+                aria-label={`Prix unitaire de la ligne ${i + 1}`}
+                value={ligne.prix_unitaire}
+                onChange={(e) => handleLineChange(i, { prix_unitaire: e.target.value })}
+                required
+              />
+              <button
+                type="button" className="btn-danger"
+                onClick={() => handleRemoveLine(i)}
+                disabled={newSub.lignes.length === 1}
+                aria-label={`Supprimer la ligne ${i + 1}`}
+              >
+                <Trash2 size={16} aria-hidden="true" />
+              </button>
             </div>
           ))}
-          <button type="button" className="btn-secondary" style={{ marginTop: '10px' }} onClick={handleAddLine}>+ Ajouter une ligne</button>
-          
+          <button type="button" className="btn-secondary" style={{ marginTop: '10px' }} onClick={handleAddLine}>
+            + Ajouter une ligne
+          </button>
+
           <div style={{ textAlign: 'right', marginTop: '20px' }}>
-            <button type="submit" className="btn-primary">Enregistrer l'abonnement</button>
+            <p style={{ margin: '0 0 10px 0', color: 'var(--text-muted)' }}>
+              Sous-total hors taxes par facture : <strong style={{ color: 'var(--text-main)' }}>{formatMontant(totalLignes, newSub.devise)}</strong>
+            </p>
+            <button type="submit" className="btn-primary" disabled={saving}>
+              {saving ? 'Enregistrement…' : "Enregistrer l'abonnement"}
+            </button>
           </div>
         </form>
       )}
 
-      <div className="glass-panel" style={{ overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: 'rgba(0,0,0,0.02)', borderBottom: '2px solid var(--glass-border)' }}>
-              <th style={{ padding: '12px 15px', textAlign: 'left' }}>Client</th>
-              <th style={{ padding: '12px 15px', textAlign: 'left' }}>Titre</th>
-              <th style={{ padding: '12px 15px', textAlign: 'center' }}>Cycle</th>
-              <th style={{ padding: '12px 15px', textAlign: 'center' }}>Prochaine Date</th>
-              <th style={{ padding: '12px 15px', textAlign: 'center' }}>Statut</th>
-              <th style={{ padding: '12px 15px', textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {subs.length === 0 ? (
-              <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>Aucun abonnement configuré.</td></tr>
-            ) : (
-              subs.map(sub => (
-                <tr key={sub.id} style={{ borderBottom: '1px solid var(--glass-border)', opacity: sub.statut === 'Inactif' ? 0.6 : 1 }}>
-                  <td style={{ padding: '12px 15px', fontWeight: 'bold' }}>{sub.client_nom}</td>
-                  <td style={{ padding: '12px 15px' }}>{sub.titre} <br/><span style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>{sub.devise}</span></td>
-                  <td style={{ padding: '12px 15px', textAlign: 'center' }}>
-                    <span style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '0.8rem', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
-                      <Calendar size={12} style={{ marginRight: '4px', display: 'inline' }} />
-                      {sub.cycle}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 15px', textAlign: 'center', color: sub.statut === 'Actif' && new Date(sub.date_prochaine_generation) <= new Date() ? '#ef4444' : 'inherit' }}>
-                    {sub.date_prochaine_generation}
-                    {sub.statut === 'Actif' && new Date(sub.date_prochaine_generation) <= new Date() && (
-                      <div style={{fontSize: '0.75rem'}}>Générée au redémarrage</div>
-                    )}
-                  </td>
-                  <td style={{ padding: '12px 15px', textAlign: 'center' }}>
-                    {sub.statut === 'Actif' ? 
-                      <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}><CheckCircle size={16}/> Actif</span> : 
-                      <span style={{ color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}><XCircle size={16}/> Inactif</span>
-                    }
-                  </td>
-                  <td style={{ padding: '12px 15px', textAlign: 'right' }}>
-                    <button className="btn-secondary" onClick={() => toggleStatut(sub)} style={{ marginRight: '8px', padding: '6px 12px' }}>
-                      {sub.statut === 'Actif' ? 'Désactiver' : 'Activer'}
-                    </button>
-                    <button className="btn-secondary" onClick={() => handleDelete(sub.id)} style={{ color: '#ef4444', borderColor: '#ef4444', padding: '6px 12px' }}>
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className="glass-panel" style={{ padding: '20px' }}>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Titre</th>
+                <th style={{ textAlign: 'center' }}>Cycle</th>
+                <th style={{ textAlign: 'center' }}>Prochaine date</th>
+                <th style={{ textAlign: 'center' }}>Statut</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {subs.length === 0 ? (
+                <tr><td colSpan="6" className="empty-state">Aucun abonnement configuré.</td></tr>
+              ) : subs.map((sub) => {
+                const enRetard = sub.statut === 'Actif' && sub.date_prochaine_generation <= aujourdhui;
+                return (
+                  <tr key={sub.id} style={{ opacity: sub.statut === 'Inactif' ? 0.6 : 1 }}>
+                    <td style={{ fontWeight: 'bold' }}>{sub.client_nom}</td>
+                    <td>
+                      {sub.titre}
+                      <br />
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{sub.devise}</span>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <span className="status-badge">
+                        <Calendar size={12} style={{ marginRight: '4px', display: 'inline' }} aria-hidden="true" />
+                        {sub.cycle}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'center', color: enRetard ? 'var(--status-danger)' : 'inherit' }}>
+                      {sub.date_prochaine_generation}
+                      {enRetard && <div style={{ fontSize: '0.75rem' }}>À générer</div>}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      {sub.statut === 'Actif' ? (
+                        <span style={{ color: 'var(--status-paid)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <CheckCircle size={16} aria-hidden="true" /> Actif
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <XCircle size={16} aria-hidden="true" /> Inactif
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <button type="button" className="btn-icon" onClick={() => toggleStatut(sub)} style={{ marginRight: '8px' }}>
+                        {sub.statut === 'Actif' ? 'Désactiver' : 'Activer'}
+                      </button>
+                      <button type="button" className="btn-danger" onClick={() => handleDelete(sub)} aria-label={`Supprimer ${sub.titre}`}>
+                        <Trash2 size={16} aria-hidden="true" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
