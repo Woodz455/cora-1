@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import EmailModal from './EmailModal';
 import { api, formatMontant } from '../api';
+import { useModale } from '../useModale';
 
 /**
  * Libellés du document, en français et en anglais.
@@ -63,6 +64,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(isRelance);
   const [message, setMessage] = useState(null);
   const printRef = useRef(null);
+  const modaleRef = useModale(() => onClose(false), { actif: !loading });
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -94,7 +96,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
 
   if (loading) {
     return (
-      <div className="modal-overlay">
+      <div ref={modaleRef} className="modal-overlay">
         <div className="modal-content glass-panel"><p>Chargement du document…</p></div>
       </div>
     );
@@ -102,7 +104,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
 
   if (error || !details) {
     return (
-      <div className="modal-overlay">
+      <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label="Document introuvable">
         <div className="modal-content glass-panel">
           <p className="alert alert-error" role="alert">{error || 'Document introuvable.'}</p>
           <button type="button" className="btn-secondary" onClick={() => onClose(false)}>Fermer</button>
@@ -171,7 +173,8 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
     + (isRelance ? dict.emailBodyRelance : (estDevis ? dict.emailBodyQuote : dict.emailBodyFact));
 
   return (
-    <div className="modal-overlay" style={{ zIndex: 9999, padding: '20px', overflowY: 'auto', display: 'block' }}>
+    <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={`Aperçu ${numero}`}
+      style={{ zIndex: 9999, padding: '20px', overflowY: 'auto', display: 'block' }}>
       <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginBottom: '20px', position: 'sticky', top: '10px', zIndex: 10000, flexWrap: 'wrap' }}>
         <button type="button" className="btn-secondary" onClick={() => onClose(false)} style={{ background: 'white' }}>Fermer</button>
         <button type="button" className="btn-secondary" onClick={() => setIsEmailModalOpen(true)} style={{ background: 'white', color: '#0e4a9e', borderColor: '#0e4a9e' }}>

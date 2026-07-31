@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useHasRole } from '../UserContext';
+import { useModale } from '../useModale';
 
 function PaymentModal({ facture, onClose }) {
+  const modaleRef = useModale(onClose);
   // Le solde exact est pré-rempli pour faciliter le règlement complet.
   const [montant, setMontant] = useState(facture.solde_restant);
   const [note, setNote] = useState('');
@@ -58,7 +60,7 @@ function PaymentModal({ facture, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Saisir un paiement">
+    <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label="Saisir un paiement">
       <div className="modal-content glass-panel" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <h3 style={{ marginTop: 0, marginBottom: '25px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
           Saisir un paiement

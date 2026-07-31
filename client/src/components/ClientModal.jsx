@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api';
+import { useModale } from '../useModale';
 
 /**
  * Provinces et territoires, avec le régime de taxes appliqué aux documents
@@ -23,6 +24,7 @@ const PROVINCES = [
 ];
 
 function ClientModal({ onClose, onSuccess, clientToEdit }) {
+  const modaleRef = useModale(onClose);
   const [formData, setFormData] = useState({
     nom_entreprise: clientToEdit?.nom_entreprise || '',
     nom_contact: clientToEdit?.nom_contact || '',
@@ -56,7 +58,7 @@ function ClientModal({ onClose, onSuccess, clientToEdit }) {
   const titre = clientToEdit ? 'Modifier le client' : 'Nouveau client';
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={titre}>
+    <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={titre}>
       <div className="modal-content glass-panel" style={{ maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto' }}>
         <h3 style={{ marginTop: 0, marginBottom: '25px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
           {titre}

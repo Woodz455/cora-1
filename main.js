@@ -9,7 +9,13 @@ const { app, BrowserWindow, dialog, shell } = require('electron');
 const path = require('path');
 const { startServer } = require('./server.js');
 
-const isDev = !app.isPackaged;
+/**
+ * `CLORA_UI_COMPILEE=1` force le chemin de production sur une application non
+ * empaquetée. C'est le seul moyen pour un test de piloter l'interface
+ * réellement livrée sans passer par electron-builder — et les vérifications
+ * faites au navigateur ont déjà laissé passer des défauts propres à Electron.
+ */
+const isDev = !app.isPackaged && process.env.CLORA_UI_COMPILEE !== '1';
 
 /** Port de développement de Vite. */
 const VITE_PORT = 5173;

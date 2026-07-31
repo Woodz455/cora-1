@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
+import { useModale } from '../useModale';
 
 const ARTICLE_VIDE = { nom: '', description: '', prix_unitaire: 0 };
 
 function CatalogueList() {
   const { data: items, loading, error, setError, refresh } = useApiResource('/api/catalogue', []);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const modaleRef = useModale(() => setIsModalOpen(false), { actif: isModalOpen });
   const [currentItem, setCurrentItem] = useState(ARTICLE_VIDE);
   const [recherche, setRecherche] = useState('');
   const [modalError, setModalError] = useState(null);
@@ -114,7 +116,7 @@ function CatalogueList() {
       </div>
 
       {isModalOpen && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={currentItem.id ? 'Modifier le service' : 'Ajouter un service'}>
+        <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={currentItem.id ? 'Modifier le service' : 'Ajouter un service'}>
           <div className="modal-content glass-panel">
             <h3 style={{ marginTop: 0 }}>{currentItem.id ? 'Modifier le service' : 'Ajouter un service'}</h3>
 

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { api, formatMontant } from '../api';
+import { useModale } from '../useModale';
 
 /** Identifiant local d'une ligne, stable pour la clé React. */
 let compteurLignes = 0;
@@ -26,6 +27,7 @@ const MOTIFS = [
  * d'origine.
  */
 function CreditNoteModal({ facture, onClose, onSuccess }) {
+  const modaleRef = useModale(onClose);
   const [lignes, setLignes] = useState([nouvelleLigne()]);
   const [motif, setMotif] = useState('');
   const [dateEmission, setDateEmission] = useState(new Date().toISOString().split('T')[0]);
@@ -74,7 +76,7 @@ function CreditNoteModal({ facture, onClose, onSuccess }) {
   };
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Émettre une note de crédit">
+    <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label="Émettre une note de crédit">
       <div className="modal-content glass-panel" style={{ maxWidth: '720px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
         <h3 style={{ marginTop: 0, marginBottom: '10px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
           Note de crédit

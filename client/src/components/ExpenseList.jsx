@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import InfoTooltip from './InfoTooltip';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
+import { useModale } from '../useModale';
 
 const CATEGORIES = [
   'Matériel',
@@ -31,6 +32,7 @@ function depenseVide() {
 function ExpenseList() {
   const { data: expenses, loading, error, setError, refresh } = useApiResource('/api/depenses', []);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const modaleRef = useModale(() => setIsModalOpen(false), { actif: isModalOpen });
   const [currentExpense, setCurrentExpense] = useState(depenseVide());
   const [modalError, setModalError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -196,7 +198,7 @@ function ExpenseList() {
       </div>
 
       {isModalOpen && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={currentExpense.id ? 'Modifier la dépense' : 'Ajouter une dépense'}>
+        <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={currentExpense.id ? 'Modifier la dépense' : 'Ajouter une dépense'}>
           <div className="modal-content glass-panel" style={{ maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto' }}>
             <h3 style={{ marginTop: 0 }}>{currentExpense.id ? 'Modifier la dépense' : 'Ajouter une dépense'}</h3>
 
