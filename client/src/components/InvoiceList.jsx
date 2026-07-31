@@ -6,6 +6,8 @@ import CreditNoteModal from './CreditNoteModal';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useUser } from '../UserContext';
+import { usePagination } from '../usePagination';
+import Pagination from './Pagination';
 
 const STATUTS = ['Tous', 'En attente', 'Partiellement payée', 'Payée', 'Créditée', 'Annulée'];
 const AUJOURDHUI = new Date().toISOString().split('T')[0];
@@ -34,7 +36,6 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
   const [recherche, setRecherche] = useState('');
   const [filtreStatut, setFiltreStatut] = useState(statutInitial || 'Tous');
   const [filtreEchues, setFiltreEchues] = useState(echuesSeulement);
-  const [page, setPage] = useState(1);
 
   // Le filtrage se fait en mémoire : la liste tient largement en RAM pour une
   // PME, et cela évite un aller-retour serveur à chaque frappe.
@@ -51,9 +52,7 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
     });
   }, [factures, recherche, filtreStatut, filtreEchues]);
 
-  const nbPages = Math.max(1, Math.ceil(facturesFiltrees.length / PAR_PAGE));
-  const pageCourante = Math.min(page, nbPages);
-  const facturesAffichees = facturesFiltrees.slice((pageCourante - 1) * PAR_PAGE, pageCourante * PAR_PAGE);
+  const { setPage, affiches: facturesAffichees, pagination } = usePagination(facturesFiltrees, PAR_PAGE);
 
   // La pagination repart à la première page dès que les filtres changent.
   const changerFiltre = (setter) => (valeur) => {
@@ -268,17 +267,7 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
         })
       )}
 
-      {nbPages > 1 && (
-        <div className="pagination">
-          <button type="button" className="btn-secondary" disabled={pageCourante === 1} onClick={() => setPage(pageCourante - 1)}>
-            Précédent
-          </button>
-          <span>Page {pageCourante} sur {nbPages}</span>
-          <button type="button" className="btn-secondary" disabled={pageCourante === nbPages} onClick={() => setPage(pageCourante + 1)}>
-            Suivant
-          </button>
-        </div>
-      )}
+      <Pagination {...pagination} />
 
       {selectedFacture && (
         <PaymentModal facture={selectedFacture} onClose={closeAndRefresh} />

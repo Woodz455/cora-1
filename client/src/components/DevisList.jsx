@@ -4,6 +4,8 @@ import InvoicePrintTemplate from './InvoicePrintTemplate';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useUser } from '../UserContext';
+import { usePagination } from '../usePagination';
+import Pagination from './Pagination';
 
 function DevisList() {
   const user = useUser();
@@ -23,6 +25,8 @@ function DevisList() {
     return devisList.filter((d) => (d.numero_devis || '').toLowerCase().includes(terme)
       || (d.client || '').toLowerCase().includes(terme));
   }, [devisList, recherche]);
+
+  const { affiches: devisAffiches, pagination } = usePagination(devisFiltres, 12);
 
   const handleCancelDevis = async (devis) => {
     if (!window.confirm(`Marquer le devis ${devis.numero_devis} comme refusé ?`)) return;
@@ -75,7 +79,7 @@ function DevisList() {
           {devisList.length === 0 ? 'Aucun devis pour le moment.' : 'Aucun devis ne correspond à votre recherche.'}
         </div>
       ) : (
-        devisFiltres.map((devis) => {
+        devisAffiches.map((devis) => {
           const estTermine = devis.statut === 'Refusé' || devis.statut === 'Converti';
           const classeStatut = devis.statut === 'Converti' ? 'payee'
             : devis.statut === 'Refusé' ? 'annulee' : 'pending';
@@ -132,6 +136,8 @@ function DevisList() {
           );
         })
       )}
+
+      <Pagination {...pagination} />
 
       {(isCreateModalOpen || devisIdToEdit) && (
         <InvoiceModal

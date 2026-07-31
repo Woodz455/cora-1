@@ -2,8 +2,15 @@ import { useState, useMemo } from 'react';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useModale } from '../useModale';
+import { usePagination } from '../usePagination';
+import Pagination from './Pagination';
+import { useTri } from '../useTri';
+import EnTeteTri from './EnTeteTri';
 
 const ARTICLE_VIDE = { nom: '', description: '', prix_unitaire: 0 };
+
+/** Le tarif est stocké en texte selon les enregistrements : on compare des nombres. */
+const ACCESSEURS = { prix_unitaire: (i) => Number(i.prix_unitaire) || 0 };
 
 function CatalogueList() {
   const { data: items, loading, error, setError, refresh } = useApiResource('/api/catalogue', []);
@@ -20,6 +27,9 @@ function CatalogueList() {
     return items.filter((i) => [i.nom, i.description]
       .some((champ) => (champ || '').toLowerCase().includes(terme)));
   }, [items, recherche]);
+
+  const { tri, basculer, tries: itemsTries } = useTri(itemsFiltres, { defaut: 'nom', accesseurs: ACCESSEURS });
+  const { affiches: itemsAffiches, pagination } = usePagination(itemsTries, 15);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -85,9 +95,9 @@ function CatalogueList() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Nom du service</th>
-              <th>Description</th>
-              <th className="numeric">Prix / tarif</th>
+              <EnTeteTri colonne="nom" tri={tri} onTrier={basculer}>Nom du service</EnTeteTri>
+              <EnTeteTri colonne="description" tri={tri} onTrier={basculer}>Description</EnTeteTri>
+              <EnTeteTri colonne="prix_unitaire" tri={tri} onTrier={basculer} className="numeric">Prix / tarif</EnTeteTri>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
@@ -100,7 +110,7 @@ function CatalogueList() {
                   {items.length === 0 ? 'Votre catalogue est vide.' : 'Aucun service ne correspond à votre recherche.'}
                 </td>
               </tr>
-            ) : itemsFiltres.map((item) => (
+            ) : itemsAffiches.map((item) => (
               <tr key={item.id}>
                 <td style={{ fontWeight: '500' }}>{item.nom}</td>
                 <td style={{ color: 'var(--text-muted)' }}>{item.description}</td>
@@ -114,6 +124,8 @@ function CatalogueList() {
           </tbody>
         </table>
       </div>
+
+      <Pagination {...pagination} />
 
       {isModalOpen && (
         <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={currentItem.id ? 'Modifier le service' : 'Ajouter un service'}>

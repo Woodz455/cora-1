@@ -386,6 +386,61 @@ textarea:focus-visible {
   color: var(--text-main);
 }
 
+/* En-tête de colonne triable : un vrai bouton, atteignable au clavier, mais
+   qui doit se fondre dans l'en-tête et suivre son alignement. */
+.th-tri {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.th-tri:hover {
+  color: var(--text-main);
+}
+
+.th-tri:focus-visible {
+  outline: 2px solid var(--safehill-blue);
+  outline-offset: 2px;
+}
+
+.th-tri-fleche {
+  font-size: 0.7rem;
+  opacity: 0.35;
+}
+
+/* Tant que la colonne n'est pas triée, la flèche est sortie du flux et logée
+   dans la marge intérieure de l'en-tête : présente au survol pour signaler la
+   possibilité, sans rien coûter à la largeur du tableau. */
+.th-tri-fleche[data-neutre] {
+  position: absolute;
+  right: -10px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.th-tri:hover .th-tri-fleche[data-neutre],
+.th-tri:focus-visible .th-tri-fleche[data-neutre] {
+  opacity: 0.5;
+}
+
+.data-table th[aria-sort='ascending'],
+.data-table th[aria-sort='descending'] {
+  color: var(--text-main);
+}
+
+.data-table th[aria-sort='ascending'] .th-tri-fleche,
+.data-table th[aria-sort='descending'] .th-tri-fleche {
+  opacity: 1;
+}
+
 .data-table tbody tr:hover {
   background: var(--hover-subtle);
 }

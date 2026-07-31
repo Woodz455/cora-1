@@ -3,6 +3,10 @@ import InfoTooltip from './InfoTooltip';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useModale } from '../useModale';
+import { usePagination } from '../usePagination';
+import Pagination from './Pagination';
+import { useTri } from '../useTri';
+import EnTeteTri from './EnTeteTri';
 
 const CATEGORIES = [
   'Matériel',
@@ -15,6 +19,13 @@ const CATEGORIES = [
 ];
 
 const AUTRES = 'Autres dépenses';
+
+/** La colonne « Taxes » n'existe pas en base : elle additionne les deux taxes. */
+const ACCESSEURS = {
+  taxes: (d) => (Number(d.tps) || 0) + (Number(d.tvq) || 0),
+  montant_ht: (d) => Number(d.montant_ht) || 0,
+  montant_ttc: (d) => Number(d.montant_ttc) || 0
+};
 
 function depenseVide() {
   return {
@@ -44,6 +55,12 @@ function ExpenseList() {
     return expenses.filter((d) => [d.fournisseur, d.description, d.categorie]
       .some((champ) => (champ || '').toLowerCase().includes(terme)));
   }, [expenses, recherche]);
+
+  // La dépense la plus récente d'abord : on saisit ses reçus dans l'ordre inverse.
+  const { tri, basculer, tries: depensesTriees } = useTri(depensesFiltrees, {
+    defaut: 'date_depense', sens: 'desc', accesseurs: ACCESSEURS
+  });
+  const { affiches: depensesAffichees, pagination } = usePagination(depensesTriees, 15);
 
   // Totaux de la sélection affichée : utile au moment de préparer une déclaration.
   const totaux = useMemo(() => depensesFiltrees.reduce((acc, d) => ({
@@ -137,22 +154,30 @@ function ExpenseList() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Fournisseur</th>
-              <th>Description</th>
-              <th>Catégorie</th>
-              <th className="numeric">
+              <EnTeteTri colonne="date_depense" tri={tri} onTrier={basculer}>Date</EnTeteTri>
+              <EnTeteTri colonne="fournisseur" tri={tri} onTrier={basculer}>Fournisseur</EnTeteTri>
+              <EnTeteTri colonne="description" tri={tri} onTrier={basculer}>Description</EnTeteTri>
+              <EnTeteTri colonne="categorie" tri={tri} onTrier={basculer}>Catégorie</EnTeteTri>
+              {/* La bulle d'aide reste hors du bouton : elle alourdirait le nom
+                  annoncé de la colonne, et se déclenche au survol. */}
+              <EnTeteTri
+                colonne="montant_ht" tri={tri} onTrier={basculer} className="numeric"
+                suffixe={<InfoTooltip text="Hors taxes : le montant avant application des taxes." />}
+              >
                 Montant HT
-                <InfoTooltip text="Hors taxes : le montant avant application des taxes." />
-              </th>
-              <th className="numeric">
+              </EnTeteTri>
+              <EnTeteTri
+                colonne="taxes" tri={tri} onTrier={basculer} className="numeric"
+                suffixe={<InfoTooltip text="Les taxes payées sur vos achats, que vous pouvez réclamer (crédit ou remboursement de la taxe sur les intrants)." />}
+              >
                 Taxes (CTI/RTI)
-                <InfoTooltip text="Les taxes payées sur vos achats, que vous pouvez réclamer (crédit ou remboursement de la taxe sur les intrants)." />
-              </th>
-              <th className="numeric">
+              </EnTeteTri>
+              <EnTeteTri
+                colonne="montant_ttc" tri={tri} onTrier={basculer} className="numeric"
+                suffixe={<InfoTooltip text="Toutes taxes comprises : le montant final payé." />}
+              >
                 Total TTC
-                <InfoTooltip text="Toutes taxes comprises : le montant final payé." />
-              </th>
+              </EnTeteTri>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
@@ -165,7 +190,7 @@ function ExpenseList() {
                   {expenses.length === 0 ? 'Aucune dépense enregistrée.' : 'Aucune dépense ne correspond à votre recherche.'}
                 </td>
               </tr>
-            ) : depensesFiltrees.map((expense) => (
+            ) : depensesAffichees.map((expense) => (
               <tr key={expense.id}>
                 <td style={{ color: 'var(--text-muted)' }}>{expense.date_depense}</td>
                 <td style={{ fontWeight: '500' }}>{expense.fournisseur}</td>
@@ -196,6 +221,8 @@ function ExpenseList() {
           )}
         </table>
       </div>
+
+      <Pagination {...pagination} />
 
       {isModalOpen && (
         <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={currentExpense.id ? 'Modifier la dépense' : 'Ajouter une dépense'}>

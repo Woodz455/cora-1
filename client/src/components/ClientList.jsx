@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import ClientModal from './ClientModal';
 import { useApiResource } from '../useApiResource';
+import { usePagination } from '../usePagination';
+import Pagination from './Pagination';
 
 const PAR_PAGE = 24;
 
@@ -9,7 +11,6 @@ function ClientList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [clientToEdit, setClientToEdit] = useState(null);
   const [recherche, setRecherche] = useState('');
-  const [page, setPage] = useState(1);
 
   // La pagination repart à la première page dès que la recherche change.
   const changerRecherche = (valeur) => {
@@ -24,9 +25,7 @@ function ClientList() {
       .some((champ) => (champ || '').toLowerCase().includes(terme)));
   }, [clients, recherche]);
 
-  const nbPages = Math.max(1, Math.ceil(clientsFiltres.length / PAR_PAGE));
-  const pageCourante = Math.min(page, nbPages);
-  const affiches = clientsFiltres.slice((pageCourante - 1) * PAR_PAGE, pageCourante * PAR_PAGE);
+  const { setPage, affiches, pagination } = usePagination(clientsFiltres, PAR_PAGE);
 
   return (
     <div>
@@ -86,13 +85,7 @@ function ClientList() {
         </div>
       )}
 
-      {nbPages > 1 && (
-        <div className="pagination">
-          <button type="button" className="btn-secondary" disabled={pageCourante === 1} onClick={() => setPage(pageCourante - 1)}>Précédent</button>
-          <span>Page {pageCourante} sur {nbPages}</span>
-          <button type="button" className="btn-secondary" disabled={pageCourante === nbPages} onClick={() => setPage(pageCourante + 1)}>Suivant</button>
-        </div>
-      )}
+      <Pagination {...pagination} />
 
       {isModalOpen && (
         <ClientModal
