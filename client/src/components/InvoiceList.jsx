@@ -3,6 +3,7 @@ import PaymentModal from './PaymentModal';
 import InvoiceModal from './InvoiceModal';
 import InvoicePrintTemplate from './InvoicePrintTemplate';
 import CreditNoteModal from './CreditNoteModal';
+import NoteCreditChooser from './NoteCreditChooser';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useUser } from '../UserContext';
@@ -33,6 +34,10 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
   const [isRelance, setIsRelance] = useState(false);
   const [factureIdToEdit, setFactureIdToEdit] = useState(null);
   const [factureACrediter, setFactureACrediter] = useState(null);
+  const [printingNoteId, setPrintingNoteId] = useState(null);
+  // Une facture peut porter plusieurs notes : on ne demande laquelle imprimer
+  // que lorsqu'il y a effectivement un choix à faire.
+  const [choixNotes, setChoixNotes] = useState(null);
 
   const [recherche, setRecherche] = useState('');
   const [filtreStatut, setFiltreStatut] = useState(statutInitial || 'Tous');
@@ -103,6 +108,23 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
   const closeAndRefresh = () => {
     setSelectedFacture(null);
     fetchFactures();
+  };
+
+  /** Ouvre la note de crédit de la facture, ou propose de choisir s'il y en a plusieurs. */
+  const ouvrirNotesCredit = async (facture) => {
+    try {
+      const details = await api.get(`/api/factures/${facture.id}/details`);
+      const notes = details.notes_credit || [];
+      if (notes.length === 0) {
+        notifier('Aucune note de crédit sur cette facture.', 'info');
+      } else if (notes.length === 1) {
+        setPrintingNoteId(notes[0].id);
+      } else {
+        setChoixNotes({ facture, notes });
+      }
+    } catch (err) {
+      notifier(err.message, 'erreur');
+    }
   };
 
   if (loading) return <p style={{ color: 'var(--text-muted)' }}>Chargement des données financières…</p>;
@@ -259,6 +281,20 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                   </button>
                 )}
 
+                {/* Les notes émises n'étaient consultables nulle part : elles
+                    n'apparaissaient qu'en déduction dans le PDF de la facture,
+                    alors que le client doit recevoir la pièce elle-même. */}
+                {facture.montant_credite > 0 && (
+                  <button
+                    type="button"
+                    className="btn-icon"
+                    onClick={() => ouvrirNotesCredit(facture)}
+                    title="Imprimer ou envoyer la note de crédit"
+                  >
+                    🖨️ PDF de la note
+                  </button>
+                )}
+
                 {/* Une facture soldée reste consultable : c'est par cette
                     fenêtre que l'on revient sur un encaissement, et un
                     sur-paiement rend justement la facture soldée. Le bouton
@@ -295,6 +331,8 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
           onSuccess={(note) => {
             setFactureACrediter(null);
             notifier(`Note de crédit ${note.numero_note} émise.`);
+            // La pièce s'ouvre aussitôt : c'est le moment où on l'envoie au client.
+            setPrintingNoteId(note.id);
             fetchFactures();
           }}
         />
@@ -321,6 +359,23 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
             setIsRelance(false);
             if (relanceEnvoyee) fetchFactures();
           }}
+        />
+      )}
+
+      {printingNoteId && (
+        <InvoicePrintTemplate
+          mode="note"
+          factureId={printingNoteId}
+          onClose={() => setPrintingNoteId(null)}
+        />
+      )}
+
+      {choixNotes && (
+        <NoteCreditChooser
+          facture={choixNotes.facture}
+          notes={choixNotes.notes}
+          onChoisir={(note) => { setChoixNotes(null); setPrintingNoteId(note.id); }}
+          onClose={() => setChoixNotes(null)}
         />
       )}
     </div>

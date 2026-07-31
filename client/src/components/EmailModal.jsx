@@ -37,8 +37,9 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>À :</label>
+            <label htmlFor="courriel-a">À :</label>
             <input 
+              id="courriel-a"
               type="text" 
               className="form-control" 
               value={to} 
@@ -49,8 +50,9 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
           </div>
 
           <div className="form-group">
-            <label>Cc :</label>
+            <label htmlFor="courriel-cc">Cc :</label>
             <input 
+              id="courriel-cc"
               type="text" 
               className="form-control" 
               value={cc} 
@@ -60,8 +62,9 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
           </div>
           
           <div className="form-group">
-            <label>Sujet :</label>
+            <label htmlFor="courriel-sujet">Sujet :</label>
             <input 
+              id="courriel-sujet"
               type="text" 
               className="form-control" 
               value={subject} 
@@ -71,8 +74,9 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
           </div>
 
           <div className="form-group">
-            <label>Message :</label>
+            <label htmlFor="courriel-message">Message :</label>
             <textarea 
+              id="courriel-message"
               className="form-control" 
               rows="5" 
               value={message} 
