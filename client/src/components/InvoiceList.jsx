@@ -8,9 +8,15 @@ import { useApiResource } from '../useApiResource';
 import { useUser } from '../UserContext';
 
 const STATUTS = ['Tous', 'En attente', 'Partiellement payée', 'Payée', 'Créditée', 'Annulée'];
+const AUJOURDHUI = new Date().toISOString().split('T')[0];
 const PAR_PAGE = 15;
 
-function InvoiceList() {
+/**
+ * @param {{statutInitial?: string, echuesSeulement?: boolean, ouvrirNouvelle?: boolean}} props
+ *   État initial transmis par le tableau de bord : un indicateur cliqué ouvre
+ *   la liste déjà filtrée sur ce qu'il représentait.
+ */
+function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = false }) {
   const user = useUser();
   const estAdmin = user?.role === 'admin';
   const gereTresorerie = user?.role === 'admin' || user?.role === 'comptable';
@@ -18,7 +24,7 @@ function InvoiceList() {
   const { data: factures, loading, error, refresh: fetchFactures } = useApiResource('/api/factures', []);
 
   const [selectedFacture, setSelectedFacture] = useState(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(ouvrirNouvelle);
   const [printingFactureId, setPrintingFactureId] = useState(null);
   const [isRelance, setIsRelance] = useState(false);
   const [factureIdToEdit, setFactureIdToEdit] = useState(null);
@@ -26,7 +32,8 @@ function InvoiceList() {
   const [message, setMessage] = useState(null);
 
   const [recherche, setRecherche] = useState('');
-  const [filtreStatut, setFiltreStatut] = useState('Tous');
+  const [filtreStatut, setFiltreStatut] = useState(statutInitial || 'Tous');
+  const [filtreEchues, setFiltreEchues] = useState(echuesSeulement);
   const [page, setPage] = useState(1);
 
   // Le filtrage se fait en mémoire : la liste tient largement en RAM pour une
@@ -35,11 +42,14 @@ function InvoiceList() {
     const terme = recherche.trim().toLowerCase();
     return factures.filter((f) => {
       if (filtreStatut !== 'Tous' && f.statut !== filtreStatut) return false;
+      if (filtreEchues && !(f.statut !== 'Annulée' && f.solde_restant > 0 && f.date_echeance < AUJOURDHUI)) {
+        return false;
+      }
       if (!terme) return true;
       return f.numero_facture.toLowerCase().includes(terme)
         || (f.client || '').toLowerCase().includes(terme);
     });
-  }, [factures, recherche, filtreStatut]);
+  }, [factures, recherche, filtreStatut, filtreEchues]);
 
   const nbPages = Math.max(1, Math.ceil(facturesFiltrees.length / PAR_PAGE));
   const pageCourante = Math.min(page, nbPages);
@@ -109,6 +119,17 @@ function InvoiceList() {
           >
             {STATUTS.map((s) => <option key={s} value={s}>{s === 'Tous' ? 'Tous les statuts' : s}</option>)}
           </select>
+          {/* Rendu visible et réversible : arrivé depuis le tableau de bord,
+              on doit comprendre pourquoi la liste est réduite. */}
+          <button
+            type="button"
+            className={filtreEchues ? 'btn-danger' : 'btn-icon'}
+            aria-pressed={filtreEchues}
+            onClick={() => changerFiltre(setFiltreEchues)(!filtreEchues)}
+            title="N'afficher que les factures dont l'échéance est dépassée"
+          >
+            Échues seulement
+          </button>
           <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
             {facturesFiltrees.length} facture{facturesFiltrees.length > 1 ? 's' : ''}
           </span>
