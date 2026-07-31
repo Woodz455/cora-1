@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { useUser } from '../UserContext';
+import { useFeedback } from '../FeedbackContext';
 
 const TAILLE_MAX_LOGO = 2 * 1024 * 1024;
 
@@ -10,10 +11,12 @@ const ROLES = [
   { valeur: 'admin', libelle: 'Administrateur — accès complet' }
 ];
 
+// Les fonds étaient écrits en dur : ils ne suivaient pas le thème sombre, où
+// les teintes de statut sont éclaircies.
 const COULEURS_ROLE = {
-  admin: { fond: 'rgba(16,185,129,0.15)', texte: 'var(--status-paid)' },
-  comptable: { fond: 'rgba(59,130,246,0.15)', texte: 'var(--status-pending)' },
-  employe: { fond: 'rgba(245,158,11,0.15)', texte: 'var(--status-partial)' }
+  admin: { fond: 'var(--status-paid-bg)', texte: 'var(--status-paid)' },
+  comptable: { fond: 'var(--status-pending-bg)', texte: 'var(--status-pending)' },
+  employe: { fond: 'var(--status-partial-bg)', texte: 'var(--status-partial)' }
 };
 
 /**
@@ -33,6 +36,7 @@ function Message({ contenu }) {
 
 function Settings() {
   const utilisateurCourant = useUser();
+  const { notifier, confirmer } = useFeedback();
 
   const [settings, setSettings] = useState({
     entreprise_nom: '', entreprise_adresse: '', entreprise_email: '',
@@ -98,7 +102,7 @@ function Settings() {
     setMessage(null);
     try {
       await api.put('/api/settings', settings);
-      setMessage({ type: 'success', texte: 'Paramètres enregistrés.' });
+      notifier('Paramètres enregistrés.');
     } catch (err) {
       setMessage({ type: 'error', texte: err.message });
     } finally {
@@ -130,19 +134,26 @@ function Settings() {
       setUsers((prev) => [...prev, cree]);
       setNewUser({ username: '', password: '', role: 'employe' });
       setIsAddingUser(false);
-      setUsersMessage({ type: 'success', texte: 'Utilisateur ajouté.' });
+      notifier(`Compte « ${cree.username} » ajouté.`);
     } catch (err) {
       setUsersMessage({ type: 'error', texte: err.message });
     }
   };
 
   const handleDeleteUser = async (utilisateur) => {
-    if (!window.confirm(`Supprimer le compte « ${utilisateur.username} » ?`)) return;
+    const accepte = await confirmer({
+      titre: `Supprimer le compte « ${utilisateur.username} » ?`,
+      message: 'La personne perdra immédiatement l\'accès à Clora. Les documents '
+        + "qu'elle a créés sont conservés.",
+      libelleConfirmer: 'Supprimer le compte',
+      danger: true
+    });
+    if (!accepte) return;
     setUsersMessage(null);
     try {
       await api.del(`/api/users/${utilisateur.id}`);
       setUsers((prev) => prev.filter((u) => u.id !== utilisateur.id));
-      setUsersMessage({ type: 'success', texte: 'Utilisateur supprimé.' });
+      notifier(`Compte « ${utilisateur.username} » supprimé.`);
     } catch (err) {
       setUsersMessage({ type: 'error', texte: err.message });
     }

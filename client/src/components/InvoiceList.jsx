@@ -8,6 +8,7 @@ import { useApiResource } from '../useApiResource';
 import { useUser } from '../UserContext';
 import { usePagination } from '../usePagination';
 import Pagination from './Pagination';
+import { useFeedback } from '../FeedbackContext';
 
 const STATUTS = ['Tous', 'En attente', 'Partiellement payée', 'Payée', 'Créditée', 'Annulée'];
 const AUJOURDHUI = new Date().toISOString().split('T')[0];
@@ -20,6 +21,7 @@ const PAR_PAGE = 15;
  */
 function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = false }) {
   const user = useUser();
+  const { notifier, confirmer } = useFeedback();
   const estAdmin = user?.role === 'admin';
   const gereTresorerie = user?.role === 'admin' || user?.role === 'comptable';
 
@@ -31,7 +33,6 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
   const [isRelance, setIsRelance] = useState(false);
   const [factureIdToEdit, setFactureIdToEdit] = useState(null);
   const [factureACrediter, setFactureACrediter] = useState(null);
-  const [message, setMessage] = useState(null);
 
   const [recherche, setRecherche] = useState('');
   const [filtreStatut, setFiltreStatut] = useState(statutInitial || 'Tous');
@@ -60,28 +61,43 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
     setPage(1);
   };
 
-  const executer = async (action, message) => {
+  const executer = async (action, echec, succes) => {
     try {
       await action();
       fetchFactures();
+      if (succes) notifier(succes);
     } catch (err) {
       // Le serveur explique pourquoi l'opération est refusée (facture payée,
       // privilèges insuffisants) : ce message vaut mieux qu'un texte générique.
-      window.alert(`${message}\n\n${err.message}`);
+      notifier(`${echec} ${err.message}`, 'erreur');
     }
   };
 
-  const handleCancelFacture = (facture) => {
-    if (!window.confirm(`Annuler la facture ${facture.numero_facture} ?`)) return;
-    executer(() => api.put(`/api/factures/${facture.id}/cancel`), "L'annulation a échoué.");
+  const handleCancelFacture = async (facture) => {
+    const accepte = await confirmer({
+      titre: `Annuler la facture ${facture.numero_facture} ?`,
+      message: 'La facture reste dans vos registres, marquée annulée, et son montant '
+        + "cesse d'être attendu. Les encaissements déjà saisis sont conservés.",
+      libelleConfirmer: 'Annuler la facture',
+      libelleAnnuler: 'Ne rien faire',
+      danger: true
+    });
+    if (!accepte) return;
+    executer(() => api.put(`/api/factures/${facture.id}/cancel`), "L'annulation a échoué.",
+      `Facture ${facture.numero_facture} annulée.`);
   };
 
-  const handleDeleteFacture = (facture) => {
-    const message = `Supprimer définitivement la facture ${facture.numero_facture} ?\n\n`
-      + 'Cette action est irréversible. Une facture déjà réglée, même partiellement, '
-      + 'ne peut pas être supprimée : annulez-la ou émettez une note de crédit.';
-    if (!window.confirm(message)) return;
-    executer(() => api.del(`/api/factures/${facture.id}`), 'La suppression a échoué.');
+  const handleDeleteFacture = async (facture) => {
+    const accepte = await confirmer({
+      titre: `Supprimer définitivement la facture ${facture.numero_facture} ?`,
+      message: 'Cette action est irréversible. Une facture déjà réglée, même partiellement, '
+        + 'ne peut pas être supprimée : annulez-la ou émettez une note de crédit.',
+      libelleConfirmer: 'Supprimer',
+      danger: true
+    });
+    if (!accepte) return;
+    executer(() => api.del(`/api/factures/${facture.id}`), 'La suppression a échoué.',
+      `Facture ${facture.numero_facture} supprimée.`);
   };
 
   const closeAndRefresh = () => {
@@ -94,7 +110,6 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {error && <p className="alert alert-error" role="alert">{error}</p>}
-      {message && <p className="alert alert-success" role="status">{message}</p>}
 
       <div className="toolbar">
         <div className="toolbar-group">
@@ -279,7 +294,7 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
           onClose={() => setFactureACrediter(null)}
           onSuccess={(note) => {
             setFactureACrediter(null);
-            setMessage(`Note de crédit ${note.numero_note} émise.`);
+            notifier(`Note de crédit ${note.numero_note} émise.`);
             fetchFactures();
           }}
         />

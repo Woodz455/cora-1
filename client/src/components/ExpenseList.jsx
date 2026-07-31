@@ -6,6 +6,7 @@ import { useModale } from '../useModale';
 import { usePagination } from '../usePagination';
 import Pagination from './Pagination';
 import { useTri } from '../useTri';
+import { useFeedback } from '../FeedbackContext';
 import EnTeteTri from './EnTeteTri';
 
 const CATEGORIES = [
@@ -41,6 +42,7 @@ function depenseVide() {
 }
 
 function ExpenseList() {
+  const { notifier, confirmer } = useFeedback();
   const { data: expenses, loading, error, setError, refresh } = useApiResource('/api/depenses', []);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const modaleRef = useModale(() => setIsModalOpen(false), { actif: isModalOpen });
@@ -103,13 +105,22 @@ function ExpenseList() {
   };
 
   const handleDelete = async (depense) => {
-    if (!window.confirm(`Supprimer la dépense « ${depense.fournisseur || depense.description} » ?`)) return;
+    const libelle = depense.fournisseur || depense.description;
+    const accepte = await confirmer({
+      titre: `Supprimer la dépense « ${libelle} » ?`,
+      message: 'Elle ne comptera plus dans vos charges ni dans les taxes réclamées '
+        + 'au titre des intrants. Cette action est irréversible.',
+      libelleConfirmer: 'Supprimer',
+      danger: true
+    });
+    if (!accepte) return;
     try {
       setError(null);
       await api.del(`/api/depenses/${depense.id}`);
+      notifier(`Dépense « ${libelle} » supprimée.`);
       refresh();
     } catch (err) {
-      setError(err.message);
+      notifier(err.message, 'erreur');
     }
   };
 

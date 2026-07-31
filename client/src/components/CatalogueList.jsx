@@ -5,6 +5,7 @@ import { useModale } from '../useModale';
 import { usePagination } from '../usePagination';
 import Pagination from './Pagination';
 import { useTri } from '../useTri';
+import { useFeedback } from '../FeedbackContext';
 import EnTeteTri from './EnTeteTri';
 
 const ARTICLE_VIDE = { nom: '', description: '', prix_unitaire: 0 };
@@ -13,6 +14,7 @@ const ARTICLE_VIDE = { nom: '', description: '', prix_unitaire: 0 };
 const ACCESSEURS = { prix_unitaire: (i) => Number(i.prix_unitaire) || 0 };
 
 function CatalogueList() {
+  const { notifier, confirmer } = useFeedback();
   const { data: items, loading, error, setError, refresh } = useApiResource('/api/catalogue', []);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const modaleRef = useModale(() => setIsModalOpen(false), { actif: isModalOpen });
@@ -57,13 +59,23 @@ function CatalogueList() {
   };
 
   const handleDelete = async (item) => {
-    if (!window.confirm(`Supprimer « ${item.nom} » du catalogue ?`)) return;
+    const accepte = await confirmer({
+      titre: `Supprimer « ${item.nom} » ?`,
+      message: 'Le service disparaît du catalogue. Les factures qui le mentionnent '
+        + 'gardent leurs lignes : elles ne sont pas modifiées.',
+      libelleConfirmer: 'Supprimer',
+      danger: true
+    });
+    if (!accepte) return;
     try {
       setError(null);
       await api.del(`/api/catalogue/${item.id}`);
+      notifier(`« ${item.nom} » supprimé du catalogue.`);
       refresh();
     } catch (err) {
-      setError(err.message);
+      // Le refus part au fil de messages et non dans le bandeau du haut : sur
+      // une longue liste, la ligne concernée n'est pas à l'écran.
+      notifier(err.message, 'erreur');
     }
   };
 

@@ -5,6 +5,7 @@ import { useApiResource } from '../useApiResource';
 import { usePagination } from '../usePagination';
 import Pagination from './Pagination';
 import { useTri } from '../useTri';
+import { useFeedback } from '../FeedbackContext';
 import EnTeteTri from './EnTeteTri';
 
 let compteurLignes = 0;
@@ -28,6 +29,7 @@ function abonnementVide() {
 }
 
 function SubscriptionList() {
+  const { notifier, confirmer } = useFeedback();
   const abonnementsRes = useApiResource('/api/abonnements', []);
   const clientsRes = useApiResource('/api/clients', []);
 
@@ -35,7 +37,6 @@ function SubscriptionList() {
   const [showForm, setShowForm] = useState(false);
   const [newSub, setNewSub] = useState(abonnementVide);
   const [erreurAction, setErreurAction] = useState(null);
-  const [message, setMessage] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const tousLesAbonnements = abonnementsRes.data;
@@ -99,7 +100,7 @@ function SubscriptionList() {
       });
       setShowForm(false);
       setNewSub(abonnementVide());
-      setMessage('Abonnement créé.');
+      notifier('Abonnement créé.');
       fetchData();
     } catch (err) {
       setErreurAction(err.message);
@@ -121,13 +122,21 @@ function SubscriptionList() {
   };
 
   const handleDelete = async (sub) => {
-    if (!window.confirm(`Supprimer l'abonnement « ${sub.titre} » ?`)) return;
+    const accepte = await confirmer({
+      titre: `Supprimer l'abonnement « ${sub.titre} » ?`,
+      message: 'Plus aucune facture ne sera générée pour cet abonnement. Celles déjà '
+        + 'émises sont conservées. Pour interrompre sans supprimer, désactivez-le.',
+      libelleConfirmer: 'Supprimer',
+      danger: true
+    });
+    if (!accepte) return;
     try {
       setErreurAction(null);
       await api.del(`/api/abonnements/${sub.id}`);
+      notifier(`Abonnement « ${sub.titre} » supprimé.`);
       fetchData();
     } catch (err) {
-      setErreurAction(err.message);
+      notifier(err.message, 'erreur');
     }
   };
 
@@ -135,9 +144,8 @@ function SubscriptionList() {
   const genererMaintenant = async () => {
     try {
       setErreurAction(null);
-      setMessage(null);
       await api.post('/api/abonnements/generer');
-      setMessage('Vérification effectuée. Les factures dues ont été générées.');
+      notifier('Vérification effectuée. Les factures dues ont été générées.');
       fetchData();
     } catch (err) {
       setErreurAction(err.message);
@@ -155,7 +163,6 @@ function SubscriptionList() {
   return (
     <div>
       {error && <p className="alert alert-error" role="alert">{error}</p>}
-      {message && <p className="alert alert-success" role="status">{message}</p>}
 
       <div className="toolbar">
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '540px' }}>
