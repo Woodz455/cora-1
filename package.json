@@ -13,11 +13,13 @@
     "db:init": "node database.js",
     "seed:demo": "node database.js --seed",
     "test": "node --test \"tests/**/*.test.js\"",
-    "doctor": "node doctor.js"
+    "doctor": "node doctor.js",
+    "icone": "node scripts/generer-icone.js"
   },
   "build": {
     "appId": "com.safehill.clora",
     "productName": "Clora",
+    "copyright": "© Safehill",
     "directories": {
       "output": "dist"
     },
@@ -39,9 +41,26 @@
         "to": "image"
       }
     ],
+    "asarUnpack": [
+      "**/node_modules/sqlite3/**"
+    ],
+    "publish": null,
     "win": {
       "target": "nsis",
-      "icon": "image/logo2.ico"
+      "icon": "image/clora.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Clora",
+      "allowToChangeInstallationDirectory": false,
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "image/clora.ico",
+      "uninstallerIcon": "image/clora.ico",
+      "artifactName": "Clora-Installateur-${version}.${ext}"
     }
   },
   "keywords": [
@@ -73,6 +92,7 @@
     "electron": "^42.4.1",
     "electron-builder": "^26.15.3",
     "electron-is-dev": "^3.0.1",
+    "png-to-ico": "^3.0.1",
     "wait-on": "^9.0.10"
   }
 }
