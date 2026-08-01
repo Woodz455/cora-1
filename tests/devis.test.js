@@ -64,7 +64,12 @@ test('la conversion lie le devis à la facture créée', async (t) => {
   // conversion échouait systématiquement en laissant une facture orpheline.
   const facture = await convertDevisToFacture(db, id);
   assert.ok(facture.id);
-  assert.match(facture.numero_facture, /^SHT-202607-\d{4}$/);
+
+  // La conversion émet la facture au jour où elle a lieu, et le numéro suit la
+  // date d'émission : écrire le mois en dur ici faisait échouer le test au
+  // premier changement de mois, quelle que soit la date du devis d'origine.
+  const moisCourant = new Date().toISOString().slice(0, 7).replace('-', '');
+  assert.match(facture.numero_facture, new RegExp(`^SHT-${moisCourant}-\\d{4}$`));
 
   const apres = await db.get('SELECT statut, facture_id FROM devis WHERE id = ?', [id]);
   assert.equal(apres.statut, STATUTS.CONVERTI);

@@ -13,7 +13,7 @@ Rendez-vous sur la page des versions du projet et téléchargez le fichier dont
 le nom ressemble à :
 
 ```
-Clora-Installateur-1.1.0.exe
+Clora-Installateur-1.2.0.exe
 ```
 
 Il fait environ 100 Mo. Votre navigateur le déposera dans le dossier
