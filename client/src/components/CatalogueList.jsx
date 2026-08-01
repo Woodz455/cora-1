@@ -1,12 +1,23 @@
 import { useState, useMemo } from 'react';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
+import { useModale } from '../useModale';
+import { usePagination } from '../usePagination';
+import Pagination from './Pagination';
+import { useTri } from '../useTri';
+import { useFeedback } from '../FeedbackContext';
+import EnTeteTri from './EnTeteTri';
 
 const ARTICLE_VIDE = { nom: '', description: '', prix_unitaire: 0 };
 
+/** Le tarif est stocké en texte selon les enregistrements : on compare des nombres. */
+const ACCESSEURS = { prix_unitaire: (i) => Number(i.prix_unitaire) || 0 };
+
 function CatalogueList() {
+  const { notifier, confirmer } = useFeedback();
   const { data: items, loading, error, setError, refresh } = useApiResource('/api/catalogue', []);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const modaleRef = useModale(() => setIsModalOpen(false), { actif: isModalOpen });
   const [currentItem, setCurrentItem] = useState(ARTICLE_VIDE);
   const [recherche, setRecherche] = useState('');
   const [modalError, setModalError] = useState(null);
@@ -18,6 +29,9 @@ function CatalogueList() {
     return items.filter((i) => [i.nom, i.description]
       .some((champ) => (champ || '').toLowerCase().includes(terme)));
   }, [items, recherche]);
+
+  const { tri, basculer, tries: itemsTries } = useTri(itemsFiltres, { defaut: 'nom', accesseurs: ACCESSEURS });
+  const { affiches: itemsAffiches, pagination } = usePagination(itemsTries, 15);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -45,13 +59,23 @@ function CatalogueList() {
   };
 
   const handleDelete = async (item) => {
-    if (!window.confirm(`Supprimer « ${item.nom} » du catalogue ?`)) return;
+    const accepte = await confirmer({
+      titre: `Supprimer « ${item.nom} » ?`,
+      message: 'Le service disparaît du catalogue. Les factures qui le mentionnent '
+        + 'gardent leurs lignes : elles ne sont pas modifiées.',
+      libelleConfirmer: 'Supprimer',
+      danger: true
+    });
+    if (!accepte) return;
     try {
       setError(null);
       await api.del(`/api/catalogue/${item.id}`);
+      notifier(`« ${item.nom} » supprimé du catalogue.`);
       refresh();
     } catch (err) {
-      setError(err.message);
+      // Le refus part au fil de messages et non dans le bandeau du haut : sur
+      // une longue liste, la ligne concernée n'est pas à l'écran.
+      notifier(err.message, 'erreur');
     }
   };
 
@@ -83,9 +107,9 @@ function CatalogueList() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Nom du service</th>
-              <th>Description</th>
-              <th className="numeric">Prix / tarif</th>
+              <EnTeteTri colonne="nom" tri={tri} onTrier={basculer}>Nom du service</EnTeteTri>
+              <EnTeteTri colonne="description" tri={tri} onTrier={basculer}>Description</EnTeteTri>
+              <EnTeteTri colonne="prix_unitaire" tri={tri} onTrier={basculer} className="numeric">Prix / tarif</EnTeteTri>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
@@ -98,7 +122,7 @@ function CatalogueList() {
                   {items.length === 0 ? 'Votre catalogue est vide.' : 'Aucun service ne correspond à votre recherche.'}
                 </td>
               </tr>
-            ) : itemsFiltres.map((item) => (
+            ) : itemsAffiches.map((item) => (
               <tr key={item.id}>
                 <td style={{ fontWeight: '500' }}>{item.nom}</td>
                 <td style={{ color: 'var(--text-muted)' }}>{item.description}</td>
@@ -113,8 +137,10 @@ function CatalogueList() {
         </table>
       </div>
 
+      <Pagination {...pagination} />
+
       {isModalOpen && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={currentItem.id ? 'Modifier le service' : 'Ajouter un service'}>
+        <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={currentItem.id ? 'Modifier le service' : 'Ajouter un service'}>
           <div className="modal-content glass-panel">
             <h3 style={{ marginTop: 0 }}>{currentItem.id ? 'Modifier le service' : 'Ajouter un service'}</h3>
 

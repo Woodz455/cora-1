@@ -9,10 +9,27 @@ const { app, BrowserWindow, dialog, shell } = require('electron');
 const path = require('path');
 const { startServer } = require('./server.js');
 
-const isDev = !app.isPackaged;
+/**
+ * `CLORA_UI_COMPILEE=1` force le chemin de production sur une application non
+ * empaquetée. C'est le seul moyen pour un test de piloter l'interface
+ * réellement livrée sans passer par electron-builder — et les vérifications
+ * faites au navigateur ont déjà laissé passer des défauts propres à Electron.
+ */
+const isDev = !app.isPackaged && process.env.CLORA_UI_COMPILEE !== '1';
 
 /** Port de développement de Vite. */
 const VITE_PORT = 5173;
+
+/**
+ * Chemin d'une image livrée avec l'application.
+ *
+ * `extraResources` dépose le dossier `image` à côté de l'archive `app.asar`,
+ * et non dedans : une fois installée, l'application ne peut donc pas le
+ * chercher à partir de `__dirname`.
+ */
+const cheminImage = (nom) => (app.isPackaged
+  ? path.join(process.resourcesPath, 'image', nom)
+  : path.join(__dirname, 'image', nom));
 
 let mainWindow = null;
 let serverInstance = null;
@@ -24,7 +41,11 @@ async function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     title: 'Clora',
-    icon: path.join(__dirname, 'image', 'logo.png'),
+    icon: cheminImage('logo.png'),
+    // La fenêtre reste cachée le temps que le serveur démarre et que
+    // l'interface soit dessinée : sans cela, l'utilisateur voit d'abord un
+    // rectangle blanc, ce qui donne l'impression d'un logiciel figé.
+    show: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -33,6 +54,15 @@ async function createWindow() {
       sandbox: true
     }
   });
+
+  const afficherFenetre = () => {
+    if (mainWindow && !mainWindow.isVisible()) {
+      mainWindow.show();
+      console.log('[Electron] Fenêtre affichée');
+    }
+  };
+
+  mainWindow.once('ready-to-show', afficherFenetre);
 
   // Les liens externes (paiement en ligne, documentation) s'ouvrent dans le
   // navigateur du système plutôt que dans la fenêtre de l'application.
@@ -54,6 +84,11 @@ async function createWindow() {
     } else {
       await mainWindow.loadURL(`http://127.0.0.1:${backendPort}`);
     }
+
+    // `ready-to-show` a normalement déjà tout affiché. Ce second appel garantit
+    // qu'un évènement manqué ne laisse pas l'utilisateur devant rien du tout,
+    // ce qui serait pire que la fenêtre blanche qu'on vient de supprimer.
+    afficherFenetre();
   } catch (error) {
     // Sans cette alerte, un échec de démarrage se traduisait par une fenêtre
     // blanche sans explication.

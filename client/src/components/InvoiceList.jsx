@@ -3,31 +3,45 @@ import PaymentModal from './PaymentModal';
 import InvoiceModal from './InvoiceModal';
 import InvoicePrintTemplate from './InvoicePrintTemplate';
 import CreditNoteModal from './CreditNoteModal';
+import NoteCreditChooser from './NoteCreditChooser';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useUser } from '../UserContext';
+import { usePagination } from '../usePagination';
+import Pagination from './Pagination';
+import { useFeedback } from '../FeedbackContext';
 
 const STATUTS = ['Tous', 'En attente', 'Partiellement payée', 'Payée', 'Créditée', 'Annulée'];
+const AUJOURDHUI = new Date().toISOString().split('T')[0];
 const PAR_PAGE = 15;
 
-function InvoiceList() {
+/**
+ * @param {{statutInitial?: string, echuesSeulement?: boolean, ouvrirNouvelle?: boolean}} props
+ *   État initial transmis par le tableau de bord : un indicateur cliqué ouvre
+ *   la liste déjà filtrée sur ce qu'il représentait.
+ */
+function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = false }) {
   const user = useUser();
+  const { notifier, confirmer } = useFeedback();
   const estAdmin = user?.role === 'admin';
   const gereTresorerie = user?.role === 'admin' || user?.role === 'comptable';
 
   const { data: factures, loading, error, refresh: fetchFactures } = useApiResource('/api/factures', []);
 
   const [selectedFacture, setSelectedFacture] = useState(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(ouvrirNouvelle);
   const [printingFactureId, setPrintingFactureId] = useState(null);
   const [isRelance, setIsRelance] = useState(false);
   const [factureIdToEdit, setFactureIdToEdit] = useState(null);
   const [factureACrediter, setFactureACrediter] = useState(null);
-  const [message, setMessage] = useState(null);
+  const [printingNoteId, setPrintingNoteId] = useState(null);
+  // Une facture peut porter plusieurs notes : on ne demande laquelle imprimer
+  // que lorsqu'il y a effectivement un choix à faire.
+  const [choixNotes, setChoixNotes] = useState(null);
 
   const [recherche, setRecherche] = useState('');
-  const [filtreStatut, setFiltreStatut] = useState('Tous');
-  const [page, setPage] = useState(1);
+  const [filtreStatut, setFiltreStatut] = useState(statutInitial || 'Tous');
+  const [filtreEchues, setFiltreEchues] = useState(echuesSeulement);
 
   // Le filtrage se fait en mémoire : la liste tient largement en RAM pour une
   // PME, et cela évite un aller-retour serveur à chaque frappe.
@@ -35,15 +49,16 @@ function InvoiceList() {
     const terme = recherche.trim().toLowerCase();
     return factures.filter((f) => {
       if (filtreStatut !== 'Tous' && f.statut !== filtreStatut) return false;
+      if (filtreEchues && !(f.statut !== 'Annulée' && f.solde_restant > 0 && f.date_echeance < AUJOURDHUI)) {
+        return false;
+      }
       if (!terme) return true;
       return f.numero_facture.toLowerCase().includes(terme)
         || (f.client || '').toLowerCase().includes(terme);
     });
-  }, [factures, recherche, filtreStatut]);
+  }, [factures, recherche, filtreStatut, filtreEchues]);
 
-  const nbPages = Math.max(1, Math.ceil(facturesFiltrees.length / PAR_PAGE));
-  const pageCourante = Math.min(page, nbPages);
-  const facturesAffichees = facturesFiltrees.slice((pageCourante - 1) * PAR_PAGE, pageCourante * PAR_PAGE);
+  const { setPage, affiches: facturesAffichees, pagination } = usePagination(facturesFiltrees, PAR_PAGE);
 
   // La pagination repart à la première page dès que les filtres changent.
   const changerFiltre = (setter) => (valeur) => {
@@ -51,28 +66,43 @@ function InvoiceList() {
     setPage(1);
   };
 
-  const executer = async (action, message) => {
+  const executer = async (action, echec, succes) => {
     try {
       await action();
       fetchFactures();
+      if (succes) notifier(succes);
     } catch (err) {
       // Le serveur explique pourquoi l'opération est refusée (facture payée,
       // privilèges insuffisants) : ce message vaut mieux qu'un texte générique.
-      window.alert(`${message}\n\n${err.message}`);
+      notifier(`${echec} ${err.message}`, 'erreur');
     }
   };
 
-  const handleCancelFacture = (facture) => {
-    if (!window.confirm(`Annuler la facture ${facture.numero_facture} ?`)) return;
-    executer(() => api.put(`/api/factures/${facture.id}/cancel`), "L'annulation a échoué.");
+  const handleCancelFacture = async (facture) => {
+    const accepte = await confirmer({
+      titre: `Annuler la facture ${facture.numero_facture} ?`,
+      message: 'La facture reste dans vos registres, marquée annulée, et son montant '
+        + "cesse d'être attendu. Les encaissements déjà saisis sont conservés.",
+      libelleConfirmer: 'Annuler la facture',
+      libelleAnnuler: 'Ne rien faire',
+      danger: true
+    });
+    if (!accepte) return;
+    executer(() => api.put(`/api/factures/${facture.id}/cancel`), "L'annulation a échoué.",
+      `Facture ${facture.numero_facture} annulée.`);
   };
 
-  const handleDeleteFacture = (facture) => {
-    const message = `Supprimer définitivement la facture ${facture.numero_facture} ?\n\n`
-      + 'Cette action est irréversible. Une facture déjà réglée, même partiellement, '
-      + 'ne peut pas être supprimée : annulez-la ou émettez une note de crédit.';
-    if (!window.confirm(message)) return;
-    executer(() => api.del(`/api/factures/${facture.id}`), 'La suppression a échoué.');
+  const handleDeleteFacture = async (facture) => {
+    const accepte = await confirmer({
+      titre: `Supprimer définitivement la facture ${facture.numero_facture} ?`,
+      message: 'Cette action est irréversible. Une facture déjà réglée, même partiellement, '
+        + 'ne peut pas être supprimée : annulez-la ou émettez une note de crédit.',
+      libelleConfirmer: 'Supprimer',
+      danger: true
+    });
+    if (!accepte) return;
+    executer(() => api.del(`/api/factures/${facture.id}`), 'La suppression a échoué.',
+      `Facture ${facture.numero_facture} supprimée.`);
   };
 
   const closeAndRefresh = () => {
@@ -80,12 +110,28 @@ function InvoiceList() {
     fetchFactures();
   };
 
+  /** Ouvre la note de crédit de la facture, ou propose de choisir s'il y en a plusieurs. */
+  const ouvrirNotesCredit = async (facture) => {
+    try {
+      const details = await api.get(`/api/factures/${facture.id}/details`);
+      const notes = details.notes_credit || [];
+      if (notes.length === 0) {
+        notifier('Aucune note de crédit sur cette facture.', 'info');
+      } else if (notes.length === 1) {
+        setPrintingNoteId(notes[0].id);
+      } else {
+        setChoixNotes({ facture, notes });
+      }
+    } catch (err) {
+      notifier(err.message, 'erreur');
+    }
+  };
+
   if (loading) return <p style={{ color: 'var(--text-muted)' }}>Chargement des données financières…</p>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {error && <p className="alert alert-error" role="alert">{error}</p>}
-      {message && <p className="alert alert-success" role="status">{message}</p>}
 
       <div className="toolbar">
         <div className="toolbar-group">
@@ -109,6 +155,17 @@ function InvoiceList() {
           >
             {STATUTS.map((s) => <option key={s} value={s}>{s === 'Tous' ? 'Tous les statuts' : s}</option>)}
           </select>
+          {/* Rendu visible et réversible : arrivé depuis le tableau de bord,
+              on doit comprendre pourquoi la liste est réduite. */}
+          <button
+            type="button"
+            className={filtreEchues ? 'btn-danger' : 'btn-icon'}
+            aria-pressed={filtreEchues}
+            onClick={() => changerFiltre(setFiltreEchues)(!filtreEchues)}
+            title="N'afficher que les factures dont l'échéance est dépassée"
+          >
+            Échues seulement
+          </button>
           <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
             {facturesFiltrees.length} facture{facturesFiltrees.length > 1 ? 's' : ''}
           </span>
@@ -224,15 +281,35 @@ function InvoiceList() {
                   </button>
                 )}
 
+                {/* Les notes émises n'étaient consultables nulle part : elles
+                    n'apparaissaient qu'en déduction dans le PDF de la facture,
+                    alors que le client doit recevoir la pièce elle-même. */}
+                {facture.montant_credite > 0 && (
+                  <button
+                    type="button"
+                    className="btn-icon"
+                    onClick={() => ouvrirNotesCredit(facture)}
+                    title="Imprimer ou envoyer la note de crédit"
+                  >
+                    🖨️ PDF de la note
+                  </button>
+                )}
+
+                {/* Une facture soldée reste consultable : c'est par cette
+                    fenêtre que l'on revient sur un encaissement, et un
+                    sur-paiement rend justement la facture soldée. Le bouton
+                    désactivé la rendait inatteignable. */}
                 {gereTresorerie && (
                   <button
                     type="button"
                     className="btn-primary"
                     onClick={() => setSelectedFacture(facture)}
-                    disabled={facture.solde_restant <= 0 || isAnnulee}
+                    disabled={isAnnulee || (facture.solde_restant <= 0 && facture.montant_paye <= 0)}
                     style={{ width: '180px' }}
                   >
-                    {facture.solde_restant <= 0 ? '✓ Facture soldée' : '+ Ajouter paiement'}
+                    {facture.solde_restant > 0
+                      ? '+ Ajouter paiement'
+                      : facture.montant_paye > 0 ? '✓ Voir les encaissements' : '✓ Facture soldée'}
                   </button>
                 )}
               </div>
@@ -241,17 +318,7 @@ function InvoiceList() {
         })
       )}
 
-      {nbPages > 1 && (
-        <div className="pagination">
-          <button type="button" className="btn-secondary" disabled={pageCourante === 1} onClick={() => setPage(pageCourante - 1)}>
-            Précédent
-          </button>
-          <span>Page {pageCourante} sur {nbPages}</span>
-          <button type="button" className="btn-secondary" disabled={pageCourante === nbPages} onClick={() => setPage(pageCourante + 1)}>
-            Suivant
-          </button>
-        </div>
-      )}
+      <Pagination {...pagination} />
 
       {selectedFacture && (
         <PaymentModal facture={selectedFacture} onClose={closeAndRefresh} />
@@ -263,7 +330,9 @@ function InvoiceList() {
           onClose={() => setFactureACrediter(null)}
           onSuccess={(note) => {
             setFactureACrediter(null);
-            setMessage(`Note de crédit ${note.numero_note} émise.`);
+            notifier(`Note de crédit ${note.numero_note} émise.`);
+            // La pièce s'ouvre aussitôt : c'est le moment où on l'envoie au client.
+            setPrintingNoteId(note.id);
             fetchFactures();
           }}
         />
@@ -290,6 +359,23 @@ function InvoiceList() {
             setIsRelance(false);
             if (relanceEnvoyee) fetchFactures();
           }}
+        />
+      )}
+
+      {printingNoteId && (
+        <InvoicePrintTemplate
+          mode="note"
+          factureId={printingNoteId}
+          onClose={() => setPrintingNoteId(null)}
+        />
+      )}
+
+      {choixNotes && (
+        <NoteCreditChooser
+          facture={choixNotes.facture}
+          notes={choixNotes.notes}
+          onChoisir={(note) => { setChoixNotes(null); setPrintingNoteId(note.id); }}
+          onClose={() => setChoixNotes(null)}
         />
       )}
     </div>

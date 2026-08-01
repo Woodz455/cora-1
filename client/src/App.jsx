@@ -133,6 +133,9 @@ const COULEUR_ROLE = { admin: '#10b981', comptable: '#3b82f6', employe: '#f59e0b
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
+  // Paramètres transmis à la vue ciblée : le tableau de bord ouvre la liste des
+  // factures déjà filtrée, plutôt que d'afficher un chiffre sans issue.
+  const [parametresVue, setParametresVue] = useState(null);
   const [user, setUser] = useState(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
@@ -210,6 +213,12 @@ function App() {
 
   const ContenuActif = vueActive.composant;
 
+  /** Change de vue, en lui passant éventuellement un état initial. */
+  const naviguer = (id, parametres = null) => {
+    setCurrentView(id);
+    setParametresVue(parametres);
+  };
+
   return (
     <UserContext.Provider value={user}>
       {/* Arrière-plan animé */}
@@ -244,7 +253,7 @@ function App() {
                   type="button"
                   className="nav-item"
                   aria-current={vueActive.id === vue.id ? 'page' : undefined}
-                  onClick={() => setCurrentView(vue.id)}
+                  onClick={() => naviguer(vue.id)}
                 >
                   <Icone size={20} aria-hidden="true" /> {vue.libelle}
                 </button>
@@ -288,7 +297,7 @@ function App() {
 
           <div style={{ position: 'relative', zIndex: 10 }}>
             <Suspense fallback={<p style={{ color: 'var(--text-muted)' }}>Chargement…</p>}>
-              <ContenuActif />
+              <ContenuActif naviguer={naviguer} {...(parametresVue || {})} />
             </Suspense>
           </div>
         </main>

@@ -16,13 +16,52 @@ npm run electron:dev   # les deux, dans la fenêtre Electron
 
 Au premier lancement, l'application demande de créer un compte administrateur.
 
+## Installateur Windows
+
+L'utilisateur final reçoit un unique fichier `.exe` : un double-clic installe
+Clora sans poser de question, sans demande d'autorisation administrateur, et
+place une icône sur le bureau. La marche à suivre côté utilisateur est décrite
+dans [INSTALLATION.md](INSTALLATION.md).
+
+**Fabrication.** Poser une étiquette de version suffit ; le workflow
+[`release.yml`](.github/workflows/release.yml) compile sur une machine Windows
+et dépose le fichier sur la page des publications :
+
+```bash
+git tag v1.2.0 && git push origin v1.2.0
+```
+
+Ce détour est obligatoire : `sqlite3` est une bibliothèque native, et son
+binaire Windows n'est téléchargé que par un `npm ci` exécuté sous Windows. La
+compilation depuis Linux ou macOS produirait un installateur inutilisable.
+
+Depuis une machine Windows, la fabrication manuelle est&nbsp;:
+
+```bash
+npm ci
+cd client && npm ci && cd ..
+npm run build          # produit dist/Clora-Installateur-<version>.exe
+```
+
+**Le fichier n'est pas signé.** Windows affichera donc « Windows a protégé
+votre ordinateur » au premier lancement, et il faut passer par *Informations
+complémentaires → Exécuter quand même*. Supprimer cet avertissement demande un
+certificat de signature de code payant ; le jour où l'on en dispose, il suffit
+de renseigner `CSC_LINK` et `CSC_KEY_PASSWORD` dans les secrets du dépôt, sans
+autre changement.
+
+**Icône.** `image/clora.ico` est produit par `npm run icone` à partir de
+`image/logo.png`. Le fichier est versionné : ne relancer la commande que si le
+logo change.
+
 ## Scripts
 
 | Commande | Rôle |
 | --- | --- |
 | `npm start` | Serveur et interface en mode développement |
 | `npm run electron:dev` | Application de bureau en mode développement |
-| `npm run build` | Compile l'interface et produit l'installateur |
+| `npm run build` | Compile l'interface et produit l'installateur (sous Windows) |
+| `npm run icone` | Régénère `image/clora.ico` depuis `image/logo.png` |
 | `npm test` | Suite de tests (calculs financiers, rôles, API) |
 | `npm run doctor` | Diagnostique les anomalies dans les données comptables |
 | `npm run doctor -- --corriger-statuts` | Réaligne le statut des factures sur leurs montants |

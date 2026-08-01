@@ -27,13 +27,19 @@
   --glass-shadow: 0 12px 40px -12px rgba(15, 23, 42, 0.1);
   --glass-card-bg: rgba(255, 255, 255, 0.45);
   
-  /* Couleurs de statuts */
+  /* Couleurs de statuts. Chaque teinte a son fond : le jeu était incomplet, et
+     les trois fonds manquants étaient recopiés en dur dans le CSS et le JSX. */
   --status-paid: #10b981;
+  --status-paid-bg: rgba(16, 185, 129, 0.12);
   --status-partial: #f59e0b;
+  --status-partial-bg: rgba(245, 158, 11, 0.12);
   --status-pending: #3b82f6;
+  --status-pending-bg: rgba(59, 130, 246, 0.12);
 
-  /* Actions destructrices et d'avertissement */
-  --status-danger: #dc2626;
+  /* Actions destructrices et d'avertissement. Le rouge était mesuré à 4,11:1
+     sur le fond des panneaux, sous le seuil AA : les boutons « Supprimer » de
+     toute l'application étaient à la limite de la lisibilité. */
+  --status-danger: #b91c1c;
   --status-danger-bg: rgba(239, 68, 68, 0.08);
   --status-danger-border: rgba(239, 68, 68, 0.35);
   --status-warning: #ea580c;
@@ -70,7 +76,11 @@
   --border-color: #334155;
   --table-header-bg: rgba(255,255,255,0.03);
 
-  /* Teintes éclaircies pour rester lisibles sur fond sombre. */
+  /* Teintes éclaircies pour rester lisibles sur fond sombre. Seul le bleu en
+     avait besoin : mesuré à 3,98:1 sur le fond des panneaux, sous le seuil AA.
+     Le vert (5,77:1) et l'ambre (6,81:1) passent déjà et sont conservés. */
+  --status-pending: #60a5fa;
+  --status-pending-bg: rgba(96, 165, 250, 0.15);
   --status-danger: #f87171;
   --status-danger-bg: rgba(248, 113, 113, 0.12);
   --status-danger-border: rgba(248, 113, 113, 0.4);
@@ -257,9 +267,9 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 
-.status-badge.payee { color: var(--status-paid); background: rgba(16, 185, 129, 0.12); }
-.status-badge.partielle { color: var(--status-partial); background: rgba(245, 158, 11, 0.12); }
-.status-badge.pending { color: var(--status-pending); background: rgba(59, 130, 246, 0.12); }
+.status-badge.payee { color: var(--status-paid); background: var(--status-paid-bg); }
+.status-badge.partielle { color: var(--status-partial); background: var(--status-partial-bg); }
+.status-badge.pending { color: var(--status-pending); background: var(--status-pending-bg); }
 /* Cette variante était utilisée par le JSX sans être définie : les factures
    annulées s'affichaient sans couleur de statut. */
 .status-badge.annulee { color: var(--text-muted); background: var(--hover-subtle); }
@@ -386,6 +396,61 @@ textarea:focus-visible {
   color: var(--text-main);
 }
 
+/* En-tête de colonne triable : un vrai bouton, atteignable au clavier, mais
+   qui doit se fondre dans l'en-tête et suivre son alignement. */
+.th-tri {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.th-tri:hover {
+  color: var(--text-main);
+}
+
+.th-tri:focus-visible {
+  outline: 2px solid var(--safehill-blue);
+  outline-offset: 2px;
+}
+
+.th-tri-fleche {
+  font-size: 0.7rem;
+  opacity: 0.35;
+}
+
+/* Tant que la colonne n'est pas triée, la flèche est sortie du flux et logée
+   dans la marge intérieure de l'en-tête : présente au survol pour signaler la
+   possibilité, sans rien coûter à la largeur du tableau. */
+.th-tri-fleche[data-neutre] {
+  position: absolute;
+  right: -10px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.th-tri:hover .th-tri-fleche[data-neutre],
+.th-tri:focus-visible .th-tri-fleche[data-neutre] {
+  opacity: 0.5;
+}
+
+.data-table th[aria-sort='ascending'],
+.data-table th[aria-sort='descending'] {
+  color: var(--text-main);
+}
+
+.data-table th[aria-sort='ascending'] .th-tri-fleche,
+.data-table th[aria-sort='descending'] .th-tri-fleche {
+  opacity: 1;
+}
+
 .data-table tbody tr:hover {
   background: var(--hover-subtle);
 }
@@ -408,6 +473,88 @@ textarea:focus-visible {
   margin-top: 20px;
   color: var(--text-muted);
   font-size: 0.9rem;
+}
+
+/* =========================================
+   MESSAGES ÉPHÉMÈRES
+   ========================================= */
+
+/* Le fil s'empile en bas à droite, hors du chemin de la saisie : les bandeaux
+   qu'il remplace poussaient le contenu vers le bas à chaque message. */
+.notifications {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(420px, calc(100vw - 48px));
+  /* Le conteneur reste en place quand il est vide : il ne doit pas intercepter
+     les clics sur le contenu qu'il recouvre. */
+  pointer-events: none;
+}
+
+.notifications > * {
+  pointer-events: auto;
+}
+
+.notification {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  /* Fond opaque, et non translucide comme les panneaux : le message passe
+     par-dessus du texte, qu'il doit masquer pour rester lisible. */
+  background: var(--card-bg);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--text-muted);
+  box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.35);
+  font-size: 0.95rem;
+  animation: notification-entree 0.2s ease-out;
+}
+
+@keyframes notification-entree {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notification { animation: none; }
+}
+
+.notification-succes { border-left-color: var(--status-paid); }
+.notification-succes svg { color: var(--status-paid); }
+.notification-erreur { border-left-color: var(--status-danger); }
+.notification-erreur svg { color: var(--status-danger); }
+.notification-info { border-left-color: var(--status-pending); }
+.notification-info svg { color: var(--status-pending); }
+
+.notification span {
+  flex: 1;
+}
+
+.notification-fermer {
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.notification-fermer:hover {
+  background: var(--hover-subtle);
+  color: var(--text-main);
+}
+
+.notification-fermer:focus-visible {
+  outline: 2px solid var(--safehill-blue);
+  outline-offset: 1px;
 }
 
 /* Formulaires */

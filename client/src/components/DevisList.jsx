@@ -4,13 +4,17 @@ import InvoicePrintTemplate from './InvoicePrintTemplate';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useUser } from '../UserContext';
+import { usePagination } from '../usePagination';
+import Pagination from './Pagination';
+import { useFeedback } from '../FeedbackContext';
 
 function DevisList() {
   const user = useUser();
   const peutConvertir = user?.role === 'admin' || user?.role === 'comptable';
 
+  const { notifier, confirmer } = useFeedback();
+
   const { data: devisList, loading, error, setError, refresh: fetchDevis } = useApiResource('/api/devis', []);
-  const [message, setMessage] = useState(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [devisIdToEdit, setDevisIdToEdit] = useState(null);
@@ -24,28 +28,44 @@ function DevisList() {
       || (d.client || '').toLowerCase().includes(terme));
   }, [devisList, recherche]);
 
+  const { affiches: devisAffiches, pagination } = usePagination(devisFiltres, 12);
+
   const handleCancelDevis = async (devis) => {
-    if (!window.confirm(`Marquer le devis ${devis.numero_devis} comme refusé ?`)) return;
+    const accepte = await confirmer({
+      titre: `Marquer le devis ${devis.numero_devis} comme refusé ?`,
+      message: 'Le devis reste consultable, mais ne pourra plus être modifié ni converti en facture.',
+      libelleConfirmer: 'Marquer refusé',
+      libelleAnnuler: 'Ne rien faire',
+      danger: true
+    });
+    if (!accepte) return;
     try {
       setError(null);
       await api.put(`/api/devis/${devis.id}/cancel`);
+      notifier(`Devis ${devis.numero_devis} marqué refusé.`);
       fetchDevis();
     } catch (err) {
-      setError(err.message);
+      notifier(err.message, 'erreur');
     }
   };
 
   const handleConvert = async (devis) => {
-    if (!window.confirm(`Convertir le devis ${devis.numero_devis} en facture définitive ?`)) return;
+    const accepte = await confirmer({
+      titre: `Convertir le devis ${devis.numero_devis} en facture ?`,
+      message: 'Une facture définitive sera émise avec un nouveau numéro, et le devis '
+        + 'passera au statut « Converti ».',
+      libelleConfirmer: 'Convertir'
+    });
+    if (!accepte) return;
     try {
       setError(null);
       const facture = await api.post(`/api/devis/${devis.id}/convert`);
       // Le numéro réellement attribué est affiché : la conversion échouait
       // silencieusement avant, en laissant une facture orpheline en base.
-      setMessage(`Devis converti en facture ${facture.numero_facture}. Retrouvez-la dans l'onglet Factures.`);
+      notifier(`Devis converti en facture ${facture.numero_facture}. Retrouvez-la dans l'onglet Factures.`);
       fetchDevis();
     } catch (err) {
-      setError(err.message);
+      notifier(err.message, 'erreur');
     }
   };
 
@@ -54,7 +74,6 @@ function DevisList() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {error && <p className="alert alert-error" role="alert">{error}</p>}
-      {message && <p className="alert alert-success" role="status">{message}</p>}
 
       <div className="toolbar">
         <input
@@ -75,7 +94,7 @@ function DevisList() {
           {devisList.length === 0 ? 'Aucun devis pour le moment.' : 'Aucun devis ne correspond à votre recherche.'}
         </div>
       ) : (
-        devisFiltres.map((devis) => {
+        devisAffiches.map((devis) => {
           const estTermine = devis.statut === 'Refusé' || devis.statut === 'Converti';
           const classeStatut = devis.statut === 'Converti' ? 'payee'
             : devis.statut === 'Refusé' ? 'annulee' : 'pending';
@@ -132,6 +151,8 @@ function DevisList() {
           );
         })
       )}
+
+      <Pagination {...pagination} />
 
       {(isCreateModalOpen || devisIdToEdit) && (
         <InvoiceModal

@@ -1,7 +1,12 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Trash2, Calendar, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
+import { usePagination } from '../usePagination';
+import Pagination from './Pagination';
+import { useTri } from '../useTri';
+import { useFeedback } from '../FeedbackContext';
+import EnTeteTri from './EnTeteTri';
 
 let compteurLignes = 0;
 const nouvelleLigne = (valeurs = {}) => ({
@@ -24,16 +29,31 @@ function abonnementVide() {
 }
 
 function SubscriptionList() {
+  const { notifier, confirmer } = useFeedback();
   const abonnementsRes = useApiResource('/api/abonnements', []);
   const clientsRes = useApiResource('/api/clients', []);
 
+  const [recherche, setRecherche] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [newSub, setNewSub] = useState(abonnementVide);
   const [erreurAction, setErreurAction] = useState(null);
-  const [message, setMessage] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const subs = abonnementsRes.data;
+  const tousLesAbonnements = abonnementsRes.data;
+
+  // Seul écran de liste sans recherche : au-delà d'une dizaine d'abonnements,
+  // il fallait parcourir le tableau des yeux.
+  const subs = useMemo(() => {
+    const terme = recherche.trim().toLowerCase();
+    if (!terme) return tousLesAbonnements;
+    return tousLesAbonnements.filter((s) => (s.titre || '').toLowerCase().includes(terme)
+      || (s.client_nom || '').toLowerCase().includes(terme));
+  }, [tousLesAbonnements, recherche]);
+
+  // Par défaut, l'échéance la plus proche en premier : c'est ce qu'on vient
+  // vérifier sur cet écran.
+  const { tri, basculer, tries: subsTries } = useTri(subs, { defaut: 'date_prochaine_generation' });
+  const { affiches: subsAffiches, pagination } = usePagination(subsTries, 15);
   const clients = clientsRes.data;
   const loading = abonnementsRes.loading || clientsRes.loading;
   const error = erreurAction || abonnementsRes.error || clientsRes.error;
@@ -80,7 +100,7 @@ function SubscriptionList() {
       });
       setShowForm(false);
       setNewSub(abonnementVide());
-      setMessage('Abonnement créé.');
+      notifier('Abonnement créé.');
       fetchData();
     } catch (err) {
       setErreurAction(err.message);
@@ -102,13 +122,21 @@ function SubscriptionList() {
   };
 
   const handleDelete = async (sub) => {
-    if (!window.confirm(`Supprimer l'abonnement « ${sub.titre} » ?`)) return;
+    const accepte = await confirmer({
+      titre: `Supprimer l'abonnement « ${sub.titre} » ?`,
+      message: 'Plus aucune facture ne sera générée pour cet abonnement. Celles déjà '
+        + 'émises sont conservées. Pour interrompre sans supprimer, désactivez-le.',
+      libelleConfirmer: 'Supprimer',
+      danger: true
+    });
+    if (!accepte) return;
     try {
       setErreurAction(null);
       await api.del(`/api/abonnements/${sub.id}`);
+      notifier(`Abonnement « ${sub.titre} » supprimé.`);
       fetchData();
     } catch (err) {
-      setErreurAction(err.message);
+      notifier(err.message, 'erreur');
     }
   };
 
@@ -116,9 +144,8 @@ function SubscriptionList() {
   const genererMaintenant = async () => {
     try {
       setErreurAction(null);
-      setMessage(null);
       await api.post('/api/abonnements/generer');
-      setMessage('Vérification effectuée. Les factures dues ont été générées.');
+      notifier('Vérification effectuée. Les factures dues ont été générées.');
       fetchData();
     } catch (err) {
       setErreurAction(err.message);
@@ -136,7 +163,6 @@ function SubscriptionList() {
   return (
     <div>
       {error && <p className="alert alert-error" role="alert">{error}</p>}
-      {message && <p className="alert alert-success" role="status">{message}</p>}
 
       <div className="toolbar">
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '540px' }}>
@@ -242,22 +268,40 @@ function SubscriptionList() {
       )}
 
       <div className="glass-panel" style={{ padding: '20px' }}>
+        <div className="toolbar-group" style={{ marginBottom: '15px' }}>
+          <label htmlFor="recherche-abonnement" style={{ position: 'absolute', left: '-9999px' }}>
+            Rechercher un abonnement
+          </label>
+          <input
+            id="recherche-abonnement"
+            type="search"
+            className="search-input"
+            placeholder="Rechercher un titre ou un client…"
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+          />
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+            {subs.length} abonnement{subs.length > 1 ? 's' : ''}
+          </span>
+        </div>
         <div className="table-scroll">
           <table className="data-table">
             <thead>
               <tr>
-                <th>Client</th>
-                <th>Titre</th>
-                <th style={{ textAlign: 'center' }}>Cycle</th>
-                <th style={{ textAlign: 'center' }}>Prochaine date</th>
-                <th style={{ textAlign: 'center' }}>Statut</th>
+                <EnTeteTri colonne="client_nom" tri={tri} onTrier={basculer}>Client</EnTeteTri>
+                <EnTeteTri colonne="titre" tri={tri} onTrier={basculer}>Titre</EnTeteTri>
+                <EnTeteTri colonne="cycle" tri={tri} onTrier={basculer} style={{ textAlign: 'center' }}>Cycle</EnTeteTri>
+                <EnTeteTri colonne="date_prochaine_generation" tri={tri} onTrier={basculer} style={{ textAlign: 'center' }}>
+                  Prochaine date
+                </EnTeteTri>
+                <EnTeteTri colonne="statut" tri={tri} onTrier={basculer} style={{ textAlign: 'center' }}>Statut</EnTeteTri>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {subs.length === 0 ? (
                 <tr><td colSpan="6" className="empty-state">Aucun abonnement configuré.</td></tr>
-              ) : subs.map((sub) => {
+              ) : subsAffiches.map((sub) => {
                 const enRetard = sub.statut === 'Actif' && sub.date_prochaine_generation <= aujourdhui;
                 return (
                   <tr key={sub.id} style={{ opacity: sub.statut === 'Inactif' ? 0.6 : 1 }}>
@@ -302,6 +346,7 @@ function SubscriptionList() {
             </tbody>
           </table>
         </div>
+        <Pagination {...pagination} />
       </div>
     </div>
   );

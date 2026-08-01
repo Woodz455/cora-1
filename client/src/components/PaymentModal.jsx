@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useHasRole } from '../UserContext';
+import { useModale } from '../useModale';
 
 function PaymentModal({ facture, onClose }) {
+  const modaleRef = useModale(onClose);
   // Le solde exact est pré-rempli pour faciliter le règlement complet.
   const [montant, setMontant] = useState(facture.solde_restant);
   const [note, setNote] = useState('');
@@ -18,16 +20,19 @@ function PaymentModal({ facture, onClose }) {
   const solde = details ? details.solde_restant : facture.solde_restant;
   const estAdmin = useHasRole('admin');
 
-  const handleAnnuler = async (paiement) => {
-    const motif = window.prompt(
-      `Annuler l'encaissement de ${formatMontant(paiement.montant, facture.devise)} ?\n`
-      + 'Le paiement restera visible, marqué annulé. Motif :'
-    );
-    if (motif === null) return;
+  // Le motif se saisit dans la page, et non par `window.prompt` : Electron ne
+  // prend pas cette fenêtre en charge — « prompt() is not supported » — et le
+  // bouton restait donc sans effet dans l'application de bureau.
+  const [paiementAAnnuler, setPaiementAAnnuler] = useState(null);
+  const [motifAnnulation, setMotifAnnulation] = useState('');
 
+  const handleAnnuler = async (e) => {
+    e.preventDefault();
     setError(null);
     try {
-      await api.del(`/api/factures/paiements/${paiement.id}`, { motif });
+      await api.del(`/api/factures/paiements/${paiementAAnnuler.id}`, { motif: motifAnnulation });
+      setPaiementAAnnuler(null);
+      setMotifAnnulation('');
       refresh();
     } catch (err) {
       setError(err.message);
@@ -55,7 +60,7 @@ function PaymentModal({ facture, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Saisir un paiement">
+    <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label="Saisir un paiement">
       <div className="modal-content glass-panel" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <h3 style={{ marginTop: 0, marginBottom: '25px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
           Saisir un paiement
@@ -111,10 +116,10 @@ function PaymentModal({ facture, onClose }) {
                       </div>
                     )}
                   </div>
-                  {estAdmin && !p.annule_le && (
+                  {estAdmin && !p.annule_le && paiementAAnnuler?.id !== p.id && (
                     <button
                       type="button" className="btn-icon"
-                      onClick={() => handleAnnuler(p)}
+                      onClick={() => { setPaiementAAnnuler(p); setMotifAnnulation(''); }}
                       title="Annuler cet encaissement, en conservant sa trace"
                     >
                       Annuler l'encaissement
@@ -123,6 +128,35 @@ function PaymentModal({ facture, onClose }) {
                 </li>
               ))}
             </ul>
+
+            {/* Hors de la liste défilante, pour rester visible quel que soit le
+                nombre d'encaissements. */}
+            {paiementAAnnuler && (
+              <form onSubmit={handleAnnuler} style={{ marginTop: '15px' }}>
+                <label htmlFor="motif-annulation" style={{ display: 'block', marginBottom: '6px', color: 'var(--text-main)' }}>
+                  Motif de l'annulation de {formatMontant(paiementAAnnuler.montant, facture.devise)}
+                </label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    id="motif-annulation" type="text" className="form-control"
+                    placeholder="Ex. : chèque sans provision, saisie en double…"
+                    value={motifAnnulation}
+                    onChange={(e) => setMotifAnnulation(e.target.value)}
+                    autoFocus required
+                  />
+                  <button type="submit" className="btn-danger">Confirmer</button>
+                  <button
+                    type="button" className="btn-secondary"
+                    onClick={() => { setPaiementAAnnuler(null); setMotifAnnulation(''); }}
+                  >
+                    Renoncer
+                  </button>
+                </div>
+                <p style={{ margin: '6px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Le paiement restera visible, marqué annulé, avec ce motif.
+                </p>
+              </form>
+            )}
           </div>
         )}
 

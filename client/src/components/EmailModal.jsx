@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useModale } from '../useModale';
 
 function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaultMessage }) {
+  const modaleRef = useModale(onClose, { actif: isOpen });
   const [to, setTo] = useState(initialTo || '');
   const [cc, setCc] = useState('');
   const [subject, setSubject] = useState(initialSubject || '');
@@ -26,7 +28,8 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
   };
 
   return (
-    <div className="modal-overlay" style={{ zIndex: 10001 }}>
+    <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true"
+      aria-label="Envoyer par courriel" style={{ zIndex: 10001 }}>
       <div className="modal-content glass-panel" style={{ maxWidth: '500px', width: '100%' }}>
         <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '1.4rem' }}>Envoyer par courriel</h3>
         
@@ -34,8 +37,9 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>À :</label>
+            <label htmlFor="courriel-a">À :</label>
             <input 
+              id="courriel-a"
               type="text" 
               className="form-control" 
               value={to} 
@@ -46,8 +50,9 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
           </div>
 
           <div className="form-group">
-            <label>Cc :</label>
+            <label htmlFor="courriel-cc">Cc :</label>
             <input 
+              id="courriel-cc"
               type="text" 
               className="form-control" 
               value={cc} 
@@ -57,8 +62,9 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
           </div>
           
           <div className="form-group">
-            <label>Sujet :</label>
+            <label htmlFor="courriel-sujet">Sujet :</label>
             <input 
+              id="courriel-sujet"
               type="text" 
               className="form-control" 
               value={subject} 
@@ -68,8 +74,9 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
           </div>
 
           <div className="form-group">
-            <label>Message :</label>
+            <label htmlFor="courriel-message">Message :</label>
             <textarea 
+              id="courriel-message"
               className="form-control" 
               rows="5" 
               value={message} 

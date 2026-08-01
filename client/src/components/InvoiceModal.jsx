@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api, formatMontant } from '../api';
+import { useModale } from '../useModale';
 
 /** Identifiant local d'une ligne, stable pour la clé React. */
 let compteurLignes = 0;
@@ -14,6 +15,7 @@ const nouvelleLigne = (valeurs = {}) => ({
 const dateISO = (date) => date.toISOString().split('T')[0];
 
 function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' }) {
+  const modaleRef = useModale(onClose);
   const estDevis = mode === 'devis';
 
   const [clients, setClients] = useState([]);
@@ -137,7 +139,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
     : (estDevis ? 'Nouveau devis' : 'Nouvelle facture');
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={titre}>
+    <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={titre}>
       <div className="modal-content glass-panel" style={{ maxWidth: '760px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
         <h3 style={{ marginTop: 0, marginBottom: '25px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
           {titre}
