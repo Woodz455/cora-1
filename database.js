@@ -1,6 +1,8 @@
+const path = require('path');
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const { getDbPath } = require('./config.js');
+const { appliquerRestaurationEnAttente } = require('./backupService.js');
 
 /** Journalisation silencieuse sous test, pour ne pas noyer la sortie. */
 const log = (...args) => {
@@ -255,6 +257,13 @@ async function runMigrations(db) {
   await addColumn(db, 'paiements', 'transaction_id', 'INTEGER');
   await rattacherPaiementsAuxTransactions(db);
 
+  // Sauvegardes automatiques : actives par défaut, contrairement aux relances.
+  // Une copie de sécurité ne part vers personne et ne coûte rien à l'utilisateur ;
+  // c'est son absence qui serait un choix par défaut discutable.
+  await addColumn(db, 'settings', 'sauvegarde_active', 'INTEGER DEFAULT 1');
+  await addColumn(db, 'settings', 'sauvegarde_dossier', 'TEXT');
+  await addColumn(db, 'settings', 'sauvegarde_retention', 'INTEGER DEFAULT 30');
+
   await figerMontants(db);
 }
 
@@ -462,6 +471,10 @@ async function seedDemoData(db) {
  */
 async function initDb(dbPath = getDbPath()) {
   try {
+    // Avant toute ouverture : c'est le seul moment où le fichier peut être
+    // remplacé sans qu'une connexion ni un journal WAL ne décrivent l'ancienne base.
+    appliquerRestaurationEnAttente(dbPath, path.dirname(dbPath));
+
     const db = await open({ filename: dbPath, driver: sqlite3.Database });
 
     // Requis pour que les contraintes ON DELETE CASCADE s'appliquent réellement.

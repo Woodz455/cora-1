@@ -30,6 +30,7 @@ const settingsRoutes = require('./routes/settings.js');
 const rapportRoutes = require('./routes/rapports.js');
 const noteCreditRoutes = require('./routes/notesCredit.js');
 const relanceRoutes = require('./routes/relances.js');
+const sauvegardeRoutes = require('./routes/sauvegardes.js');
 
 /** Limite de corps par défaut. */
 const LIMITE_CORPS = '1mb';
@@ -94,6 +95,7 @@ function createApp(db) {
   app.use('/api/emails', emailRoutes(getDb));
   app.use('/api/notes-credit', noteCreditRoutes(getDb));
   app.use('/api/relances', relanceRoutes(getDb));
+  app.use('/api/sauvegardes', sauvegardeRoutes(getDb));
   app.use('/api/settings', settingsRoutes(getDb));
   app.use('/api', rapportRoutes(getDb));
 

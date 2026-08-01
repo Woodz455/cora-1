@@ -11,6 +11,7 @@
 
 const { checkAndGenerateRecurringInvoices } = require('./subscriptionService.js');
 const { envoyerRelancesDues } = require('./relanceService.js');
+const { sauvegardeSiNecessaire } = require('./backupService.js');
 
 /** Intervalle entre deux vérifications. */
 const INTERVALLE_MS = 60 * 60 * 1000; // 1 heure
@@ -35,6 +36,11 @@ async function runOnce(db) {
   } catch (error) {
     console.error('Échec de l\'envoi des relances :', error.message);
   }
+
+  // `sauvegardeSiNecessaire` ne lève pas : un dossier de destination absent —
+  // un espace synchronisé hors ligne, par exemple — ne doit pas empêcher la
+  // facturation récurrente de tourner au passage suivant.
+  await sauvegardeSiNecessaire(db);
 }
 
 /**

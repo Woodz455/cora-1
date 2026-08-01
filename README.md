@@ -238,6 +238,34 @@ par défaut).
 
 L'envoi exige une configuration SMTP (voir la section Configuration).
 
+## Sauvegardes
+
+L'application détient l'unique exemplaire de la comptabilité : une copie datée
+est donc produite automatiquement, **activée par défaut**.
+
+- **Quand.** Une par jour, vérifiée à chaque passage horaire du planificateur,
+  plus une à la fermeture de l'application — un poste éteint chaque soir
+  n'atteindrait jamais l'échéance autrement.
+- **Où.** `sauvegardes/` dans le dossier de données, ou tout dossier choisi
+  dans les Paramètres. **Viser un dossier synchronisé** (OneDrive, Dropbox,
+  Google Drive) est ce qui fait sortir la copie de la machine, et donc ce qui
+  protège réellement d'une panne de disque ou d'un vol.
+- **Combien.** Les 30 plus récentes par défaut ; au-delà, les plus anciennes
+  sont supprimées. Les fichiers étrangers au dossier ne sont jamais touchés.
+
+La copie passe par `VACUUM INTO` et non par une copie de fichier. La base
+tourne en mode WAL : dupliquer `database.sqlite` pendant une écriture donnerait
+un fichier amputé de tout ce qui n'a pas encore été reporté depuis le journal.
+
+**Restauration.** Depuis les Paramètres, réservée à l'administrateur. La
+sauvegarde est d'abord contrôlée (intégrité SQLite, présence du schéma Clora) :
+un fichier douteux est refusé sans que rien ne soit modifié. Le remplacement
+n'a pas lieu tant que la base est ouverte — une demande est enregistrée, puis
+appliquée au redémarrage, alors qu'aucune connexion ni journal ne décrit encore
+l'ancienne base. La base remplacée est conservée à côté sous
+`database.sqlite.avant-restauration-<horodatage>` : une restauration sur le
+mauvais fichier reste réversible.
+
 ## Tests
 
 ```bash

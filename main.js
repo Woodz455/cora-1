@@ -8,6 +8,7 @@
 const { app, BrowserWindow, dialog, shell } = require('electron');
 const path = require('path');
 const { startServer } = require('./server.js');
+const { sauvegardeSiNecessaire } = require('./backupService.js');
 
 /**
  * `CLORA_UI_COMPILEE=1` force le chemin de production sur une application non
@@ -133,8 +134,18 @@ app.on('window-all-closed', () => {
 app.on('before-quit', async () => {
   if (serverInstance) {
     if (serverInstance.server) serverInstance.server.close();
-    // Ferme proprement la base pour que le journal WAL soit consolidé.
+
     if (serverInstance.db) {
+      // Sauvegarde de fin de journée, avant fermeture : sur un poste éteint
+      // chaque soir, le planificateur horaire n'a pas toujours l'occasion
+      // d'atteindre son échéance de 24 h.
+      try {
+        await sauvegardeSiNecessaire(serverInstance.db);
+      } catch (error) {
+        console.error('[Electron] Sauvegarde à la fermeture :', error.message);
+      }
+
+      // Ferme proprement la base pour que le journal WAL soit consolidé.
       try {
         await serverInstance.db.close();
       } catch (error) {

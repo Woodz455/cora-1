@@ -46,6 +46,20 @@ function parsePaliers(valeur) {
   return paliers.join(',');
 }
 
+/**
+ * Nombre de sauvegardes conservées. Une valeur absente laisse le réglage
+ * inchangé ; zéro effacerait chaque copie sitôt écrite et n'est pas accepté.
+ */
+function parseRetention(valeur) {
+  if (valeur === undefined || valeur === null || valeur === '') return null;
+
+  const n = Number(valeur);
+  if (!Number.isInteger(n) || n < 1 || n > 365) {
+    throw httpError(400, 'Le nombre de sauvegardes conservées doit être un entier entre 1 et 365.');
+  }
+  return n;
+}
+
 module.exports = function settingsRoutes(getDb) {
   const router = express.Router();
 
@@ -87,7 +101,10 @@ module.exports = function settingsRoutes(getDb) {
       payment_instructions: sanitizeText(body.payment_instructions, 2000),
       entreprise_logo: logo,
       relances_actives: body.relances_actives ? 1 : 0,
-      relances_paliers: parsePaliers(body.relances_paliers)
+      relances_paliers: parsePaliers(body.relances_paliers),
+      sauvegarde_active: body.sauvegarde_active ? 1 : 0,
+      sauvegarde_dossier: sanitizeText(body.sauvegarde_dossier, 500),
+      sauvegarde_retention: parseRetention(body.sauvegarde_retention)
     };
 
     if (!valeurs.entreprise_nom) {
