@@ -209,6 +209,37 @@ async function createTables(db) {
       devise TEXT DEFAULT 'CAD',
       FOREIGN KEY (client_id) REFERENCES clients (id)
     );
+
+    -- Journal des actions sensibles. Aucune clé étrangère : la trace doit
+    -- survivre à la suppression de ce qu'elle décrit, sans quoi effacer une
+    -- facture effacerait la preuve qu'on l'a effacée.
+    CREATE TABLE IF NOT EXISTS logs_audit (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date_heure TEXT NOT NULL,
+      utilisateur TEXT,
+      role TEXT,
+      action TEXT NOT NULL,
+      entite TEXT,
+      entite_id INTEGER,
+      details TEXT
+    );
+  `);
+
+  // En ajout seul, et pas seulement par convention : un journal qu'une route
+  // distraite — ou malveillante — peut réécrire ne prouve rien. C'est SQLite
+  // qui refuse, quel que soit le chemin emprunté.
+  await db.exec(`
+    CREATE TRIGGER IF NOT EXISTS logs_audit_sans_modification
+    BEFORE UPDATE ON logs_audit
+    BEGIN
+      SELECT RAISE(ABORT, 'Le journal d''audit ne peut pas être modifié.');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS logs_audit_sans_suppression
+    BEFORE DELETE ON logs_audit
+    BEGIN
+      SELECT RAISE(ABORT, 'Le journal d''audit ne peut pas être supprimé.');
+    END;
   `);
 }
 
@@ -388,6 +419,11 @@ async function createIndexes(db) {
     CREATE INDEX IF NOT EXISTS idx_notes_credit_facture_id ON notes_credit (facture_id);
     CREATE INDEX IF NOT EXISTS idx_lignes_note_credit_note_id ON lignes_note_credit (note_id);
     CREATE INDEX IF NOT EXISTS idx_relances_facture_palier ON relances (facture_id, palier_jours);
+    -- Le journal se consulte du plus récent au plus ancien, et se filtre par
+    -- auteur ou par type d'action.
+    CREATE INDEX IF NOT EXISTS idx_logs_audit_date ON logs_audit (date_heure DESC);
+    CREATE INDEX IF NOT EXISTS idx_logs_audit_action ON logs_audit (action);
+    CREATE INDEX IF NOT EXISTS idx_logs_audit_utilisateur ON logs_audit (utilisateur);
   `);
 }
 

@@ -14,6 +14,7 @@ const {
   addPaiement, annulerPaiement, createFacture, updateFacture, cancelFacture, deleteFacture
 } = require('../invoiceService.js');
 const { anyRole, adminOnly, adminOrAccountant } = require('../authMiddleware.js');
+const { journaliser, ACTIONS } = require('../auditService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const {
   parseId, parsePositiveAmount, isValidDate,
@@ -90,7 +91,17 @@ module.exports = function factureRoutes(getDb) {
   }));
 
   router.put('/:id/cancel', adminOrAccountant(), asyncRoute(async (req, res) => {
-    res.json(await cancelFacture(getDb(), requireId(req)));
+    const id = requireId(req);
+    const facture = await cancelFacture(getDb(), id);
+
+    await journaliser(getDb(), req, {
+      action: ACTIONS.FACTURE_ANNULATION,
+      entite: 'facture',
+      entite_id: id,
+      details: { numero: facture.numero_facture, montant_total: facture.montant_total }
+    });
+
+    res.json(facture);
   }));
 
   /**
@@ -110,15 +121,38 @@ module.exports = function factureRoutes(getDb) {
     const paiementId = parseId(req.params.paiementId);
     if (!paiementId) throw httpError(400, 'Identifiant de paiement invalide.');
 
+    const motif = sanitizeText(req.body && req.body.motif, 300);
     const facture = await annulerPaiement(getDb(), paiementId, {
-      motif: sanitizeText(req.body && req.body.motif, 300),
+      motif,
       utilisateur: req.user && req.user.username
     });
+
+    await journaliser(getDb(), req, {
+      action: ACTIONS.PAIEMENT_ANNULATION,
+      entite: 'paiement',
+      entite_id: paiementId,
+      details: { facture: facture.numero_facture, facture_id: facture.id, motif: motif || null }
+    });
+
     res.json({ message: 'Paiement annulé.', facture });
   }));
 
   router.delete('/:id', adminOnly(), asyncRoute(async (req, res) => {
-    res.json(await deleteFacture(getDb(), requireId(req)));
+    const id = requireId(req);
+
+    // Le numéro est relevé avant la suppression : après, il n'existe plus rien
+    // à nommer, et une trace sans numéro de facture n'aide personne.
+    const avant = await getDb().get('SELECT numero_facture FROM factures WHERE id = ?', [id]);
+    const resultat = await deleteFacture(getDb(), id);
+
+    await journaliser(getDb(), req, {
+      action: ACTIONS.FACTURE_SUPPRESSION,
+      entite: 'facture',
+      entite_id: id,
+      details: { numero: avant ? avant.numero_facture : null }
+    });
+
+    res.json(resultat);
   }));
 
   /** Encaissement d'un paiement : opération de trésorerie, hors périmètre d'un employé. */

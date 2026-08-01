@@ -266,6 +266,37 @@ l'ancienne base. La base remplacée est conservée à côté sous
 `database.sqlite.avant-restauration-<horodatage>` : une restauration sur le
 mauvais fichier reste réversible.
 
+## Journal d'audit
+
+Les actions sensibles sont consignées dans `logs_audit` : annulation d'un
+encaissement, annulation ou suppression d'une facture, suppression d'une note de
+crédit, modification d'un client, **changement des taux de taxe**, création,
+modification ou suppression d'un compte, changement d'identifiants,
+restauration d'une sauvegarde.
+
+Chaque entrée porte l'horodatage, l'auteur, son rôle et l'écart constaté —
+uniquement les champs qui ont changé, sous la forme « avant → après ».
+
+**En ajout seul, garanti par la base.** Deux déclencheurs SQLite refusent tout
+`UPDATE` et tout `DELETE` sur la table : la garantie ne repose pas sur l'absence
+de route, mais sur un refus de SQLite quel que soit le chemin emprunté. Un
+journal réécrivable ne prouverait rien. En contrepartie, le journal ne se purge
+pas — c'est le bon défaut pour une piste d'audit comptable, et le volume reste
+modeste puisque seules les actions sensibles y entrent.
+
+Deux règles sur le contenu : aucun secret n'y figure (mots de passe et
+empreintes sont remplacés par une mention), et le logo d'entreprise en est
+exclu — c'est un data-URI de plusieurs mégaoctets, sans portée comptable.
+
+La consultation se fait depuis l'onglet **Journal**, ouvert à l'administration
+et à la comptabilité, avec filtres par action, auteur et période. La pagination
+est faite par le serveur, contrairement aux autres écrans de liste : le journal
+est la seule table qui ne fait que croître.
+
+Écrire au journal ne peut pas faire échouer l'action métier : refuser d'annuler
+un encaissement saisi à tort serait plus dommageable que de perdre une ligne de
+trace. Un échec part en erreur console.
+
 ## Tests
 
 ```bash

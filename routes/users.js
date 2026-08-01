@@ -6,6 +6,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 
 const { adminOnly, ROLES } = require('../authMiddleware.js');
+const { journaliser, ACTIONS } = require('../auditService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { parseId, sanitizeText } = require('../validators.js');
 const { MIN_PASSWORD_LENGTH } = require('./auth.js');
@@ -44,6 +45,13 @@ module.exports = function userRoutes(getDb) {
       'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
       [username, hash, role]
     );
+    await journaliser(db, req, {
+      action: ACTIONS.UTILISATEUR_CREATION,
+      entite: 'utilisateur',
+      entite_id: result.lastID,
+      details: { username, role }
+    });
+
     res.status(201).json({ id: result.lastID, username, role });
   }));
 
@@ -81,6 +89,17 @@ module.exports = function userRoutes(getDb) {
       await db.run('UPDATE users SET username = ?, role = ? WHERE id = ?', [username, role, id]);
     }
 
+    await journaliser(db, req, {
+      action: ACTIONS.UTILISATEUR_MODIFICATION,
+      entite: 'utilisateur',
+      entite_id: id,
+      details: {
+        username: cible.username === username ? username : { avant: cible.username, apres: username },
+        role: cible.role === role ? role : { avant: cible.role, apres: role },
+        mot_de_passe_change: Boolean(req.body.password)
+      }
+    });
+
     res.json({ id, username, role });
   }));
 
@@ -89,7 +108,9 @@ module.exports = function userRoutes(getDb) {
     const id = parseId(req.params.id);
     if (!id) throw httpError(400, 'Identifiant invalide.');
 
-    const cible = await db.get('SELECT id, role FROM users WHERE id = ?', [id]);
+    // Le nom est relevé avant la suppression : ensuite il n'existe plus, et une
+    // trace qui ne nomme pas le compte supprimé n'apprend rien.
+    const cible = await db.get('SELECT id, username, role FROM users WHERE id = ?', [id]);
     if (!cible) throw httpError(404, 'Utilisateur non trouvé.');
 
     if (cible.id === req.user.sub) {
@@ -101,6 +122,14 @@ module.exports = function userRoutes(getDb) {
     }
 
     await db.run('DELETE FROM users WHERE id = ?', [id]);
+
+    await journaliser(db, req, {
+      action: ACTIONS.UTILISATEUR_SUPPRESSION,
+      entite: 'utilisateur',
+      entite_id: id,
+      details: { username: cible.username, role: cible.role }
+    });
+
     res.json({ success: true });
   }));
 

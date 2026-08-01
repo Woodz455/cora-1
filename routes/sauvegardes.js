@@ -8,6 +8,7 @@
 const express = require('express');
 
 const { adminOnly } = require('../authMiddleware.js');
+const { journaliser, ACTIONS } = require('../auditService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const {
   lireReglages,
@@ -96,6 +97,15 @@ module.exports = function sauvegardeRoutes(getDb) {
     if (!cible) throw httpError(404, 'Cette sauvegarde est introuvable.');
 
     await demanderRestauration(cible.chemin);
+
+    // Consigné avant le redémarrage : après restauration, la base ne contiendra
+    // plus que ce que la sauvegarde portait, et cette ligne disparaîtrait. La
+    // trace subsiste donc dans la base de secours conservée à côté.
+    await journaliser(getDb(), req, {
+      action: ACTIONS.SAUVEGARDE_RESTAURATION,
+      entite: 'sauvegarde',
+      details: { sauvegarde: cible.nom, datee_du: cible.date }
+    });
 
     res.json({
       message: "La restauration s'appliquera au redémarrage. La base actuelle sera conservée à côté, au cas où.",

@@ -411,3 +411,24 @@ test('le nombre de sauvegardes conservées est validé', async (t) => {
   const settings = await api.get('/api/settings');
   assert.equal(settings.data.sauvegarde_retention, 7);
 });
+
+test('enregistrer les paramètres sans mentionner les sauvegardes ne les désactive pas', async (t) => {
+  const api = await avecAdmin(t);
+
+  // `body.x ? 1 : 0` traitait l'absence comme une désactivation : un client qui
+  // ignorait ce réglage coupait les sauvegardes automatiques à son insu.
+  const res = await api.put('/api/settings', {
+    entreprise_nom: 'Sans mention', taxe_1_taux: 0.05, taxe_2_taux: 0.09975
+  });
+  assert.equal(res.status, 200, JSON.stringify(res.data));
+
+  const settings = await api.db.get('SELECT sauvegarde_active, relances_actives FROM settings LIMIT 1');
+  assert.equal(settings.sauvegarde_active, 1, 'les sauvegardes doivent rester actives');
+
+  // Et une désactivation explicite reste bien prise en compte.
+  await api.put('/api/settings', {
+    entreprise_nom: 'Sans mention', taxe_1_taux: 0.05, taxe_2_taux: 0.09975, sauvegarde_active: 0
+  });
+  const apres = await api.db.get('SELECT sauvegarde_active FROM settings LIMIT 1');
+  assert.equal(apres.sauvegarde_active, 0);
+});

@@ -9,6 +9,7 @@ import CatalogueList from './components/CatalogueList';
 import ExpenseList from './components/ExpenseList';
 import BankReconciliation from './components/BankReconciliation';
 import SubscriptionList from './components/SubscriptionList';
+import AuditLog from './components/AuditLog';
 import { UserContext } from './UserContext';
 
 // Ces deux écrans embarquent la bibliothèque de graphiques : ils sont chargés à
@@ -29,7 +30,8 @@ import {
   LogOut,
   CreditCard,
   Landmark,
-  Repeat
+  Repeat,
+  ScrollText
 } from 'lucide-react';
 
 /**
@@ -116,6 +118,15 @@ const VUES = [
     titre: 'Rapports',
     sousTitre: 'Statistiques et performances financières',
     composant: ReportDashboard,
+    roles: ['admin', 'comptable']
+  },
+  {
+    id: 'audit',
+    libelle: 'Journal',
+    icone: ScrollText,
+    titre: "Journal d'audit",
+    sousTitre: 'Qui a fait quoi, et quand',
+    composant: AuditLog,
     roles: ['admin', 'comptable']
   },
   {

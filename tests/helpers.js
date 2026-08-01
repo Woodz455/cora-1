@@ -104,7 +104,10 @@ async function startTestServer() {
     get: (url, options) => request('GET', url, undefined, options),
     post: (url, body, options) => request('POST', url, body, options),
     put: (url, body, options) => request('PUT', url, body, options),
-    del: (url, options) => request('DELETE', url, undefined, options),
+    // Un DELETE peut porter un corps — l'annulation d'un paiement transmet son
+    // motif — et le client réel en envoie un (`client/src/api.js`). L'ignorer
+    // ici faisait croire à des tests qu'ils vérifiaient un motif jamais transmis.
+    del: (url, body, options) => request('DELETE', url, body, options),
     setCookie: (value) => { cookie = value; },
     clearCookie: () => { cookie = ''; },
     async close() {
