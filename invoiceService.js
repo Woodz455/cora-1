@@ -783,6 +783,89 @@ async function getRegistreEncaissements(db, periode = {}) {
   `, params);
 }
 
+/**
+ * Tranches de la balance âgée, en jours de retard.
+ *
+ * Les bornes sont inclusives des deux côtés : un retard de 30 jours appartient
+ * à « 1-30 », un retard de 31 bascule dans « 31-60 ». Se tromper d'un jour
+ * déplace des milliers de dollars d'une colonne à l'autre sous les yeux du
+ * dirigeant.
+ */
+const TRANCHES_AGE = [
+  { cle: 'non_echu', libelle: 'Non échu', min: null, max: 0 },
+  { cle: 'jours_1_30', libelle: '1 à 30 jours', min: 1, max: 30 },
+  { cle: 'jours_31_60', libelle: '31 à 60 jours', min: 31, max: 60 },
+  { cle: 'jours_61_90', libelle: '61 à 90 jours', min: 61, max: 90 },
+  { cle: 'jours_91_plus', libelle: '91 jours et plus', min: 91, max: null }
+];
+
+/**
+ * Balance âgée des comptes clients.
+ *
+ * Le rapport le plus regardé par un dirigeant : qui doit de l'argent, et depuis
+ * combien de temps. `getReportStats` donnait un solde global à percevoir sans
+ * jamais le ventiler par ancienneté.
+ *
+ * @param {import('sqlite').Database} db
+ * @param {string} [aujourdhui] date de référence AAAA-MM-JJ, pour les tests
+ */
+async function getBalanceAgee(db, aujourdhui = new Date().toISOString().split('T')[0]) {
+  // Le retard se calcule en jours entiers depuis l'échéance ; `julianday`
+  // évite les pièges de fuseau d'un calcul fait côté JavaScript.
+  const RETARD = "CAST(julianday(?) - julianday(f.date_echeance) AS INTEGER)";
+
+  const lignes = await db.all(`
+    ${CTE_TOTAUX}
+    SELECT
+      c.id AS client_id,
+      c.nom_entreprise AS client,
+      f.numero_facture,
+      f.date_echeance,
+      ${RETARD} AS retard,
+      ROUND(${SOLDE} * ${TAUX}, 2) AS solde_cad
+    FROM factures f
+    JOIN clients c ON c.id = f.client_id
+    ${JOINTURES_FINANCIERES}
+    WHERE f.statut != '${STATUTS.ANNULEE}' AND ${SOLDE} > 0
+    ORDER BY c.nom_entreprise ASC, f.date_echeance ASC
+  `, [aujourdhui]);
+
+  /** Range un retard dans sa tranche. */
+  const trancheDe = (retard) => TRANCHES_AGE.find(({ min, max }) => (
+    (min === null || retard >= min) && (max === null || retard <= max)
+  ));
+
+  const parClient = new Map();
+  const totaux = Object.fromEntries(TRANCHES_AGE.map((t) => [t.cle, 0]));
+  let totalGeneral = 0;
+
+  for (const ligne of lignes) {
+    if (!parClient.has(ligne.client_id)) {
+      parClient.set(ligne.client_id, {
+        client_id: ligne.client_id,
+        client: ligne.client,
+        total: 0,
+        ...Object.fromEntries(TRANCHES_AGE.map((t) => [t.cle, 0]))
+      });
+    }
+
+    const entree = parClient.get(ligne.client_id);
+    const tranche = trancheDe(ligne.retard);
+
+    entree[tranche.cle] = roundCents(entree[tranche.cle] + ligne.solde_cad);
+    entree.total = roundCents(entree.total + ligne.solde_cad);
+    totaux[tranche.cle] = roundCents(totaux[tranche.cle] + ligne.solde_cad);
+    totalGeneral = roundCents(totalGeneral + ligne.solde_cad);
+  }
+
+  return {
+    date_reference: aujourdhui,
+    tranches: TRANCHES_AGE.map(({ cle, libelle }) => ({ cle, libelle })),
+    clients: [...parClient.values()].sort((a, b) => b.total - a.total),
+    totaux: { ...totaux, total: totalGeneral }
+  };
+}
+
 async function getTaxReport(db, annee, mois) {
   let where = `WHERE f.statut != '${STATUTS.ANNULEE}'`;
   const params = [];
@@ -897,6 +980,8 @@ module.exports = {
   getTaxReport,
   getRegistreVentes,
   getRegistreEncaissements,
+  getBalanceAgee,
+  TRANCHES_AGE,
   clausesPeriode,
   getTaxRatesForProvince,
   resolveStatut,

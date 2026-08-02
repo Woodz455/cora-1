@@ -31,6 +31,7 @@ function Carte({ titre, valeur, couleur, aide }) {
 function ReportDashboard() {
   const [stats, setStats] = useState(null);
   const [taxStats, setTaxStats] = useState(null);
+  const [balance, setBalance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -44,6 +45,13 @@ function ReportDashboard() {
       .then((data) => { if (!annule) setStats(data); })
       .catch((err) => { if (!annule) setError(err.message); })
       .finally(() => { if (!annule) setLoading(false); });
+
+    // La balance âgée est indépendante de la période : elle décrit ce qui est
+    // dû aujourd'hui, pas ce qui a été facturé sur un exercice.
+    api.get('/api/rapports/balance-agee')
+      .then((data) => { if (!annule) setBalance(data); })
+      .catch(() => {});
+
     return () => { annule = true; };
   }, []);
 
@@ -91,6 +99,71 @@ function ReportDashboard() {
           🇨🇦 Tous les montants sont consolidés en dollars canadiens
         </span>
       </div>
+
+      {balance && balance.clients.length > 0 && (
+        <div className="glass-panel" style={{ padding: '25px', marginTop: '30px' }}>
+          <div className="toolbar">
+            <div>
+              <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
+                ⏳ Balance âgée
+                <InfoTooltip text="Répartition de ce qui vous est dû selon l'ancienneté du retard. Plus une créance vieillit, moins elle a de chances d'être recouvrée." />
+              </h3>
+              <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                Au {new Date(balance.date_reference).toLocaleDateString('fr-CA')}
+              </p>
+            </div>
+            <a className="btn-secondary" href="/api/rapports/export/balance-agee" download>
+              Exporter en CSV
+            </a>
+          </div>
+
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  {balance.tranches.map((t) => (
+                    <th key={t.cle} style={{ textAlign: 'right' }}>{t.libelle}</th>
+                  ))}
+                  <th style={{ textAlign: 'right' }}>Total dû</th>
+                </tr>
+              </thead>
+              <tbody>
+                {balance.clients.map((c) => (
+                  <tr key={c.client_id}>
+                    <td>{c.client}</td>
+                    {balance.tranches.map((t) => (
+                      <td
+                        key={t.cle}
+                        style={{
+                          textAlign: 'right',
+                          // Le retard le plus ancien est celui qui doit sauter aux yeux.
+                          color: t.cle === 'jours_91_plus' && c[t.cle] > 0
+                            ? 'var(--status-danger)' : 'inherit'
+                        }}
+                      >
+                        {c[t.cle] > 0 ? formatMontant(c[t.cle]) : '—'}
+                      </td>
+                    ))}
+                    <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatMontant(c.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr style={{ fontWeight: 700, borderTop: '2px solid var(--glass-border)' }}>
+                  <td>Total</td>
+                  {balance.tranches.map((t) => (
+                    <td key={t.cle} style={{ textAlign: 'right' }}>
+                      {formatMontant(balance.totaux[t.cle])}
+                    </td>
+                  ))}
+                  <td style={{ textAlign: 'right' }}>{formatMontant(balance.totaux.total)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="glass-panel" style={{ padding: '20px', marginTop: '25px' }}>
         <div className="toolbar">

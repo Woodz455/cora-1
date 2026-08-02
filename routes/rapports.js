@@ -6,7 +6,7 @@ const express = require('express');
 
 const {
   getReportStats, getDashboardStats, getTaxReport,
-  getRegistreVentes, getRegistreEncaissements
+  getRegistreVentes, getRegistreEncaissements, getBalanceAgee
 } = require('../invoiceService.js');
 const { anyRole, adminOrAccountant } = require('../authMiddleware.js');
 const { versCSV, nomFichier } = require('../exportService.js');
@@ -43,6 +43,16 @@ const COLONNES_ENCAISSEMENTS = [
   { cle: 'client', titre: 'Client' },
   { cle: 'origine', titre: 'Origine' },
   { cle: 'note', titre: 'Note' }
+];
+
+const COLONNES_BALANCE = [
+  { cle: 'client', titre: 'Client' },
+  { cle: 'non_echu', titre: 'Non échu', type: 'montant' },
+  { cle: 'jours_1_30', titre: '1 à 30 jours', type: 'montant' },
+  { cle: 'jours_31_60', titre: '31 à 60 jours', type: 'montant' },
+  { cle: 'jours_61_90', titre: '61 à 90 jours', type: 'montant' },
+  { cle: 'jours_91_plus', titre: '91 jours et plus', type: 'montant' },
+  { cle: 'total', titre: 'Total dû', type: 'montant' }
 ];
 
 /** Valide et normalise une période de filtre. */
@@ -85,6 +95,13 @@ module.exports = function rapportRoutes(getDb) {
   }));
 
   /**
+   * Balance âgée des comptes clients : qui doit de l'argent, et depuis quand.
+   */
+  router.get('/rapports/balance-agee', adminOrAccountant(), asyncRoute(async (req, res) => {
+    res.json(await getBalanceAgee(getDb()));
+  }));
+
+  /**
    * Registres exportables vers le logiciel du comptable.
    *
    * La réponse est un téléchargement et non du JSON : `Content-Disposition`
@@ -100,6 +117,20 @@ module.exports = function rapportRoutes(getDb) {
       res.send(versCSV(colonnes, lignes));
     }));
   };
+
+  /** La balance âgée s'exporte comme les registres, sans filtre de période. */
+  router.get('/rapports/export/balance-agee', adminOrAccountant(), asyncRoute(async (req, res) => {
+    const balance = await getBalanceAgee(getDb());
+    const lignes = [
+      ...balance.clients,
+      // Ligne de totaux, attendue en bas d'un tel tableau.
+      { client: 'TOTAL', ...balance.totaux }
+    ];
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${nomFichier('balance-agee')}"`);
+    res.send(versCSV(COLONNES_BALANCE, lignes));
+  }));
 
   registre('/rapports/export/ventes', 'registre-ventes', COLONNES_VENTES, getRegistreVentes);
   registre(

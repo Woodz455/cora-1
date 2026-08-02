@@ -266,6 +266,23 @@ l'ancienne base. La base remplacée est conservée à côté sous
 `database.sqlite.avant-restauration-<horodatage>` : une restauration sur le
 mauvais fichier reste réversible.
 
+## Balance âgée
+
+Écran Rapports : ce qui vous est dû, ventilé par ancienneté du retard — non
+échu, 1 à 30, 31 à 60, 61 à 90, 91 jours et plus — par client puis en total,
+exportable en CSV.
+
+Les bornes sont inclusives des deux côtés : un retard de 30 jours appartient à
+« 1 à 30 », un retard de 31 bascule dans la tranche suivante. Le retard se
+calcule en jours entiers depuis l'échéance, par `julianday` côté base, pour
+éviter les décalages de fuseau d'un calcul fait au navigateur.
+
+Le solde retenu est **net des paiements et des notes de crédit**, converti en
+dollars canadiens, et exclut les factures annulées comme les paiements annulés :
+la balance emprunte les mêmes expressions SQL que les écrans de facturation, et
+son total doit donc toujours égaler le « Reste à percevoir » de la vue
+d'ensemble.
+
 ## Registres pour le comptable
 
 Deux exports CSV depuis l'écran Rapports, suivant la période sélectionnée :
