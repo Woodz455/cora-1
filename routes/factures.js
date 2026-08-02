@@ -36,10 +36,16 @@ function parseFacturePayload(body, { requireDateEmission }) {
   if (requireDateEmission && !isValidDate(body.date_emission)) {
     throw httpError(400, "La date d'émission est requise (format AAAA-MM-JJ).");
   }
-  if (!isValidDate(body.date_echeance)) {
-    throw httpError(400, "La date d'échéance est requise (format AAAA-MM-JJ).");
+  // Une échéance absente n'est plus une erreur : le service la déduit du terme
+  // convenu avec le client. Une valeur fournie reste prioritaire, et doit être
+  // une date valide — un champ mal saisi ne doit pas passer pour une omission.
+  const echeanceFournie = body.date_echeance !== undefined
+    && body.date_echeance !== null && body.date_echeance !== '';
+
+  if (echeanceFournie && !isValidDate(body.date_echeance)) {
+    throw httpError(400, "La date d'échéance est invalide (format AAAA-MM-JJ).");
   }
-  if (requireDateEmission && body.date_echeance < body.date_emission) {
+  if (requireDateEmission && echeanceFournie && body.date_echeance < body.date_emission) {
     throw httpError(400, "La date d'échéance ne peut pas précéder la date d'émission.");
   }
 
@@ -52,7 +58,7 @@ function parseFacturePayload(body, { requireDateEmission }) {
   return {
     client_id,
     date_emission: body.date_emission,
-    date_echeance: body.date_echeance,
+    date_echeance: echeanceFournie ? body.date_echeance : null,
     devise: devise.devise,
     taux_change: devise.taux_change,
     lignes: lignes.lignes

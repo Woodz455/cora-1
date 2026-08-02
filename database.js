@@ -288,6 +288,12 @@ async function runMigrations(db) {
   await addColumn(db, 'paiements', 'transaction_id', 'INTEGER');
   await rattacherPaiementsAuxTransactions(db);
 
+  // Conditions de paiement : le terme est convenu avec le client, puis figé sur
+  // chaque facture émise — au même titre que les taux de taxe, pour qu'un
+  // changement de terme ne rétroagisse pas sur des documents déjà remis.
+  await addColumn(db, 'clients', 'conditions_paiement', "TEXT DEFAULT 'net30'");
+  await addColumn(db, 'factures', 'conditions_paiement', "TEXT DEFAULT 'net30'");
+
   // Sauvegardes automatiques : actives par défaut, contrairement aux relances.
   // Une copie de sécurité ne part vers personne et ne coûte rien à l'utilisateur ;
   // c'est son absence qui serait un choix par défaut discutable.

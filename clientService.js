@@ -35,8 +35,10 @@ async function getClients(db, recherche) {
  */
 async function createClient(db, client) {
   const result = await db.run(
-    'INSERT INTO clients (nom_entreprise, nom_contact, email, adresse, langue, province) VALUES (?, ?, ?, ?, ?, ?)',
-    [client.nom_entreprise, client.nom_contact, client.email, client.adresse, client.langue, client.province]
+    `INSERT INTO clients (nom_entreprise, nom_contact, email, adresse, langue, province, conditions_paiement)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [client.nom_entreprise, client.nom_contact, client.email, client.adresse,
+      client.langue, client.province, client.conditions_paiement]
   );
   return db.get('SELECT * FROM clients WHERE id = ?', [result.lastID]);
 }
@@ -54,8 +56,11 @@ async function updateClient(db, id, client) {
   }
 
   await db.run(
-    'UPDATE clients SET nom_entreprise = ?, nom_contact = ?, email = ?, adresse = ?, langue = ?, province = ? WHERE id = ?',
-    [client.nom_entreprise, client.nom_contact, client.email, client.adresse, client.langue, client.province, id]
+    `UPDATE clients SET nom_entreprise = ?, nom_contact = ?, email = ?, adresse = ?,
+                       langue = ?, province = ?, conditions_paiement = ?
+     WHERE id = ?`,
+    [client.nom_entreprise, client.nom_contact, client.email, client.adresse,
+      client.langue, client.province, client.conditions_paiement, id]
   );
   return db.get('SELECT * FROM clients WHERE id = ?', [id]);
 }

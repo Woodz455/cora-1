@@ -11,7 +11,12 @@ const { asyncRoute, httpError } = require('../httpUtils.js');
 const { parseId, sanitizeText, validateClient } = require('../validators.js');
 
 /** Champs dont la modification mérite une trace. */
-const CHAMPS_SUIVIS = ['nom_entreprise', 'nom_contact', 'email', 'adresse', 'langue', 'province'];
+const CHAMPS_SUIVIS = [
+  'nom_entreprise', 'nom_contact', 'email', 'adresse', 'langue', 'province',
+  // Le terme conditionne l'échéance des factures à venir : le voir changer sans
+  // savoir qui l'a fait poserait exactement le problème que le journal résout.
+  'conditions_paiement'
+];
 
 module.exports = function clientRoutes(getDb) {
   const router = express.Router();

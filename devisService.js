@@ -14,9 +14,6 @@ const STATUTS = {
   CONVERTI: 'Converti'
 };
 
-/** Nombre de jours accordés au paiement d'une facture issue d'un devis. */
-const DELAI_PAIEMENT_JOURS = 30;
-
 /**
  * Comme pour les factures, les montants d'un devis sont arrêtés à l'émission :
  * le montant accepté par le client ne doit pas bouger ensuite.
@@ -232,15 +229,14 @@ async function convertDevisToFacture(db, devisId) {
       throw Object.assign(new Error('Un devis sans ligne ne peut pas être converti.'), { status: 400 });
     }
 
-    const dateEmission = new Date();
-    const dateEcheance = new Date(dateEmission);
-    dateEcheance.setDate(dateEcheance.getDate() + DELAI_PAIEMENT_JOURS);
-    const iso = (d) => d.toISOString().split('T')[0];
+    // La facture est émise au jour de la conversion. Son échéance découle du
+    // terme convenu avec le client, et non plus d'un délai de trente jours
+    // imposé à tous indistinctement.
+    const dateEmission = new Date().toISOString().split('T')[0];
 
     const facture = await createFacture(db, {
       client_id: devis.client_id,
-      date_emission: iso(dateEmission),
-      date_echeance: iso(dateEcheance),
+      date_emission: dateEmission,
       devise: devis.devise || 'CAD',
       taux_change: devis.taux_change || 1.0
     }, lignes);

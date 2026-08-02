@@ -266,6 +266,23 @@ l'ancienne base. La base remplacée est conservée à côté sous
 `database.sqlite.avant-restauration-<horodatage>` : une restauration sur le
 mauvais fichier reste réversible.
 
+## Conditions de paiement
+
+Chaque client porte un terme — payable sur réception, Net 15, Net 30, Net 60 —
+qui détermine l'échéance des factures émises pour lui. Net 30 par défaut.
+
+Le terme est **figé sur la facture à l'émission**, au même titre que les taux de
+taxe : changer les conditions d'un client ne déplace jamais l'échéance d'un
+document déjà remis. La date reste modifiable au cas par cas, pour un accord
+ponctuel, sans toucher à la fiche du client.
+
+La conversion d'un devis applique elle aussi le terme du client, là où elle
+imposait trente jours à tous indistinctement.
+
+Le calcul d'échéance raisonne en UTC des deux côtés (`paymentTerms.js` et
+`client/src/api.js`) : un décalage de fuseau ferait basculer la date d'un jour,
+et fausserait du même coup les relances et la balance âgée, qui en dépendent.
+
 ## Balance âgée
 
 Écran Rapports : ce qui vous est dû, ventilé par ancienneté du retard — non

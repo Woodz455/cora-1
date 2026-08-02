@@ -5,6 +5,7 @@
 const { roundCents, computeTotals, formatMontant } = require('./money.js');
 const { withTransaction } = require('./dbUtils.js');
 const { nextDocumentNumber } = require('./sequences.js');
+const { normaliserCondition, calculerEcheance, CONDITION_DEFAUT } = require('./paymentTerms.js');
 
 /** Statuts possibles d'une facture. */
 const STATUTS = {
@@ -138,6 +139,7 @@ async function getFacturesAvecSoldes(db) {
       f.taux_taxe_2,
       f.taxe_1_nom,
       f.taxe_2_nom,
+      f.conditions_paiement,
       ${COLONNES_FINANCIERES}
     FROM factures f
     JOIN clients c ON f.client_id = c.id
@@ -166,6 +168,7 @@ async function getSoldeFacture(db, factureId) {
       f.taux_taxe_2,
       f.taxe_1_nom,
       f.taxe_2_nom,
+      f.conditions_paiement,
       ${COLONNES_FINANCIERES}
     FROM factures f
     ${JOINTURES_FINANCIERES}
@@ -445,13 +448,25 @@ async function generateInvoiceNumber(db, dateStr) {
  * @returns {Promise<Object>} facture créée, avec ses montants
  */
 async function createFacture(db, factureData, lignes) {
-  const { client_id, date_emission, date_echeance, devise = 'CAD', taux_change = 1.0 } = factureData;
+  const { client_id, date_emission, devise = 'CAD', taux_change = 1.0 } = factureData;
 
   return withTransaction(db, async () => {
-    const client = await db.get('SELECT id, province FROM clients WHERE id = ?', [client_id]);
+    const client = await db.get(
+      'SELECT id, province, conditions_paiement FROM clients WHERE id = ?', [client_id]
+    );
     if (!client) {
       throw Object.assign(new Error('Client introuvable.'), { status: 400 });
     }
+
+    // Le terme est celui de la fiche client, sauf mention explicite sur la
+    // facture. Il est figé ici, comme les taux de taxe : changer les conditions
+    // d'un client ne doit pas déplacer l'échéance de documents déjà remis.
+    const conditions = normaliserCondition(
+      factureData.conditions_paiement || client.conditions_paiement || CONDITION_DEFAUT
+    );
+    // Une échéance transmise explicitement l'emporte : la saisie manuelle reste
+    // possible pour un accord ponctuel.
+    const date_echeance = factureData.date_echeance || calculerEcheance(date_emission, conditions);
 
     const taxes = getTaxRatesForProvince(client.province);
     const numero_facture = await generateInvoiceNumber(db, date_emission);
@@ -462,10 +477,12 @@ async function createFacture(db, factureData, lignes) {
     const result = await db.run(
       `INSERT INTO factures (numero_facture, client_id, date_emission, date_echeance, statut,
                              taux_taxe_1, taux_taxe_2, taxe_1_nom, taxe_2_nom, devise, taux_change,
+                             conditions_paiement,
                              sous_total, montant_taxe_1, montant_taxe_2, montant_total)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [numero_facture, client_id, date_emission, date_echeance, STATUTS.EN_ATTENTE,
         taxes.taxe_1_taux, taxes.taxe_2_taux, taxes.taxe_1_nom, taxes.taxe_2_nom, devise, taux_change,
+        conditions,
         montants.sous_total, montants.taxe_1, montants.taxe_2, montants.montant_total]
     );
     const factureId = result.lastID;
@@ -552,7 +569,7 @@ async function cancelFacture(db, factureId) {
 
 /** Modifie une facture. Interdit dès qu'un paiement a été encaissé. */
 async function updateFacture(db, factureId, factureData, lignes) {
-  const { client_id, date_echeance, devise = 'CAD', taux_change = 1.0 } = factureData;
+  const { client_id, devise = 'CAD', taux_change = 1.0 } = factureData;
 
   return withTransaction(db, async () => {
     const facture = await getSoldeFacture(db, factureId);
@@ -583,6 +600,11 @@ async function updateFacture(db, factureId, factureData, lignes) {
 
     // La facture n'a pas encore été encaissée : ses montants sont réarrêtés.
     const montants = computeTotals(lignes, taxes.taxe_1_taux, taxes.taxe_2_taux);
+
+    // Une échéance absente laisse celle en place : la colonne est NOT NULL, et
+    // une modification qui ne porte pas sur la date ne doit pas l'effacer.
+    const existante = await db.get('SELECT date_echeance FROM factures WHERE id = ?', [factureId]);
+    const date_echeance = factureData.date_echeance || existante.date_echeance;
 
     await db.run(
       `UPDATE factures SET client_id = ?, date_echeance = ?, taux_taxe_1 = ?, taux_taxe_2 = ?,
