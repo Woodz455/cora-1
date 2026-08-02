@@ -44,6 +44,14 @@ function Setup({ onSetupComplete }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--app-bg)' }}>
       <div className="glass-panel" style={{ width: '450px', padding: '40px', textAlign: 'center' }}>
+        {/* Le tout premier écran qu'un client voit ne portait aucun logo,
+            contrairement à l'écran de connexion des fois suivantes. */}
+        <img
+          src="/banner.png"
+          alt=""
+          style={{ maxWidth: '100%', marginBottom: '30px' }}
+          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+        />
         <h1 style={{ color: 'var(--text-main)', marginBottom: '10px', fontSize: '1.6rem' }}>Bienvenue sur Clora</h1>
         <p style={{ color: 'var(--text-muted)', marginBottom: '30px', fontSize: '0.9rem' }}>
           Première utilisation : créez le compte administrateur qui protégera vos données.

@@ -50,9 +50,19 @@ certificat de signature de code payant ; le jour où l'on en dispose, il suffit
 de renseigner `CSC_LINK` et `CSC_KEY_PASSWORD` dans les secrets du dépôt, sans
 autre changement.
 
-**Icône.** `image/clora.ico` est produit par `npm run icone` à partir de
-`image/logo.png`. Le fichier est versionné : ne relancer la commande que si le
-logo change.
+**Visuels.** Tous les dérivés du logo sont produits par `npm run visuels` à
+partir de `image/clora-source.png`, l'œuvre d'origine : logotype détouré,
+symbole carré, et l'icône Windows `image/clora.ico` en sept tailles. Ils sont
+versionnés — ne relancer la commande que si le logo change.
+
+Le logo existe sous **deux formes**, et ce n'est pas une coquetterie. Le
+logotype large sert partout où la place le permet ; le symbole carré — la
+flèche verte — sert à l'icône Windows et à l'onglet du navigateur, qui sont
+carrés. Une icône s'affiche en 16 × 16 px dans la barre des tâches : un mot de
+750 px de large y serait illisible.
+
+Une variante éclaircie du logotype (`logotype-sombre.png`) prend le relais en
+thème sombre, où le bleu marine disparaîtrait sur le panneau foncé.
 
 ## Scripts
 
@@ -61,7 +71,7 @@ logo change.
 | `npm start` | Serveur et interface en mode développement |
 | `npm run electron:dev` | Application de bureau en mode développement |
 | `npm run build` | Compile l'interface et produit l'installateur (sous Windows) |
-| `npm run icone` | Régénère `image/clora.ico` depuis `image/logo.png` |
+| `npm run visuels` | Régénère logotype, symbole et icône depuis `image/clora-source.png` |
 | `npm test` | Suite de tests (calculs financiers, rôles, API) |
 | `npm run doctor` | Diagnostique les anomalies dans les données comptables |
 | `npm run doctor -- --corriger-statuts` | Réaligne le statut des factures sur leurs montants |

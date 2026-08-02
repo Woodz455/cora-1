@@ -254,15 +254,19 @@ function App() {
 
       <div style={{ display: 'flex', height: '100vh', backgroundColor: 'transparent', color: 'var(--text-main)' }}>
         <aside className="glass-panel" style={{ width: '260px', margin: '20px', padding: '30px 20px', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px', justifyContent: 'center' }}>
-            <img
-              src="/images/logo.png"
-              alt=""
-              style={{ width: '64px', height: '64px', objectFit: 'contain', backgroundColor: 'white', padding: '6px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-            />
-            <h1 style={{ fontSize: '1.5rem', margin: 0, fontWeight: '800' }}>
-              <span className="gradient-text">Clora</span>
+          {/* Le logotype écrit déjà « CLORA » : le doubler d'un titre textuel
+              affichait le nom deux fois, et l'écraser dans une vignette carrée
+              le rendait illisible. Il s'affiche donc à sa proportion propre. */}
+          <div style={{ marginBottom: '40px', padding: '0 10px' }}>
+            <h1 style={{ margin: 0, fontSize: 0, lineHeight: 0 }}>
+              {/* Le logotype est en bleu marine : sur le panneau sombre il
+                  disparaîtrait. Une variante éclaircie prend le relais. */}
+              <img
+                src={isDarkMode ? '/images/logotype-sombre.png' : '/images/logotype.png'}
+                alt="Clora"
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
             </h1>
           </div>
 
