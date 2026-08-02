@@ -733,9 +733,22 @@ function clausesPeriode(colonne, periode = {}) {
   if (periode.mois) {
     conditions.push(`strftime('%m', ${colonne}) = ?`);
     params.push(String(periode.mois).padStart(2, '0'));
+  } else if (periode.trimestre) {
+    // La TPS et la TVQ se déclarent le plus souvent par trimestre : sans ce
+    // filtre, préparer une remise obligeait à additionner trois rapports
+    // mensuels à la main.
+    const mois = moisDuTrimestre(periode.trimestre);
+    conditions.push(`strftime('%m', ${colonne}) IN (${mois.map(() => '?').join(', ')})`);
+    params.push(...mois);
   }
 
   return { conditions, params };
+}
+
+/** Les trois mois d'un trimestre, au format MM. */
+function moisDuTrimestre(trimestre) {
+  const premier = (Number(trimestre) - 1) * 3 + 1;
+  return [premier, premier + 1, premier + 2].map((m) => String(m).padStart(2, '0'));
 }
 
 /**
@@ -888,32 +901,26 @@ async function getBalanceAgee(db, aujourdhui = new Date().toISOString().split('T
   };
 }
 
-async function getTaxReport(db, annee, mois) {
+async function getTaxReport(db, annee, mois, trimestre) {
+  const periode = { annee, mois, trimestre };
+
+  // Les mêmes bornes que les registres : une déclaration et le registre qui la
+  // justifie doivent porter exactement sur la même période.
+  const facturesPeriode = clausesPeriode('f.date_emission', periode);
   let where = `WHERE f.statut != '${STATUTS.ANNULEE}'`;
   const params = [];
-  if (annee) {
-    where += " AND strftime('%Y', f.date_emission) = ?";
-    params.push(String(annee));
-  }
-  if (mois) {
-    where += " AND strftime('%m', f.date_emission) = ?";
-    params.push(String(mois).padStart(2, '0'));
-  }
+  for (const condition of facturesPeriode.conditions) where += ` AND ${condition}`;
+  params.push(...facturesPeriode.params);
 
   // Les notes de crédit annulent de la taxe déjà déclarée : elles entrent dans
   // le rapport en négatif, sur la période de leur propre émission. Sans cela,
   // l'entreprise remettrait à l'État une taxe qu'elle a remboursée au client.
   const NOTE_TAUX = 'COALESCE(n.taux_change, 1.0)';
+  const notesPeriode = clausesPeriode('n.date_emission', periode);
   let whereNotes = 'WHERE 1 = 1';
   const paramsNotes = [];
-  if (annee) {
-    whereNotes += " AND strftime('%Y', n.date_emission) = ?";
-    paramsNotes.push(String(annee));
-  }
-  if (mois) {
-    whereNotes += " AND strftime('%m', n.date_emission) = ?";
-    paramsNotes.push(String(mois).padStart(2, '0'));
-  }
+  for (const condition of notesPeriode.conditions) whereNotes += ` AND ${condition}`;
+  paramsNotes.push(...notesPeriode.params);
 
   const summary = await db.get(`
     SELECT
@@ -954,16 +961,11 @@ async function getTaxReport(db, annee, mois) {
     ORDER BY nom ASC
   `, [...params, ...params, ...paramsNotes, ...paramsNotes]);
 
+  const depensesPeriode = clausesPeriode('date_depense', periode);
   let depensesWhere = 'WHERE 1 = 1';
   const depensesParams = [];
-  if (annee) {
-    depensesWhere += " AND strftime('%Y', date_depense) = ?";
-    depensesParams.push(String(annee));
-  }
-  if (mois) {
-    depensesWhere += " AND strftime('%m', date_depense) = ?";
-    depensesParams.push(String(mois).padStart(2, '0'));
-  }
+  for (const condition of depensesPeriode.conditions) depensesWhere += ` AND ${condition}`;
+  depensesParams.push(...depensesPeriode.params);
 
   const depenses = await db.get(`
     SELECT
@@ -1005,6 +1007,7 @@ module.exports = {
   getBalanceAgee,
   TRANCHES_AGE,
   clausesPeriode,
+  moisDuTrimestre,
   getTaxRatesForProvince,
   resolveStatut,
   syncStatut,

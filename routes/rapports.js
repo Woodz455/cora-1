@@ -57,16 +57,24 @@ const COLONNES_BALANCE = [
 
 /** Valide et normalise une période de filtre. */
 function validerPeriode(query) {
-  const { annee, mois } = query;
+  const { annee, mois, trimestre } = query;
 
-  if (annee !== undefined && !/^\d{4}$/.test(String(annee))) {
+  if (annee !== undefined && annee !== '' && !/^\d{4}$/.test(String(annee))) {
     throw httpError(400, "L'année doit être au format AAAA.");
   }
   if (mois !== undefined && mois !== '' && !/^(0?[1-9]|1[0-2])$/.test(String(mois))) {
     throw httpError(400, 'Le mois doit être un nombre entre 1 et 12.');
   }
+  if (trimestre !== undefined && trimestre !== '' && !/^[1-4]$/.test(String(trimestre))) {
+    throw httpError(400, 'Le trimestre doit être un nombre entre 1 et 4.');
+  }
+  // Les deux ensemble décriraient une période contradictoire : mieux vaut le
+  // dire que de retenir silencieusement l'un des deux.
+  if (mois && trimestre) {
+    throw httpError(400, 'Indiquez un mois ou un trimestre, pas les deux.');
+  }
 
-  return { annee: annee || null, mois: mois || null };
+  return { annee: annee || null, mois: mois || null, trimestre: trimestre || null };
 }
 
 module.exports = function rapportRoutes(getDb) {
@@ -82,16 +90,8 @@ module.exports = function rapportRoutes(getDb) {
   }));
 
   router.get('/rapports/taxes', adminOrAccountant(), asyncRoute(async (req, res) => {
-    const { annee, mois } = req.query;
-
-    if (annee !== undefined && !/^\d{4}$/.test(String(annee))) {
-      throw httpError(400, "L'année doit être au format AAAA.");
-    }
-    if (mois !== undefined && !/^(0?[1-9]|1[0-2])$/.test(String(mois))) {
-      throw httpError(400, 'Le mois doit être un nombre entre 1 et 12.');
-    }
-
-    res.json(await getTaxReport(getDb(), annee, mois));
+    const { annee, mois, trimestre } = validerPeriode(req.query);
+    res.json(await getTaxReport(getDb(), annee, mois, trimestre));
   }));
 
   /**

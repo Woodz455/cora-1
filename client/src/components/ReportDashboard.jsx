@@ -38,6 +38,7 @@ function ReportDashboard() {
   const anneeCourante = new Date().getFullYear();
   const [annee, setAnnee] = useState(String(anneeCourante));
   const [mois, setMois] = useState('');
+  const [trimestre, setTrimestre] = useState('');
 
   useEffect(() => {
     let annule = false;
@@ -62,12 +63,13 @@ function ReportDashboard() {
     const params = new URLSearchParams();
     if (annee) params.set('annee', annee);
     if (mois) params.set('mois', mois);
+    else if (trimestre) params.set('trimestre', trimestre);
 
     api.get(`/api/rapports/taxes?${params.toString()}`)
       .then((data) => { if (!annule) setTaxStats(data); })
       .catch((err) => { if (!annule) setError(err.message); });
     return () => { annule = true; };
-  }, [annee, mois]);
+  }, [annee, mois, trimestre]);
 
   const anneesDisponibles = useMemo(() => {
     const annees = [];
@@ -88,6 +90,7 @@ function ReportDashboard() {
     const params = new URLSearchParams();
     if (annee) params.set('annee', annee);
     if (mois) params.set('mois', mois);
+    else if (trimestre) params.set('trimestre', trimestre);
     return `/api/rapports/export/${registre}?${params.toString()}`;
   };
 
@@ -289,7 +292,25 @@ function ReportDashboard() {
             <select className="search-input" style={{ minWidth: '120px' }} value={annee} onChange={(e) => setAnnee(e.target.value)} aria-label="Année">
               {anneesDisponibles.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
-            <select className="search-input" style={{ minWidth: '160px' }} value={mois} onChange={(e) => setMois(e.target.value)} aria-label="Mois">
+            {/* Trimestre et mois s'excluent : choisir l'un remet l'autre à
+                zéro, plutôt que de laisser l'écran décrire une période
+                contradictoire que le serveur refuserait. */}
+            <select
+              className="search-input" style={{ minWidth: '150px' }} value={trimestre}
+              onChange={(e) => { setTrimestre(e.target.value); if (e.target.value) setMois(''); }}
+              aria-label="Trimestre"
+            >
+              <option value="">Aucun trimestre</option>
+              <option value="1">T1 — janv. à mars</option>
+              <option value="2">T2 — avr. à juin</option>
+              <option value="3">T3 — juill. à sept.</option>
+              <option value="4">T4 — oct. à déc.</option>
+            </select>
+            <select
+              className="search-input" style={{ minWidth: '160px' }} value={mois}
+              onChange={(e) => { setMois(e.target.value); if (e.target.value) setTrimestre(''); }}
+              aria-label="Mois"
+            >
               <option value="">Toute l'année</option>
               {MOIS.map((nom, i) => (
                 <option key={nom} value={String(i + 1).padStart(2, '0')}>{nom}</option>

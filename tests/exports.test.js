@@ -219,3 +219,67 @@ test('une période invalide est refusée', async (t) => {
   assert.equal((await telecharger(api, '/api/rapports/export/ventes?annee=26')).statut, 400);
   assert.equal((await telecharger(api, '/api/rapports/export/ventes?mois=13')).statut, 400);
 });
+
+/* --- Filtre trimestriel --- */
+
+test('un trimestre couvre bien ses trois mois', async (t) => {
+  const api = await avecAdmin(t);
+  const clientId = await insertClient(api.db, { nom: 'Client' });
+
+  // Un document par mois de l'année, pour vérifier les bornes du découpage.
+  const numeros = {};
+  for (let m = 1; m <= 12; m += 1) {
+    const mm = String(m).padStart(2, '0');
+    const f = await creerFacture(api, clientId, {
+      date_emission: `2026-${mm}-15`, date_echeance: `2026-${mm}-28`, prix: m * 10
+    });
+    numeros[mm] = f.numero_facture;
+  }
+
+  const { texte } = await telecharger(api, '/api/rapports/export/ventes?annee=2026&trimestre=1');
+  const lignes = analyser(texte);
+
+  assert.equal(lignes.length, 4, 'trois factures, plus l\'en-tête');
+  for (const mm of ['01', '02', '03']) {
+    assert.ok(texte.includes(numeros[mm]), `${mm} doit figurer au T1`);
+  }
+  for (const mm of ['04', '12']) {
+    assert.ok(!texte.includes(numeros[mm]), `${mm} ne doit pas figurer au T1`);
+  }
+});
+
+test('le rapport de taxes trimestriel égale la somme de ses trois mois', async (t) => {
+  const api = await avecAdmin(t);
+  const clientId = await insertClient(api.db, { nom: 'Client', province: 'QC' });
+
+  for (const mm of ['07', '08', '09']) {
+    await creerFacture(api, clientId, {
+      date_emission: `2026-${mm}-10`, date_echeance: `2026-${mm}-28`, prix: 100
+    });
+  }
+
+  const t3 = await api.get('/api/rapports/taxes?annee=2026&trimestre=3');
+  assert.equal(t3.status, 200, JSON.stringify(t3.data));
+
+  let sommeMensuelle = 0;
+  for (const mm of ['07', '08', '09']) {
+    const m = await api.get(`/api/rapports/taxes?annee=2026&mois=${mm}`);
+    sommeMensuelle += m.data.taxes_facturees;
+  }
+
+  // Une remise trimestrielle doit valoir exactement les trois déclarations
+  // mensuelles qu'elle remplace, sans quoi l'entreprise remettrait un montant
+  // faux à Revenu Québec.
+  assert.equal(t3.data.taxes_facturees, Math.round(sommeMensuelle * 100) / 100);
+  assert.ok(t3.data.taxes_facturees > 0, 'le trimestre ne doit pas être vide');
+});
+
+test('trimestre et mois ensemble sont refusés', async (t) => {
+  const api = await avecAdmin(t);
+
+  const res = await api.get('/api/rapports/taxes?annee=2026&mois=07&trimestre=3');
+
+  assert.equal(res.status, 400);
+  assert.match(res.data.error, /mois ou un trimestre/);
+  assert.equal((await api.get('/api/rapports/taxes?trimestre=5')).status, 400);
+});
