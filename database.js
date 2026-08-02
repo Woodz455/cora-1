@@ -301,6 +301,10 @@ async function runMigrations(db) {
   await addColumn(db, 'settings', 'sauvegarde_dossier', 'TEXT');
   await addColumn(db, 'settings', 'sauvegarde_retention', 'INTEGER DEFAULT 30');
 
+  // Vérification des mises à jour : c'est le seul appel sortant de
+  // l'application, et le couper doit rester possible.
+  await addColumn(db, 'settings', 'verifier_maj', 'INTEGER DEFAULT 1');
+
   await figerMontants(db);
 }
 

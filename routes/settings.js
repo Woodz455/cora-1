@@ -86,7 +86,8 @@ const CHAMPS_SUIVIS = [
   'taxe_1_nom', 'taxe_1_taux', 'taxe_1_numero',
   'taxe_2_nom', 'taxe_2_taux', 'taxe_2_numero',
   'payment_instructions', 'relances_actives', 'relances_paliers',
-  'sauvegarde_active', 'sauvegarde_dossier', 'sauvegarde_retention'
+  'sauvegarde_active', 'sauvegarde_dossier', 'sauvegarde_retention',
+  'verifier_maj'
 ];
 
 module.exports = function settingsRoutes(getDb) {
@@ -133,7 +134,8 @@ module.exports = function settingsRoutes(getDb) {
       relances_paliers: parsePaliers(body.relances_paliers),
       sauvegarde_active: parseInterrupteur(body.sauvegarde_active),
       sauvegarde_dossier: sanitizeText(body.sauvegarde_dossier, 500),
-      sauvegarde_retention: parseRetention(body.sauvegarde_retention)
+      sauvegarde_retention: parseRetention(body.sauvegarde_retention),
+      verifier_maj: parseInterrupteur(body.verifier_maj)
     };
 
     if (!valeurs.entreprise_nom) {

@@ -9,6 +9,7 @@ const {
   getRegistreVentes, getRegistreEncaissements, getBalanceAgee
 } = require('../invoiceService.js');
 const { anyRole, adminOrAccountant } = require('../authMiddleware.js');
+const { verifierMiseAJour } = require('../updateService.js');
 const { versCSV, nomFichier } = require('../exportService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 
@@ -92,6 +93,15 @@ module.exports = function rapportRoutes(getDb) {
   router.get('/rapports/taxes', adminOrAccountant(), asyncRoute(async (req, res) => {
     const { annee, mois, trimestre } = validerPeriode(req.query);
     res.json(await getTaxReport(getDb(), annee, mois, trimestre));
+  }));
+
+  /**
+   * Version installée, et version publiée s'il en existe une plus récente.
+   * Ouverte à tous les rôles : le bandeau s'affiche pour quiconque utilise
+   * l'application.
+   */
+  router.get('/version', anyRole(), asyncRoute(async (req, res) => {
+    res.json(await verifierMiseAJour(getDb()));
   }));
 
   /**

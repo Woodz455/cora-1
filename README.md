@@ -266,6 +266,24 @@ l'ancienne base. La base remplacée est conservée à côté sous
 `database.sqlite.avant-restauration-<horodatage>` : une restauration sur le
 mauvais fichier reste réversible.
 
+## Mises à jour
+
+Au premier écran suivant la connexion, et une fois par jour au plus, Clora
+compare sa version à la dernière publiée. Si une version plus récente existe,
+un bandeau discret le signale avec un lien vers la page de téléchargement,
+ouverte dans le navigateur du système.
+
+**Rien n'est téléchargé ni installé par l'application.** C'est délibéré :
+l'application n'étant pas signée, `electron-updater` exécuterait un binaire
+dont l'origine n'est vérifiée par rien — la vérification de signature est
+précisément ce qui est désactivé faute de certificat. Sur un logiciel qui
+détient la comptabilité d'une entreprise, ce n'est pas acceptable. Le jour où
+un certificat existe, la mise à jour silencieuse devient envisageable.
+
+C'est **le seul appel sortant de l'application**, et il se coupe depuis les
+Paramètres. La vérification n'a lieu qu'en mode empaqueté, échoue en silence
+hors ligne ou derrière un pare-feu, et n'affiche jamais rien dans ce cas.
+
 ## Conditions de paiement
 
 Chaque client porte un terme — payable sur réception, Net 15, Net 30, Net 60 —

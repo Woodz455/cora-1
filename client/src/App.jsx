@@ -148,6 +148,7 @@ function App() {
   // factures déjà filtrée, plutôt que d'afficher un chiffre sans issue.
   const [parametresVue, setParametresVue] = useState(null);
   const [user, setUser] = useState(null);
+  const [majDisponible, setMajDisponible] = useState(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
@@ -161,6 +162,18 @@ function App() {
 
   // Un employé qui atteindrait une vue restreinte est ramené au tableau de bord.
   const vueActive = vuesVisibles.find((v) => v.id === currentView) || vuesVisibles[0];
+
+  // Vérification une fois par session, après connexion. Elle échoue en silence :
+  // hors ligne ou derrière un pare-feu, l'application ne signale rien.
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+
+    let annule = false;
+    api.get('/api/version')
+      .then((info) => { if (!annule && info.disponible) setMajDisponible(info); })
+      .catch(() => {});
+    return () => { annule = true; };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -305,6 +318,31 @@ function App() {
               {`${user.username} (${user.role})`}
             </div>
           </header>
+
+          {majDisponible && (
+            <div
+              className="alert alert-info"
+              role="status"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '15px' }}
+            >
+              <span>
+                Clora {majDisponible.derniere} est disponible — vous utilisez la {majDisponible.courante}.
+              </span>
+              <span style={{ display: 'flex', gap: '12px', whiteSpace: 'nowrap' }}>
+                {/* Le lien s'ouvre dans le navigateur du système : rien n'est
+                    téléchargé ni installé par l'application elle-même. */}
+                <a href={majDisponible.page} target="_blank" rel="noreferrer">Voir la version</a>
+                <button
+                  type="button"
+                  onClick={() => setMajDisponible(null)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0 }}
+                  aria-label="Masquer l'avis de mise à jour"
+                >
+                  ✕
+                </button>
+              </span>
+            </div>
+          )}
 
           <div style={{ position: 'relative', zIndex: 10 }}>
             <Suspense fallback={<p style={{ color: 'var(--text-muted)' }}>Chargement…</p>}>

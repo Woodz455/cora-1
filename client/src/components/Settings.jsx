@@ -44,7 +44,8 @@ function Settings() {
     taxe_2_nom: '', taxe_2_taux: 0, taxe_2_numero: '',
     payment_instructions: '', entreprise_logo: '',
     relances_actives: 0, relances_paliers: '7,15,30',
-    sauvegarde_active: 1, sauvegarde_dossier: '', sauvegarde_retention: 30
+    sauvegarde_active: 1, sauvegarde_dossier: '', sauvegarde_retention: 30,
+    verifier_maj: 1
   });
   const [infoSauvegardes, setInfoSauvegardes] = useState(null);
   const [sauvegardeEnCours, setSauvegardeEnCours] = useState(false);
@@ -417,6 +418,22 @@ function Settings() {
             />
             <small style={{ color: 'var(--text-muted)' }}>
               Au-delà, les plus anciennes sont supprimées automatiquement.
+            </small>
+          </div>
+
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={Boolean(settings.verifier_maj)}
+                onChange={(e) => setSettings((prev) => ({ ...prev, verifier_maj: e.target.checked ? 1 : 0 }))}
+                style={{ width: '18px', height: '18px' }}
+              />
+              M'avertir quand une nouvelle version de Clora existe
+            </label>
+            <small style={{ color: 'var(--text-muted)' }}>
+              C'est le seul moment où Clora se connecte à Internet. Rien n'est téléchargé ni
+              installé automatiquement : vous décidez.
             </small>
           </div>
 
