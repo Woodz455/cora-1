@@ -4,9 +4,60 @@
 
 const express = require('express');
 
-const { getReportStats, getDashboardStats, getTaxReport } = require('../invoiceService.js');
+const {
+  getReportStats, getDashboardStats, getTaxReport,
+  getRegistreVentes, getRegistreEncaissements
+} = require('../invoiceService.js');
 const { anyRole, adminOrAccountant } = require('../authMiddleware.js');
+const { versCSV, nomFichier } = require('../exportService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
+
+/** Colonnes du registre des ventes, dans l'ordre attendu par un comptable. */
+const COLONNES_VENTES = [
+  { cle: 'numero_facture', titre: 'Numéro' },
+  { cle: 'date_emission', titre: 'Date d\'émission' },
+  { cle: 'date_echeance', titre: 'Échéance' },
+  { cle: 'client', titre: 'Client' },
+  { cle: 'statut', titre: 'Statut' },
+  { cle: 'sous_total', titre: 'Sous-total', type: 'montant' },
+  { cle: 'taxe_1_nom', titre: 'Taxe 1' },
+  { cle: 'montant_taxe_1', titre: 'Montant taxe 1', type: 'montant' },
+  { cle: 'taxe_2_nom', titre: 'Taxe 2' },
+  { cle: 'montant_taxe_2', titre: 'Montant taxe 2', type: 'montant' },
+  { cle: 'montant_total', titre: 'Total', type: 'montant' },
+  { cle: 'montant_credite', titre: 'Crédité', type: 'montant' },
+  { cle: 'montant_paye', titre: 'Encaissé', type: 'montant' },
+  { cle: 'solde_restant', titre: 'Solde', type: 'montant' },
+  { cle: 'devise', titre: 'Devise' },
+  { cle: 'taux_change', titre: 'Taux de change' },
+  { cle: 'montant_total_cad', titre: 'Total en CAD', type: 'montant' }
+];
+
+const COLONNES_ENCAISSEMENTS = [
+  { cle: 'date_paiement', titre: 'Date' },
+  { cle: 'montant', titre: 'Montant', type: 'montant' },
+  { cle: 'devise', titre: 'Devise' },
+  { cle: 'taux_change', titre: 'Taux de change' },
+  { cle: 'montant_cad', titre: 'Montant en CAD', type: 'montant' },
+  { cle: 'numero_facture', titre: 'Facture' },
+  { cle: 'client', titre: 'Client' },
+  { cle: 'origine', titre: 'Origine' },
+  { cle: 'note', titre: 'Note' }
+];
+
+/** Valide et normalise une période de filtre. */
+function validerPeriode(query) {
+  const { annee, mois } = query;
+
+  if (annee !== undefined && !/^\d{4}$/.test(String(annee))) {
+    throw httpError(400, "L'année doit être au format AAAA.");
+  }
+  if (mois !== undefined && mois !== '' && !/^(0?[1-9]|1[0-2])$/.test(String(mois))) {
+    throw httpError(400, 'Le mois doit être un nombre entre 1 et 12.');
+  }
+
+  return { annee: annee || null, mois: mois || null };
+}
 
 module.exports = function rapportRoutes(getDb) {
   const router = express.Router();
@@ -32,6 +83,29 @@ module.exports = function rapportRoutes(getDb) {
 
     res.json(await getTaxReport(getDb(), annee, mois));
   }));
+
+  /**
+   * Registres exportables vers le logiciel du comptable.
+   *
+   * La réponse est un téléchargement et non du JSON : `Content-Disposition`
+   * porte le nom du fichier, daté de la période demandée.
+   */
+  const registre = (chemin, base, colonnes, lecture) => {
+    router.get(chemin, adminOrAccountant(), asyncRoute(async (req, res) => {
+      const periode = validerPeriode(req.query);
+      const lignes = await lecture(getDb(), periode);
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${nomFichier(base, periode)}"`);
+      res.send(versCSV(colonnes, lignes));
+    }));
+  };
+
+  registre('/rapports/export/ventes', 'registre-ventes', COLONNES_VENTES, getRegistreVentes);
+  registre(
+    '/rapports/export/encaissements', 'registre-encaissements',
+    COLONNES_ENCAISSEMENTS, getRegistreEncaissements
+  );
 
   return router;
 };

@@ -266,6 +266,28 @@ l'ancienne base. La base remplacée est conservée à côté sous
 `database.sqlite.avant-restauration-<horodatage>` : une restauration sur le
 mauvais fichier reste réversible.
 
+## Registres pour le comptable
+
+Deux exports CSV depuis l'écran Rapports, suivant la période sélectionnée :
+
+- **Registre des ventes** — une ligne par facture : numéro, dates, client,
+  statut, sous-total, chaque taxe nommée et chiffrée, total, crédité, encaissé,
+  solde, devise et équivalent en dollars canadiens. Les factures annulées en
+  sont absentes.
+- **Registre des encaissements** — une ligne par paiement reçu, avec son
+  origine (saisie manuelle ou rapprochement bancaire). **Les paiements annulés
+  en sont exclus** : les faire figurer gonflerait les rentrées déclarées.
+
+Les montants exportés sont ceux **figés à l'émission**, lus tels quels : un
+export qui recalculerait ses totaux pourrait diverger de ce que le client a
+reçu.
+
+Trois détails décident de l'utilisabilité du fichier chez son destinataire :
+BOM UTF-8 (sans quoi Excel affiche « BÃ©langer »), séparateur point-virgule
+(l'Excel francophone empile sinon toute la ligne dans une colonne), et virgule
+décimale sur les montants. L'échappement suit la RFC 4180 : un client nommé
+« Ateliers Bélanger; Cie » ressort intact.
+
 ## Journal d'audit
 
 Les actions sensibles sont consignées dans `logs_audit` : annulation d'un

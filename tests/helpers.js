@@ -109,6 +109,9 @@ async function startTestServer() {
     // ici faisait croire à des tests qu'ils vérifiaient un motif jamais transmis.
     del: (url, body, options) => request('DELETE', url, body, options),
     setCookie: (value) => { cookie = value; },
+    // Nécessaire aux réponses qui ne sont pas du JSON — un CSV téléchargé, par
+    // exemple — que `request` ne sait pas rendre telles quelles.
+    cookie: () => cookie,
     clearCookie: () => { cookie = ''; },
     async close() {
       await new Promise((resolve) => server.close(resolve));

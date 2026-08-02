@@ -75,6 +75,14 @@ function ReportDashboard() {
   // sur les achats sont récupérables et ne constituent pas une charge.
   const beneficeNet = stats.total_encaisse - stats.total_depenses_ht;
 
+  /** Les registres suivent la période choisie pour le rapport de taxes. */
+  const lienExport = (registre) => {
+    const params = new URLSearchParams();
+    if (annee) params.set('annee', annee);
+    if (mois) params.set('mois', mois);
+    return `/api/rapports/export/${registre}?${params.toString()}`;
+  };
+
   return (
     <div>
       <div className="toolbar">
@@ -82,6 +90,29 @@ function ReportDashboard() {
         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', background: 'var(--glass-bg)', padding: '6px 12px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
           🇨🇦 Tous les montants sont consolidés en dollars canadiens
         </span>
+      </div>
+
+      <div className="glass-panel" style={{ padding: '20px', marginTop: '25px' }}>
+        <div className="toolbar">
+          <div>
+            <h3 style={{ margin: 0, color: 'var(--text-main)' }}>📤 Registres pour votre comptable</h3>
+            <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+              Fichiers CSV directement lisibles dans Excel, à transmettre au logiciel comptable
+              (Acomba, Sage, QuickBooks) pour la fin d'année.
+            </p>
+          </div>
+          <div className="toolbar-group">
+            {/* Un lien, et non un appel `api.get` : la réponse est un fichier,
+                pas du JSON. Le cookie de session part avec la requête, l'API
+                étant servie par la même origine. */}
+            <a className="btn-secondary" href={lienExport('ventes')} download>
+              Registre des ventes
+            </a>
+            <a className="btn-secondary" href={lienExport('encaissements')} download>
+              Registre des encaissements
+            </a>
+          </div>
+        </div>
       </div>
 
       {error && <p className="alert alert-error" role="alert">{error}</p>}

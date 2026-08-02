@@ -689,6 +689,100 @@ async function getDashboardStats(db) {
  * @param {string} [annee] filtre AAAA
  * @param {string} [mois]  filtre MM
  */
+/**
+ * Conditions de période sur une colonne de date.
+ *
+ * Partagé par les registres et le rapport de taxes : une déclaration se prépare
+ * sur les mêmes bornes que le registre qui la justifie, et deux découpages
+ * différents rendraient les deux impossibles à rapprocher.
+ *
+ * @param {string} colonne expression SQL de la date (« f.date_emission »)
+ * @param {{annee?: string, mois?: string}} periode
+ * @returns {{conditions: string[], params: string[]}}
+ */
+function clausesPeriode(colonne, periode = {}) {
+  const conditions = [];
+  const params = [];
+
+  if (periode.annee) {
+    conditions.push(`strftime('%Y', ${colonne}) = ?`);
+    params.push(String(periode.annee));
+  }
+  if (periode.mois) {
+    conditions.push(`strftime('%m', ${colonne}) = ?`);
+    params.push(String(periode.mois).padStart(2, '0'));
+  }
+
+  return { conditions, params };
+}
+
+/**
+ * Registre des ventes : une ligne par facture, sur la période demandée.
+ *
+ * Les montants sont ceux figés à l'émission, lus tels quels — un export qui
+ * recalculerait ses totaux pourrait diverger de ce que le client a reçu.
+ */
+async function getRegistreVentes(db, periode = {}) {
+  const { conditions, params } = clausesPeriode('f.date_emission', periode);
+  const where = [`f.statut != '${STATUTS.ANNULEE}'`, ...conditions].join(' AND ');
+
+  return db.all(`
+    ${CTE_TOTAUX}
+    SELECT
+      f.numero_facture,
+      f.date_emission,
+      f.date_echeance,
+      c.nom_entreprise AS client,
+      f.statut,
+      ${SOUS_TOTAL} AS sous_total,
+      f.taxe_1_nom,
+      ${TAXE_1} AS montant_taxe_1,
+      f.taxe_2_nom,
+      ${TAXE_2} AS montant_taxe_2,
+      ${TOTAL} AS montant_total,
+      ${CREDITE} AS montant_credite,
+      ${PAYE} AS montant_paye,
+      ${SOLDE} AS solde_restant,
+      f.devise,
+      ${TAUX} AS taux_change,
+      ROUND(${TOTAL} * ${TAUX}, 2) AS montant_total_cad
+    FROM factures f
+    JOIN clients c ON c.id = f.client_id
+    ${JOINTURES_FINANCIERES}
+    WHERE ${where}
+    ORDER BY f.date_emission ASC, f.numero_facture ASC
+  `, params);
+}
+
+/**
+ * Registre des encaissements : une ligne par paiement reçu.
+ *
+ * Les paiements annulés en sont absents : ils n'ont plus d'existence
+ * comptable, et les faire figurer gonflerait les rentrées déclarées.
+ */
+async function getRegistreEncaissements(db, periode = {}) {
+  const { conditions, params } = clausesPeriode('p.date_paiement', periode);
+  const where = [PAIEMENT_ACTIF.replace('annule_le', 'p.annule_le'), ...conditions].join(' AND ');
+
+  return db.all(`
+    SELECT
+      p.date_paiement,
+      p.montant,
+      f.numero_facture,
+      c.nom_entreprise AS client,
+      f.devise,
+      COALESCE(f.taux_change, 1.0) AS taux_change,
+      ROUND(p.montant * COALESCE(f.taux_change, 1.0), 2) AS montant_cad,
+      CASE WHEN p.transaction_id IS NULL THEN 'Saisie manuelle' ELSE 'Rapprochement bancaire' END AS origine,
+      p.note
+    FROM paiements p
+    JOIN factures f ON f.id = p.facture_id
+    JOIN clients c ON c.id = f.client_id
+    WHERE ${where}
+    ORDER BY p.date_paiement ASC, p.id ASC
+  `, params);
+}
+
 async function getTaxReport(db, annee, mois) {
   let where = `WHERE f.statut != '${STATUTS.ANNULEE}'`;
   const params = [];
@@ -801,6 +895,9 @@ module.exports = {
   getReportStats,
   getDashboardStats,
   getTaxReport,
+  getRegistreVentes,
+  getRegistreEncaissements,
+  clausesPeriode,
   getTaxRatesForProvince,
   resolveStatut,
   syncStatut,
