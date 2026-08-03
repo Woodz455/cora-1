@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { api, formatMontant } from '../api';
+import { api, formatMontant, calculerEcheance, CONDITIONS } from '../api';
 import { useModale } from '../useModale';
 
 /** Identifiant local d'une ligne, stable pour la clé React. */
@@ -32,6 +32,30 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
       taux_change: 1.0
     };
   });
+
+  /**
+   * Choisir un client réaligne l'échéance sur son terme de paiement.
+   *
+   * Elle reste modifiable ensuite : le terme est une valeur par défaut utile,
+   * pas une contrainte. Un devis conserve sa date de validité, qui n'a rien à
+   * voir avec un délai de règlement.
+   */
+  const choisirClient = (clientId) => {
+    const client = clients.find((c) => String(c.id) === String(clientId));
+    setFormData((prev) => ({
+      ...prev,
+      client_id: clientId,
+      date_echeance: estDevis || !client
+        ? prev.date_echeance
+        : calculerEcheance(prev.date_emission, client.conditions_paiement)
+    }));
+  };
+
+  /** Terme du client sélectionné, pour expliquer d'où vient l'échéance proposée. */
+  const termeDuClient = (() => {
+    const client = clients.find((c) => String(c.id) === String(formData.client_id));
+    return client ? CONDITIONS.find((c) => c.valeur === (client.conditions_paiement || 'net30')) : null;
+  })();
 
   const [lignes, setLignes] = useState([nouvelleLigne()]);
   const [loading, setLoading] = useState(false);
@@ -72,7 +96,14 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
             prix_unitaire: l.prix_unitaire
           })));
         } else if (listeClients.length > 0) {
-          setFormData((prev) => ({ ...prev, client_id: listeClients[0].id }));
+          const premier = listeClients[0];
+          setFormData((prev) => ({
+            ...prev,
+            client_id: premier.id,
+            date_echeance: estDevis
+              ? prev.date_echeance
+              : calculerEcheance(prev.date_emission, premier.conditions_paiement)
+          }));
         }
       } catch (err) {
         if (!annule) setError(err.message);
@@ -167,7 +198,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                   id="doc-client"
                   className="form-control"
                   value={formData.client_id}
-                  onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
+                  onChange={(e) => choisirClient(e.target.value)}
                   required
                 >
                   <option value="">Sélectionner un client</option>
@@ -208,6 +239,11 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                   min={formData.date_emission}
                   required
                 />
+                {!estDevis && termeDuClient && (
+                  <small style={{ color: 'var(--text-muted)' }}>
+                    Terme du client : {termeDuClient.libelle}. La date reste modifiable.
+                  </small>
+                )}
               </div>
             </div>
 

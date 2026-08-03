@@ -5,6 +5,7 @@
 const { roundCents, computeTotals, formatMontant } = require('./money.js');
 const { withTransaction } = require('./dbUtils.js');
 const { nextDocumentNumber } = require('./sequences.js');
+const { normaliserCondition, calculerEcheance, CONDITION_DEFAUT } = require('./paymentTerms.js');
 
 /** Statuts possibles d'une facture. */
 const STATUTS = {
@@ -138,6 +139,7 @@ async function getFacturesAvecSoldes(db) {
       f.taux_taxe_2,
       f.taxe_1_nom,
       f.taxe_2_nom,
+      f.conditions_paiement,
       ${COLONNES_FINANCIERES}
     FROM factures f
     JOIN clients c ON f.client_id = c.id
@@ -166,6 +168,7 @@ async function getSoldeFacture(db, factureId) {
       f.taux_taxe_2,
       f.taxe_1_nom,
       f.taxe_2_nom,
+      f.conditions_paiement,
       ${COLONNES_FINANCIERES}
     FROM factures f
     ${JOINTURES_FINANCIERES}
@@ -445,13 +448,25 @@ async function generateInvoiceNumber(db, dateStr) {
  * @returns {Promise<Object>} facture créée, avec ses montants
  */
 async function createFacture(db, factureData, lignes) {
-  const { client_id, date_emission, date_echeance, devise = 'CAD', taux_change = 1.0 } = factureData;
+  const { client_id, date_emission, devise = 'CAD', taux_change = 1.0 } = factureData;
 
   return withTransaction(db, async () => {
-    const client = await db.get('SELECT id, province FROM clients WHERE id = ?', [client_id]);
+    const client = await db.get(
+      'SELECT id, province, conditions_paiement FROM clients WHERE id = ?', [client_id]
+    );
     if (!client) {
       throw Object.assign(new Error('Client introuvable.'), { status: 400 });
     }
+
+    // Le terme est celui de la fiche client, sauf mention explicite sur la
+    // facture. Il est figé ici, comme les taux de taxe : changer les conditions
+    // d'un client ne doit pas déplacer l'échéance de documents déjà remis.
+    const conditions = normaliserCondition(
+      factureData.conditions_paiement || client.conditions_paiement || CONDITION_DEFAUT
+    );
+    // Une échéance transmise explicitement l'emporte : la saisie manuelle reste
+    // possible pour un accord ponctuel.
+    const date_echeance = factureData.date_echeance || calculerEcheance(date_emission, conditions);
 
     const taxes = getTaxRatesForProvince(client.province);
     const numero_facture = await generateInvoiceNumber(db, date_emission);
@@ -462,10 +477,12 @@ async function createFacture(db, factureData, lignes) {
     const result = await db.run(
       `INSERT INTO factures (numero_facture, client_id, date_emission, date_echeance, statut,
                              taux_taxe_1, taux_taxe_2, taxe_1_nom, taxe_2_nom, devise, taux_change,
+                             conditions_paiement,
                              sous_total, montant_taxe_1, montant_taxe_2, montant_total)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [numero_facture, client_id, date_emission, date_echeance, STATUTS.EN_ATTENTE,
         taxes.taxe_1_taux, taxes.taxe_2_taux, taxes.taxe_1_nom, taxes.taxe_2_nom, devise, taux_change,
+        conditions,
         montants.sous_total, montants.taxe_1, montants.taxe_2, montants.montant_total]
     );
     const factureId = result.lastID;
@@ -552,7 +569,7 @@ async function cancelFacture(db, factureId) {
 
 /** Modifie une facture. Interdit dès qu'un paiement a été encaissé. */
 async function updateFacture(db, factureId, factureData, lignes) {
-  const { client_id, date_echeance, devise = 'CAD', taux_change = 1.0 } = factureData;
+  const { client_id, devise = 'CAD', taux_change = 1.0 } = factureData;
 
   return withTransaction(db, async () => {
     const facture = await getSoldeFacture(db, factureId);
@@ -583,6 +600,11 @@ async function updateFacture(db, factureId, factureData, lignes) {
 
     // La facture n'a pas encore été encaissée : ses montants sont réarrêtés.
     const montants = computeTotals(lignes, taxes.taxe_1_taux, taxes.taxe_2_taux);
+
+    // Une échéance absente laisse celle en place : la colonne est NOT NULL, et
+    // une modification qui ne porte pas sur la date ne doit pas l'effacer.
+    const existante = await db.get('SELECT date_echeance FROM factures WHERE id = ?', [factureId]);
+    const date_echeance = factureData.date_echeance || existante.date_echeance;
 
     await db.run(
       `UPDATE factures SET client_id = ?, date_echeance = ?, taux_taxe_1 = ?, taux_taxe_2 = ?,
@@ -689,32 +711,216 @@ async function getDashboardStats(db) {
  * @param {string} [annee] filtre AAAA
  * @param {string} [mois]  filtre MM
  */
-async function getTaxReport(db, annee, mois) {
+/**
+ * Conditions de période sur une colonne de date.
+ *
+ * Partagé par les registres et le rapport de taxes : une déclaration se prépare
+ * sur les mêmes bornes que le registre qui la justifie, et deux découpages
+ * différents rendraient les deux impossibles à rapprocher.
+ *
+ * @param {string} colonne expression SQL de la date (« f.date_emission »)
+ * @param {{annee?: string, mois?: string}} periode
+ * @returns {{conditions: string[], params: string[]}}
+ */
+function clausesPeriode(colonne, periode = {}) {
+  const conditions = [];
+  const params = [];
+
+  if (periode.annee) {
+    conditions.push(`strftime('%Y', ${colonne}) = ?`);
+    params.push(String(periode.annee));
+  }
+  if (periode.mois) {
+    conditions.push(`strftime('%m', ${colonne}) = ?`);
+    params.push(String(periode.mois).padStart(2, '0'));
+  } else if (periode.trimestre) {
+    // La TPS et la TVQ se déclarent le plus souvent par trimestre : sans ce
+    // filtre, préparer une remise obligeait à additionner trois rapports
+    // mensuels à la main.
+    const mois = moisDuTrimestre(periode.trimestre);
+    conditions.push(`strftime('%m', ${colonne}) IN (${mois.map(() => '?').join(', ')})`);
+    params.push(...mois);
+  }
+
+  return { conditions, params };
+}
+
+/** Les trois mois d'un trimestre, au format MM. */
+function moisDuTrimestre(trimestre) {
+  const premier = (Number(trimestre) - 1) * 3 + 1;
+  return [premier, premier + 1, premier + 2].map((m) => String(m).padStart(2, '0'));
+}
+
+/**
+ * Registre des ventes : une ligne par facture, sur la période demandée.
+ *
+ * Les montants sont ceux figés à l'émission, lus tels quels — un export qui
+ * recalculerait ses totaux pourrait diverger de ce que le client a reçu.
+ */
+async function getRegistreVentes(db, periode = {}) {
+  const { conditions, params } = clausesPeriode('f.date_emission', periode);
+  const where = [`f.statut != '${STATUTS.ANNULEE}'`, ...conditions].join(' AND ');
+
+  return db.all(`
+    ${CTE_TOTAUX}
+    SELECT
+      f.numero_facture,
+      f.date_emission,
+      f.date_echeance,
+      c.nom_entreprise AS client,
+      f.statut,
+      ${SOUS_TOTAL} AS sous_total,
+      f.taxe_1_nom,
+      ${TAXE_1} AS montant_taxe_1,
+      f.taxe_2_nom,
+      ${TAXE_2} AS montant_taxe_2,
+      ${TOTAL} AS montant_total,
+      ${CREDITE} AS montant_credite,
+      ${PAYE} AS montant_paye,
+      ${SOLDE} AS solde_restant,
+      f.devise,
+      ${TAUX} AS taux_change,
+      ROUND(${TOTAL} * ${TAUX}, 2) AS montant_total_cad
+    FROM factures f
+    JOIN clients c ON c.id = f.client_id
+    ${JOINTURES_FINANCIERES}
+    WHERE ${where}
+    ORDER BY f.date_emission ASC, f.numero_facture ASC
+  `, params);
+}
+
+/**
+ * Registre des encaissements : une ligne par paiement reçu.
+ *
+ * Les paiements annulés en sont absents : ils n'ont plus d'existence
+ * comptable, et les faire figurer gonflerait les rentrées déclarées.
+ */
+async function getRegistreEncaissements(db, periode = {}) {
+  const { conditions, params } = clausesPeriode('p.date_paiement', periode);
+  const where = [PAIEMENT_ACTIF.replace('annule_le', 'p.annule_le'), ...conditions].join(' AND ');
+
+  return db.all(`
+    SELECT
+      p.date_paiement,
+      p.montant,
+      f.numero_facture,
+      c.nom_entreprise AS client,
+      f.devise,
+      COALESCE(f.taux_change, 1.0) AS taux_change,
+      ROUND(p.montant * COALESCE(f.taux_change, 1.0), 2) AS montant_cad,
+      CASE WHEN p.transaction_id IS NULL THEN 'Saisie manuelle' ELSE 'Rapprochement bancaire' END AS origine,
+      p.note
+    FROM paiements p
+    JOIN factures f ON f.id = p.facture_id
+    JOIN clients c ON c.id = f.client_id
+    WHERE ${where}
+    ORDER BY p.date_paiement ASC, p.id ASC
+  `, params);
+}
+
+/**
+ * Tranches de la balance âgée, en jours de retard.
+ *
+ * Les bornes sont inclusives des deux côtés : un retard de 30 jours appartient
+ * à « 1-30 », un retard de 31 bascule dans « 31-60 ». Se tromper d'un jour
+ * déplace des milliers de dollars d'une colonne à l'autre sous les yeux du
+ * dirigeant.
+ */
+const TRANCHES_AGE = [
+  { cle: 'non_echu', libelle: 'Non échu', min: null, max: 0 },
+  { cle: 'jours_1_30', libelle: '1 à 30 jours', min: 1, max: 30 },
+  { cle: 'jours_31_60', libelle: '31 à 60 jours', min: 31, max: 60 },
+  { cle: 'jours_61_90', libelle: '61 à 90 jours', min: 61, max: 90 },
+  { cle: 'jours_91_plus', libelle: '91 jours et plus', min: 91, max: null }
+];
+
+/**
+ * Balance âgée des comptes clients.
+ *
+ * Le rapport le plus regardé par un dirigeant : qui doit de l'argent, et depuis
+ * combien de temps. `getReportStats` donnait un solde global à percevoir sans
+ * jamais le ventiler par ancienneté.
+ *
+ * @param {import('sqlite').Database} db
+ * @param {string} [aujourdhui] date de référence AAAA-MM-JJ, pour les tests
+ */
+async function getBalanceAgee(db, aujourdhui = new Date().toISOString().split('T')[0]) {
+  // Le retard se calcule en jours entiers depuis l'échéance ; `julianday`
+  // évite les pièges de fuseau d'un calcul fait côté JavaScript.
+  const RETARD = "CAST(julianday(?) - julianday(f.date_echeance) AS INTEGER)";
+
+  const lignes = await db.all(`
+    ${CTE_TOTAUX}
+    SELECT
+      c.id AS client_id,
+      c.nom_entreprise AS client,
+      f.numero_facture,
+      f.date_echeance,
+      ${RETARD} AS retard,
+      ROUND(${SOLDE} * ${TAUX}, 2) AS solde_cad
+    FROM factures f
+    JOIN clients c ON c.id = f.client_id
+    ${JOINTURES_FINANCIERES}
+    WHERE f.statut != '${STATUTS.ANNULEE}' AND ${SOLDE} > 0
+    ORDER BY c.nom_entreprise ASC, f.date_echeance ASC
+  `, [aujourdhui]);
+
+  /** Range un retard dans sa tranche. */
+  const trancheDe = (retard) => TRANCHES_AGE.find(({ min, max }) => (
+    (min === null || retard >= min) && (max === null || retard <= max)
+  ));
+
+  const parClient = new Map();
+  const totaux = Object.fromEntries(TRANCHES_AGE.map((t) => [t.cle, 0]));
+  let totalGeneral = 0;
+
+  for (const ligne of lignes) {
+    if (!parClient.has(ligne.client_id)) {
+      parClient.set(ligne.client_id, {
+        client_id: ligne.client_id,
+        client: ligne.client,
+        total: 0,
+        ...Object.fromEntries(TRANCHES_AGE.map((t) => [t.cle, 0]))
+      });
+    }
+
+    const entree = parClient.get(ligne.client_id);
+    const tranche = trancheDe(ligne.retard);
+
+    entree[tranche.cle] = roundCents(entree[tranche.cle] + ligne.solde_cad);
+    entree.total = roundCents(entree.total + ligne.solde_cad);
+    totaux[tranche.cle] = roundCents(totaux[tranche.cle] + ligne.solde_cad);
+    totalGeneral = roundCents(totalGeneral + ligne.solde_cad);
+  }
+
+  return {
+    date_reference: aujourdhui,
+    tranches: TRANCHES_AGE.map(({ cle, libelle }) => ({ cle, libelle })),
+    clients: [...parClient.values()].sort((a, b) => b.total - a.total),
+    totaux: { ...totaux, total: totalGeneral }
+  };
+}
+
+async function getTaxReport(db, annee, mois, trimestre) {
+  const periode = { annee, mois, trimestre };
+
+  // Les mêmes bornes que les registres : une déclaration et le registre qui la
+  // justifie doivent porter exactement sur la même période.
+  const facturesPeriode = clausesPeriode('f.date_emission', periode);
   let where = `WHERE f.statut != '${STATUTS.ANNULEE}'`;
   const params = [];
-  if (annee) {
-    where += " AND strftime('%Y', f.date_emission) = ?";
-    params.push(String(annee));
-  }
-  if (mois) {
-    where += " AND strftime('%m', f.date_emission) = ?";
-    params.push(String(mois).padStart(2, '0'));
-  }
+  for (const condition of facturesPeriode.conditions) where += ` AND ${condition}`;
+  params.push(...facturesPeriode.params);
 
   // Les notes de crédit annulent de la taxe déjà déclarée : elles entrent dans
   // le rapport en négatif, sur la période de leur propre émission. Sans cela,
   // l'entreprise remettrait à l'État une taxe qu'elle a remboursée au client.
   const NOTE_TAUX = 'COALESCE(n.taux_change, 1.0)';
+  const notesPeriode = clausesPeriode('n.date_emission', periode);
   let whereNotes = 'WHERE 1 = 1';
   const paramsNotes = [];
-  if (annee) {
-    whereNotes += " AND strftime('%Y', n.date_emission) = ?";
-    paramsNotes.push(String(annee));
-  }
-  if (mois) {
-    whereNotes += " AND strftime('%m', n.date_emission) = ?";
-    paramsNotes.push(String(mois).padStart(2, '0'));
-  }
+  for (const condition of notesPeriode.conditions) whereNotes += ` AND ${condition}`;
+  paramsNotes.push(...notesPeriode.params);
 
   const summary = await db.get(`
     SELECT
@@ -755,16 +961,11 @@ async function getTaxReport(db, annee, mois) {
     ORDER BY nom ASC
   `, [...params, ...params, ...paramsNotes, ...paramsNotes]);
 
+  const depensesPeriode = clausesPeriode('date_depense', periode);
   let depensesWhere = 'WHERE 1 = 1';
   const depensesParams = [];
-  if (annee) {
-    depensesWhere += " AND strftime('%Y', date_depense) = ?";
-    depensesParams.push(String(annee));
-  }
-  if (mois) {
-    depensesWhere += " AND strftime('%m', date_depense) = ?";
-    depensesParams.push(String(mois).padStart(2, '0'));
-  }
+  for (const condition of depensesPeriode.conditions) depensesWhere += ` AND ${condition}`;
+  depensesParams.push(...depensesPeriode.params);
 
   const depenses = await db.get(`
     SELECT
@@ -801,6 +1002,12 @@ module.exports = {
   getReportStats,
   getDashboardStats,
   getTaxReport,
+  getRegistreVentes,
+  getRegistreEncaissements,
+  getBalanceAgee,
+  TRANCHES_AGE,
+  clausesPeriode,
+  moisDuTrimestre,
   getTaxRatesForProvince,
   resolveStatut,
   syncStatut,

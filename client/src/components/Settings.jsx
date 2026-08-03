@@ -43,8 +43,12 @@ function Settings() {
     taxe_1_nom: '', taxe_1_taux: 0, taxe_1_numero: '',
     taxe_2_nom: '', taxe_2_taux: 0, taxe_2_numero: '',
     payment_instructions: '', entreprise_logo: '',
-    relances_actives: 0, relances_paliers: '7,15,30'
+    relances_actives: 0, relances_paliers: '7,15,30',
+    sauvegarde_active: 1, sauvegarde_dossier: '', sauvegarde_retention: 30,
+    verifier_maj: 1
   });
+  const [infoSauvegardes, setInfoSauvegardes] = useState(null);
+  const [sauvegardeEnCours, setSauvegardeEnCours] = useState(false);
   const [relancesDues, setRelancesDues] = useState(null);
   const [relanceMessage, setRelanceMessage] = useState(null); // { texte, erreur }
   const [relanceEnCours, setRelanceEnCours] = useState(false);
@@ -70,6 +74,7 @@ function Settings() {
 
     api.get('/api/users').then(setUsers).catch(() => setUsers([]));
     api.get('/api/relances/dues').then(setRelancesDues).catch(() => setRelancesDues(null));
+    api.get('/api/sauvegardes').then(setInfoSauvegardes).catch(() => setInfoSauvegardes(null));
     api.get('/api/auth/setup-status')
       .then((data) => { if (data.minPasswordLength) setMinLength(data.minPasswordLength); })
       .catch(() => {});
@@ -78,6 +83,57 @@ function Settings() {
   const handleChange = (e) => {
     const { name, value, type } = e.target;
     setSettings((prev) => ({ ...prev, [name]: type === 'number' ? parseFloat(value) : value }));
+  };
+
+  const rafraichirSauvegardes = () => (
+    api.get('/api/sauvegardes').then(setInfoSauvegardes).catch(() => {})
+  );
+
+  /** Sélecteur de dossier natif, disponible seulement dans l'application de bureau. */
+  const choisirDossier = async () => {
+    try {
+      const { dossier } = await api.post('/api/sauvegardes/dossier');
+      if (dossier) setSettings((prev) => ({ ...prev, sauvegarde_dossier: dossier }));
+    } catch (err) {
+      notifier(err.message, 'erreur');
+    }
+  };
+
+  const sauvegarderMaintenant = async () => {
+    setSauvegardeEnCours(true);
+    try {
+      const r = await api.post('/api/sauvegardes');
+      notifier(`Sauvegarde créée (${Math.round(r.taille / 1024)} Ko).`);
+      await rafraichirSauvegardes();
+    } catch (err) {
+      notifier(err.message, 'erreur');
+    } finally {
+      setSauvegardeEnCours(false);
+    }
+  };
+
+  /**
+   * La restauration écrase les données en place : on demande une confirmation
+   * explicite, et on annonce le redémarrage qui la rendra effective.
+   */
+  const restaurer = async (sauvegarde) => {
+    const quand = new Date(sauvegarde.date).toLocaleString('fr-CA');
+    const accepte = await confirmer({
+      titre: 'Restaurer cette sauvegarde ?',
+      message: `Toute la comptabilité sera ramenée à son état du ${quand}. `
+        + 'Ce qui a été saisi depuis sera perdu. La base actuelle est conservée à côté, '
+        + "et l'application redémarrera pour appliquer la restauration.",
+      libelleConfirmer: 'Restaurer',
+      danger: true
+    });
+    if (!accepte) return;
+
+    try {
+      const r = await api.post('/api/sauvegardes/restaurer', { nom: sauvegarde.nom });
+      notifier(r.message);
+    } catch (err) {
+      notifier(err.message, 'erreur');
+    }
   };
 
   const handleImageUpload = (e) => {
@@ -308,6 +364,116 @@ function Settings() {
                 {relanceEnCours ? 'Envoi en cours…' : 'Envoyer maintenant'}
               </button>
             </div>
+          )}
+        </div>
+
+        <div>
+          <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
+            Sauvegardes
+          </h3>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
+            Une copie complète de votre comptabilité est enregistrée chaque jour, ainsi qu'à la
+            fermeture de l'application. Choisissez un dossier synchronisé — OneDrive, Dropbox,
+            Google Drive — pour que la copie quitte cet ordinateur : c'est ce qui vous protège
+            d'un disque en panne ou d'un vol.
+          </p>
+
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={Boolean(settings.sauvegarde_active)}
+                onChange={(e) => setSettings((prev) => ({ ...prev, sauvegarde_active: e.target.checked ? 1 : 0 }))}
+                style={{ width: '18px', height: '18px' }}
+              />
+              Sauvegarder automatiquement
+            </label>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="sauvegarde_dossier">Dossier de destination</label>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              <input
+                id="sauvegarde_dossier" type="text" className="form-control" name="sauvegarde_dossier"
+                value={settings.sauvegarde_dossier || ''} onChange={handleChange}
+                placeholder={infoSauvegardes ? infoSauvegardes.dossier_par_defaut : 'Dossier par défaut de l\'application'}
+              />
+              {infoSauvegardes && infoSauvegardes.selecteur_disponible && (
+                <button type="button" className="btn-secondary" style={{ whiteSpace: 'nowrap' }} onClick={choisirDossier}>
+                  Parcourir…
+                </button>
+              )}
+            </div>
+            <small style={{ color: 'var(--text-muted)' }}>
+              Laissez vide pour conserver les sauvegardes dans le dossier de l'application.
+            </small>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="sauvegarde_retention">Nombre de sauvegardes conservées</label>
+            <input
+              id="sauvegarde_retention" type="number" min="1" max="365" className="form-control"
+              name="sauvegarde_retention"
+              value={settings.sauvegarde_retention ?? 30} onChange={handleChange}
+            />
+            <small style={{ color: 'var(--text-muted)' }}>
+              Au-delà, les plus anciennes sont supprimées automatiquement.
+            </small>
+          </div>
+
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={Boolean(settings.verifier_maj)}
+                onChange={(e) => setSettings((prev) => ({ ...prev, verifier_maj: e.target.checked ? 1 : 0 }))}
+                style={{ width: '18px', height: '18px' }}
+              />
+              M'avertir quand une nouvelle version de Clora existe
+            </label>
+            <small style={{ color: 'var(--text-muted)' }}>
+              C'est le seul moment où Clora se connecte à Internet. Rien n'est téléchargé ni
+              installé automatiquement : vous décidez.
+            </small>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+            <button type="button" className="btn-secondary" disabled={sauvegardeEnCours} onClick={sauvegarderMaintenant}>
+              {sauvegardeEnCours ? 'Sauvegarde en cours…' : 'Sauvegarder maintenant'}
+            </button>
+          </div>
+
+          {infoSauvegardes && (
+            infoSauvegardes.sauvegardes.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                Aucune sauvegarde pour l'instant. La première sera créée automatiquement.
+              </p>
+            ) : (
+              <>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  {infoSauvegardes.sauvegardes.length} sauvegarde(s) disponible(s) :
+                </p>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, maxHeight: '220px', overflowY: 'auto' }}>
+                  {infoSauvegardes.sauvegardes.map((s) => (
+                    <li
+                      key={s.nom}
+                      style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        gap: '10px', padding: '8px 0', borderBottom: '1px solid var(--glass-border)'
+                      }}
+                    >
+                      <span style={{ fontSize: '0.9rem' }}>
+                        {new Date(s.date).toLocaleString('fr-CA')}
+                        <span style={{ color: 'var(--text-muted)' }}> — {Math.round(s.taille / 1024)} Ko</span>
+                      </span>
+                      <button type="button" className="btn-secondary" onClick={() => restaurer(s)}>
+                        Restaurer
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )
           )}
         </div>
 

@@ -1,6 +1,8 @@
+const path = require('path');
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const { getDbPath } = require('./config.js');
+const { appliquerRestaurationEnAttente } = require('./backupService.js');
 
 /** Journalisation silencieuse sous test, pour ne pas noyer la sortie. */
 const log = (...args) => {
@@ -207,6 +209,37 @@ async function createTables(db) {
       devise TEXT DEFAULT 'CAD',
       FOREIGN KEY (client_id) REFERENCES clients (id)
     );
+
+    -- Journal des actions sensibles. Aucune clé étrangère : la trace doit
+    -- survivre à la suppression de ce qu'elle décrit, sans quoi effacer une
+    -- facture effacerait la preuve qu'on l'a effacée.
+    CREATE TABLE IF NOT EXISTS logs_audit (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date_heure TEXT NOT NULL,
+      utilisateur TEXT,
+      role TEXT,
+      action TEXT NOT NULL,
+      entite TEXT,
+      entite_id INTEGER,
+      details TEXT
+    );
+  `);
+
+  // En ajout seul, et pas seulement par convention : un journal qu'une route
+  // distraite — ou malveillante — peut réécrire ne prouve rien. C'est SQLite
+  // qui refuse, quel que soit le chemin emprunté.
+  await db.exec(`
+    CREATE TRIGGER IF NOT EXISTS logs_audit_sans_modification
+    BEFORE UPDATE ON logs_audit
+    BEGIN
+      SELECT RAISE(ABORT, 'Le journal d''audit ne peut pas être modifié.');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS logs_audit_sans_suppression
+    BEFORE DELETE ON logs_audit
+    BEGIN
+      SELECT RAISE(ABORT, 'Le journal d''audit ne peut pas être supprimé.');
+    END;
   `);
 }
 
@@ -254,6 +287,23 @@ async function runMigrations(db) {
   // rapprochement : annuler le paiement doit la remettre en attente.
   await addColumn(db, 'paiements', 'transaction_id', 'INTEGER');
   await rattacherPaiementsAuxTransactions(db);
+
+  // Conditions de paiement : le terme est convenu avec le client, puis figé sur
+  // chaque facture émise — au même titre que les taux de taxe, pour qu'un
+  // changement de terme ne rétroagisse pas sur des documents déjà remis.
+  await addColumn(db, 'clients', 'conditions_paiement', "TEXT DEFAULT 'net30'");
+  await addColumn(db, 'factures', 'conditions_paiement', "TEXT DEFAULT 'net30'");
+
+  // Sauvegardes automatiques : actives par défaut, contrairement aux relances.
+  // Une copie de sécurité ne part vers personne et ne coûte rien à l'utilisateur ;
+  // c'est son absence qui serait un choix par défaut discutable.
+  await addColumn(db, 'settings', 'sauvegarde_active', 'INTEGER DEFAULT 1');
+  await addColumn(db, 'settings', 'sauvegarde_dossier', 'TEXT');
+  await addColumn(db, 'settings', 'sauvegarde_retention', 'INTEGER DEFAULT 30');
+
+  // Vérification des mises à jour : c'est le seul appel sortant de
+  // l'application, et le couper doit rester possible.
+  await addColumn(db, 'settings', 'verifier_maj', 'INTEGER DEFAULT 1');
 
   await figerMontants(db);
 }
@@ -379,6 +429,11 @@ async function createIndexes(db) {
     CREATE INDEX IF NOT EXISTS idx_notes_credit_facture_id ON notes_credit (facture_id);
     CREATE INDEX IF NOT EXISTS idx_lignes_note_credit_note_id ON lignes_note_credit (note_id);
     CREATE INDEX IF NOT EXISTS idx_relances_facture_palier ON relances (facture_id, palier_jours);
+    -- Le journal se consulte du plus récent au plus ancien, et se filtre par
+    -- auteur ou par type d'action.
+    CREATE INDEX IF NOT EXISTS idx_logs_audit_date ON logs_audit (date_heure DESC);
+    CREATE INDEX IF NOT EXISTS idx_logs_audit_action ON logs_audit (action);
+    CREATE INDEX IF NOT EXISTS idx_logs_audit_utilisateur ON logs_audit (utilisateur);
   `);
 }
 
@@ -462,6 +517,10 @@ async function seedDemoData(db) {
  */
 async function initDb(dbPath = getDbPath()) {
   try {
+    // Avant toute ouverture : c'est le seul moment où le fichier peut être
+    // remplacé sans qu'une connexion ni un journal WAL ne décrivent l'ancienne base.
+    appliquerRestaurationEnAttente(dbPath, path.dirname(dbPath));
+
     const db = await open({ filename: dbPath, driver: sqlite3.Database });
 
     // Requis pour que les contraintes ON DELETE CASCADE s'appliquent réellement.

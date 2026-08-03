@@ -9,6 +9,7 @@ import CatalogueList from './components/CatalogueList';
 import ExpenseList from './components/ExpenseList';
 import BankReconciliation from './components/BankReconciliation';
 import SubscriptionList from './components/SubscriptionList';
+import AuditLog from './components/AuditLog';
 import { UserContext } from './UserContext';
 
 // Ces deux écrans embarquent la bibliothèque de graphiques : ils sont chargés à
@@ -29,7 +30,8 @@ import {
   LogOut,
   CreditCard,
   Landmark,
-  Repeat
+  Repeat,
+  ScrollText
 } from 'lucide-react';
 
 /**
@@ -119,6 +121,15 @@ const VUES = [
     roles: ['admin', 'comptable']
   },
   {
+    id: 'audit',
+    libelle: 'Journal',
+    icone: ScrollText,
+    titre: "Journal d'audit",
+    sousTitre: 'Qui a fait quoi, et quand',
+    composant: AuditLog,
+    roles: ['admin', 'comptable']
+  },
+  {
     id: 'parametres',
     libelle: 'Paramètres',
     icone: SettingsIcon,
@@ -137,6 +148,7 @@ function App() {
   // factures déjà filtrée, plutôt que d'afficher un chiffre sans issue.
   const [parametresVue, setParametresVue] = useState(null);
   const [user, setUser] = useState(null);
+  const [majDisponible, setMajDisponible] = useState(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
@@ -150,6 +162,18 @@ function App() {
 
   // Un employé qui atteindrait une vue restreinte est ramené au tableau de bord.
   const vueActive = vuesVisibles.find((v) => v.id === currentView) || vuesVisibles[0];
+
+  // Vérification une fois par session, après connexion. Elle échoue en silence :
+  // hors ligne ou derrière un pare-feu, l'application ne signale rien.
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+
+    let annule = false;
+    api.get('/api/version')
+      .then((info) => { if (!annule && info.disponible) setMajDisponible(info); })
+      .catch(() => {});
+    return () => { annule = true; };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -230,15 +254,19 @@ function App() {
 
       <div style={{ display: 'flex', height: '100vh', backgroundColor: 'transparent', color: 'var(--text-main)' }}>
         <aside className="glass-panel" style={{ width: '260px', margin: '20px', padding: '30px 20px', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px', justifyContent: 'center' }}>
-            <img
-              src="/images/logo.png"
-              alt=""
-              style={{ width: '64px', height: '64px', objectFit: 'contain', backgroundColor: 'white', padding: '6px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-            />
-            <h1 style={{ fontSize: '1.5rem', margin: 0, fontWeight: '800' }}>
-              <span className="gradient-text">Clora</span>
+          {/* Le logotype écrit déjà « CLORA » : le doubler d'un titre textuel
+              affichait le nom deux fois, et l'écraser dans une vignette carrée
+              le rendait illisible. Il s'affiche donc à sa proportion propre. */}
+          <div style={{ marginBottom: '40px', padding: '0 10px' }}>
+            <h1 style={{ margin: 0, fontSize: 0, lineHeight: 0 }}>
+              {/* Le logotype est en bleu marine : sur le panneau sombre il
+                  disparaîtrait. Une variante éclaircie prend le relais. */}
+              <img
+                src={isDarkMode ? '/images/logotype-sombre.png' : '/images/logotype.png'}
+                alt="Clora"
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
             </h1>
           </div>
 
@@ -294,6 +322,31 @@ function App() {
               {`${user.username} (${user.role})`}
             </div>
           </header>
+
+          {majDisponible && (
+            <div
+              className="alert alert-info"
+              role="status"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '15px' }}
+            >
+              <span>
+                Clora {majDisponible.derniere} est disponible — vous utilisez la {majDisponible.courante}.
+              </span>
+              <span style={{ display: 'flex', gap: '12px', whiteSpace: 'nowrap' }}>
+                {/* Le lien s'ouvre dans le navigateur du système : rien n'est
+                    téléchargé ni installé par l'application elle-même. */}
+                <a href={majDisponible.page} target="_blank" rel="noreferrer">Voir la version</a>
+                <button
+                  type="button"
+                  onClick={() => setMajDisponible(null)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0 }}
+                  aria-label="Masquer l'avis de mise à jour"
+                >
+                  ✕
+                </button>
+              </span>
+            </div>
+          )}
 
           <div style={{ position: 'relative', zIndex: 10 }}>
             <Suspense fallback={<p style={{ color: 'var(--text-muted)' }}>Chargement…</p>}>

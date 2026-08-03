@@ -6,6 +6,8 @@
  * ne protègent que l'utilisateur distrait, pas la base de données.
  */
 
+const { normaliserCondition } = require('./paymentTerms.js');
+
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
 
@@ -81,7 +83,10 @@ function validateClient(body) {
       nom_contact: sanitizeText(body.nom_contact, 200),
       adresse: sanitizeText(body.adresse, 500),
       langue,
-      province
+      province,
+      // Un terme inconnu retombe sur le défaut plutôt que de faire échouer
+      // l'enregistrement d'une fiche par ailleurs valide.
+      conditions_paiement: normaliserCondition(body.conditions_paiement)
     }
   };
 }

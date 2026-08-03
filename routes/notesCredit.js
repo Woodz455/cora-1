@@ -11,6 +11,7 @@ const {
   getNotesCredit, getNoteCreditDetails, createNoteCredit, deleteNoteCredit
 } = require('../noteCreditService.js');
 const { anyRole, adminOnly, adminOrAccountant } = require('../authMiddleware.js');
+const { journaliser, ACTIONS } = require('../auditService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { parseId, isValidDate, sanitizeText, validateLignes } = require('../validators.js');
 
@@ -54,7 +55,22 @@ module.exports = function noteCreditRoutes(getDb) {
 
   /** Suppression réservée à l'administration, et refusée dès qu'un paiement existe. */
   router.delete('/:id', adminOnly(), asyncRoute(async (req, res) => {
-    res.json(await deleteNoteCredit(getDb(), requireId(req)));
+    const id = requireId(req);
+
+    // Relevé avant la suppression : la note n'existera plus pour se nommer.
+    const avant = await getDb().get(
+      'SELECT numero_note, montant_total FROM notes_credit WHERE id = ?', [id]
+    );
+    const resultat = await deleteNoteCredit(getDb(), id);
+
+    await journaliser(getDb(), req, {
+      action: ACTIONS.NOTE_CREDIT_SUPPRESSION,
+      entite: 'note_credit',
+      entite_id: id,
+      details: avant ? { numero: avant.numero_note, montant_total: avant.montant_total } : null
+    });
+
+    res.json(resultat);
   }));
 
   return router;

@@ -50,9 +50,19 @@ certificat de signature de code payant ; le jour où l'on en dispose, il suffit
 de renseigner `CSC_LINK` et `CSC_KEY_PASSWORD` dans les secrets du dépôt, sans
 autre changement.
 
-**Icône.** `image/clora.ico` est produit par `npm run icone` à partir de
-`image/logo.png`. Le fichier est versionné : ne relancer la commande que si le
-logo change.
+**Visuels.** Tous les dérivés du logo sont produits par `npm run visuels` à
+partir de `image/clora-source.png`, l'œuvre d'origine : logotype détouré,
+symbole carré, et l'icône Windows `image/clora.ico` en sept tailles. Ils sont
+versionnés — ne relancer la commande que si le logo change.
+
+Le logo existe sous **deux formes**, et ce n'est pas une coquetterie. Le
+logotype large sert partout où la place le permet ; le symbole carré — la
+flèche verte — sert à l'icône Windows et à l'onglet du navigateur, qui sont
+carrés. Une icône s'affiche en 16 × 16 px dans la barre des tâches : un mot de
+750 px de large y serait illisible.
+
+Une variante éclaircie du logotype (`logotype-sombre.png`) prend le relais en
+thème sombre, où le bleu marine disparaîtrait sur le panneau foncé.
 
 ## Scripts
 
@@ -61,7 +71,7 @@ logo change.
 | `npm start` | Serveur et interface en mode développement |
 | `npm run electron:dev` | Application de bureau en mode développement |
 | `npm run build` | Compile l'interface et produit l'installateur (sous Windows) |
-| `npm run icone` | Régénère `image/clora.ico` depuis `image/logo.png` |
+| `npm run visuels` | Régénère logotype, symbole et icône depuis `image/clora-source.png` |
 | `npm test` | Suite de tests (calculs financiers, rôles, API) |
 | `npm run doctor` | Diagnostique les anomalies dans les données comptables |
 | `npm run doctor -- --corriger-statuts` | Réaligne le statut des factures sur leurs montants |
@@ -237,6 +247,139 @@ par défaut).
   concernées.
 
 L'envoi exige une configuration SMTP (voir la section Configuration).
+
+## Sauvegardes
+
+L'application détient l'unique exemplaire de la comptabilité : une copie datée
+est donc produite automatiquement, **activée par défaut**.
+
+- **Quand.** Une par jour, vérifiée à chaque passage horaire du planificateur,
+  plus une à la fermeture de l'application — un poste éteint chaque soir
+  n'atteindrait jamais l'échéance autrement.
+- **Où.** `sauvegardes/` dans le dossier de données, ou tout dossier choisi
+  dans les Paramètres. **Viser un dossier synchronisé** (OneDrive, Dropbox,
+  Google Drive) est ce qui fait sortir la copie de la machine, et donc ce qui
+  protège réellement d'une panne de disque ou d'un vol.
+- **Combien.** Les 30 plus récentes par défaut ; au-delà, les plus anciennes
+  sont supprimées. Les fichiers étrangers au dossier ne sont jamais touchés.
+
+La copie passe par `VACUUM INTO` et non par une copie de fichier. La base
+tourne en mode WAL : dupliquer `database.sqlite` pendant une écriture donnerait
+un fichier amputé de tout ce qui n'a pas encore été reporté depuis le journal.
+
+**Restauration.** Depuis les Paramètres, réservée à l'administrateur. La
+sauvegarde est d'abord contrôlée (intégrité SQLite, présence du schéma Clora) :
+un fichier douteux est refusé sans que rien ne soit modifié. Le remplacement
+n'a pas lieu tant que la base est ouverte — une demande est enregistrée, puis
+appliquée au redémarrage, alors qu'aucune connexion ni journal ne décrit encore
+l'ancienne base. La base remplacée est conservée à côté sous
+`database.sqlite.avant-restauration-<horodatage>` : une restauration sur le
+mauvais fichier reste réversible.
+
+## Mises à jour
+
+Au premier écran suivant la connexion, et une fois par jour au plus, Clora
+compare sa version à la dernière publiée. Si une version plus récente existe,
+un bandeau discret le signale avec un lien vers la page de téléchargement,
+ouverte dans le navigateur du système.
+
+**Rien n'est téléchargé ni installé par l'application.** C'est délibéré :
+l'application n'étant pas signée, `electron-updater` exécuterait un binaire
+dont l'origine n'est vérifiée par rien — la vérification de signature est
+précisément ce qui est désactivé faute de certificat. Sur un logiciel qui
+détient la comptabilité d'une entreprise, ce n'est pas acceptable. Le jour où
+un certificat existe, la mise à jour silencieuse devient envisageable.
+
+C'est **le seul appel sortant de l'application**, et il se coupe depuis les
+Paramètres. La vérification n'a lieu qu'en mode empaqueté, échoue en silence
+hors ligne ou derrière un pare-feu, et n'affiche jamais rien dans ce cas.
+
+## Conditions de paiement
+
+Chaque client porte un terme — payable sur réception, Net 15, Net 30, Net 60 —
+qui détermine l'échéance des factures émises pour lui. Net 30 par défaut.
+
+Le terme est **figé sur la facture à l'émission**, au même titre que les taux de
+taxe : changer les conditions d'un client ne déplace jamais l'échéance d'un
+document déjà remis. La date reste modifiable au cas par cas, pour un accord
+ponctuel, sans toucher à la fiche du client.
+
+La conversion d'un devis applique elle aussi le terme du client, là où elle
+imposait trente jours à tous indistinctement.
+
+Le calcul d'échéance raisonne en UTC des deux côtés (`paymentTerms.js` et
+`client/src/api.js`) : un décalage de fuseau ferait basculer la date d'un jour,
+et fausserait du même coup les relances et la balance âgée, qui en dépendent.
+
+## Balance âgée
+
+Écran Rapports : ce qui vous est dû, ventilé par ancienneté du retard — non
+échu, 1 à 30, 31 à 60, 61 à 90, 91 jours et plus — par client puis en total,
+exportable en CSV.
+
+Les bornes sont inclusives des deux côtés : un retard de 30 jours appartient à
+« 1 à 30 », un retard de 31 bascule dans la tranche suivante. Le retard se
+calcule en jours entiers depuis l'échéance, par `julianday` côté base, pour
+éviter les décalages de fuseau d'un calcul fait au navigateur.
+
+Le solde retenu est **net des paiements et des notes de crédit**, converti en
+dollars canadiens, et exclut les factures annulées comme les paiements annulés :
+la balance emprunte les mêmes expressions SQL que les écrans de facturation, et
+son total doit donc toujours égaler le « Reste à percevoir » de la vue
+d'ensemble.
+
+## Registres pour le comptable
+
+Deux exports CSV depuis l'écran Rapports, suivant la période sélectionnée :
+
+- **Registre des ventes** — une ligne par facture : numéro, dates, client,
+  statut, sous-total, chaque taxe nommée et chiffrée, total, crédité, encaissé,
+  solde, devise et équivalent en dollars canadiens. Les factures annulées en
+  sont absentes.
+- **Registre des encaissements** — une ligne par paiement reçu, avec son
+  origine (saisie manuelle ou rapprochement bancaire). **Les paiements annulés
+  en sont exclus** : les faire figurer gonflerait les rentrées déclarées.
+
+Les montants exportés sont ceux **figés à l'émission**, lus tels quels : un
+export qui recalculerait ses totaux pourrait diverger de ce que le client a
+reçu.
+
+Trois détails décident de l'utilisabilité du fichier chez son destinataire :
+BOM UTF-8 (sans quoi Excel affiche « BÃ©langer »), séparateur point-virgule
+(l'Excel francophone empile sinon toute la ligne dans une colonne), et virgule
+décimale sur les montants. L'échappement suit la RFC 4180 : un client nommé
+« Ateliers Bélanger; Cie » ressort intact.
+
+## Journal d'audit
+
+Les actions sensibles sont consignées dans `logs_audit` : annulation d'un
+encaissement, annulation ou suppression d'une facture, suppression d'une note de
+crédit, modification d'un client, **changement des taux de taxe**, création,
+modification ou suppression d'un compte, changement d'identifiants,
+restauration d'une sauvegarde.
+
+Chaque entrée porte l'horodatage, l'auteur, son rôle et l'écart constaté —
+uniquement les champs qui ont changé, sous la forme « avant → après ».
+
+**En ajout seul, garanti par la base.** Deux déclencheurs SQLite refusent tout
+`UPDATE` et tout `DELETE` sur la table : la garantie ne repose pas sur l'absence
+de route, mais sur un refus de SQLite quel que soit le chemin emprunté. Un
+journal réécrivable ne prouverait rien. En contrepartie, le journal ne se purge
+pas — c'est le bon défaut pour une piste d'audit comptable, et le volume reste
+modeste puisque seules les actions sensibles y entrent.
+
+Deux règles sur le contenu : aucun secret n'y figure (mots de passe et
+empreintes sont remplacés par une mention), et le logo d'entreprise en est
+exclu — c'est un data-URI de plusieurs mégaoctets, sans portée comptable.
+
+La consultation se fait depuis l'onglet **Journal**, ouvert à l'administration
+et à la comptabilité, avec filtres par action, auteur et période. La pagination
+est faite par le serveur, contrairement aux autres écrans de liste : le journal
+est la seule table qui ne fait que croître.
+
+Écrire au journal ne peut pas faire échouer l'action métier : refuser d'annuler
+un encaissement saisi à tort serait plus dommageable que de perdre une ligne de
+trace. Un échec part en erreur console.
 
 ## Tests
 

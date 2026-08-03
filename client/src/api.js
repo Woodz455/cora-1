@@ -72,3 +72,28 @@ export function formatMontant(valeur, devise = 'CAD', langue = 'fr') {
     return new Intl.NumberFormat(locale, { style: 'currency', currency: 'CAD' }).format(nombre);
   }
 }
+
+/**
+ * Conditions de paiement proposées à la saisie.
+ *
+ * Dupliquée depuis `paymentTerms.js`, faute de module partagé entre le serveur
+ * et l'interface — comme `formatMontant` ci-dessus. Un test vérifie que les
+ * deux listes restent alignées : une divergence proposerait à l'écran un terme
+ * que le serveur ramènerait silencieusement à Net 30.
+ */
+export const CONDITIONS = [
+  { valeur: 'reception', libelle: 'Payable sur réception', jours: 0 },
+  { valeur: 'net15', libelle: 'Net 15 jours', jours: 15 },
+  { valeur: 'net30', libelle: 'Net 30 jours', jours: 30 },
+  { valeur: 'net60', libelle: 'Net 60 jours', jours: 60 }
+];
+
+/** Échéance déduite d'une date d'émission et d'un terme, en UTC. */
+export function calculerEcheance(dateEmission, condition) {
+  const terme = CONDITIONS.find((c) => c.valeur === condition) || CONDITIONS[2];
+  const base = new Date(`${dateEmission}T00:00:00Z`);
+  if (Number.isNaN(base.getTime())) return dateEmission;
+
+  base.setUTCDate(base.getUTCDate() + terme.jours);
+  return base.toISOString().split('T')[0];
+}

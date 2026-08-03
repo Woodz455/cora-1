@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const { authMiddleware } = require('../authMiddleware.js');
+const { journaliser, ACTIONS } = require('../auditService.js');
 const { getJwtSecret, isProduction, SESSION_HOURS } = require('../config.js');
 const { loginRateLimit, recordFailure, recordSuccess } = require('../rateLimit.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
@@ -119,6 +120,18 @@ module.exports = function authRoutes(getDb) {
     }
 
     await db.run('UPDATE users SET username = ?, password = ? WHERE id = ?', [username, hash, user.id]);
+
+    // Ni l'ancien ni le nouveau mot de passe n'entrent au journal : seul le
+    // fait qu'ils aient changé est consigné.
+    await journaliser(db, req, {
+      action: ACTIONS.IDENTIFIANTS_MODIFICATION,
+      entite: 'utilisateur',
+      entite_id: user.id,
+      details: {
+        username: username === user.username ? username : { avant: user.username, apres: username },
+        mot_de_passe_change: true
+      }
+    });
 
     // La session est invalidée : l'utilisateur doit se reconnecter avec ses nouveaux identifiants.
     res.clearCookie('token');

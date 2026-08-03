@@ -14,7 +14,7 @@
     "seed:demo": "node database.js --seed",
     "test": "node --test \"tests/**/*.test.js\"",
     "doctor": "node doctor.js",
-    "icone": "node scripts/generer-icone.js"
+    "visuels": "node scripts/generer-visuels.js"
   },
   "build": {
     "appId": "com.safehill.clora",

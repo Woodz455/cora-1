@@ -5,6 +5,7 @@
 const express = require('express');
 
 const { anyRole, adminOnly } = require('../authMiddleware.js');
+const { journaliser, ecart, ACTIONS } = require('../auditService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { sanitizeText } = require('../validators.js');
 const { parsePaliers: analyserPaliers } = require('../relanceService.js');
@@ -46,6 +47,49 @@ function parsePaliers(valeur) {
   return paliers.join(',');
 }
 
+/**
+ * Interrupteur à trois états : activé, désactivé, ou absent.
+ *
+ * `body.x ? 1 : 0` transformait toute absence en désactivation. Un client qui
+ * enregistrait les paramètres sans connaître `sauvegarde_active` — un script,
+ * une version antérieure de l'interface — coupait donc les sauvegardes
+ * automatiques sans que personne ne l'ait demandé. `null` signifie « ne touche
+ * pas à ce réglage » et sort de la requête de mise à jour.
+ */
+function parseInterrupteur(valeur) {
+  if (valeur === undefined || valeur === null) return null;
+  return valeur ? 1 : 0;
+}
+
+/**
+ * Nombre de sauvegardes conservées. Une valeur absente laisse le réglage
+ * inchangé ; zéro effacerait chaque copie sitôt écrite et n'est pas accepté.
+ */
+function parseRetention(valeur) {
+  if (valeur === undefined || valeur === null || valeur === '') return null;
+
+  const n = Number(valeur);
+  if (!Number.isInteger(n) || n < 1 || n > 365) {
+    throw httpError(400, 'Le nombre de sauvegardes conservées doit être un entier entre 1 et 365.');
+  }
+  return n;
+}
+
+/**
+ * Champs dont la modification est consignée.
+ *
+ * Le logo en est volontairement absent : sa valeur est un data-URI massif, et
+ * son changement n'a aucune portée comptable.
+ */
+const CHAMPS_SUIVIS = [
+  'entreprise_nom', 'entreprise_adresse', 'entreprise_email',
+  'taxe_1_nom', 'taxe_1_taux', 'taxe_1_numero',
+  'taxe_2_nom', 'taxe_2_taux', 'taxe_2_numero',
+  'payment_instructions', 'relances_actives', 'relances_paliers',
+  'sauvegarde_active', 'sauvegarde_dossier', 'sauvegarde_retention',
+  'verifier_maj'
+];
+
 module.exports = function settingsRoutes(getDb) {
   const router = express.Router();
 
@@ -86,15 +130,20 @@ module.exports = function settingsRoutes(getDb) {
       taxe_2_numero: sanitizeText(body.taxe_2_numero, 60),
       payment_instructions: sanitizeText(body.payment_instructions, 2000),
       entreprise_logo: logo,
-      relances_actives: body.relances_actives ? 1 : 0,
-      relances_paliers: parsePaliers(body.relances_paliers)
+      relances_actives: parseInterrupteur(body.relances_actives),
+      relances_paliers: parsePaliers(body.relances_paliers),
+      sauvegarde_active: parseInterrupteur(body.sauvegarde_active),
+      sauvegarde_dossier: sanitizeText(body.sauvegarde_dossier, 500),
+      sauvegarde_retention: parseRetention(body.sauvegarde_retention),
+      verifier_maj: parseInterrupteur(body.verifier_maj)
     };
 
     if (!valeurs.entreprise_nom) {
       throw httpError(400, "Le nom de l'entreprise est requis.");
     }
 
-    const existant = await db.get('SELECT id FROM settings LIMIT 1');
+    const avant = await db.get('SELECT * FROM settings LIMIT 1');
+    const existant = avant ? { id: avant.id } : null;
     // Un champ absent de la requête garde sa valeur : ne pas filtrer reviendrait
     // à effacer un réglage que le formulaire n'a simplement pas envoyé.
     const colonnes = Object.keys(valeurs).filter((c) => valeurs[c] !== null);
@@ -112,6 +161,21 @@ module.exports = function settingsRoutes(getDb) {
     }
 
     const settings = await db.get('SELECT * FROM settings LIMIT 1');
+
+    // Le corps de requête n'est jamais journalisé tel quel : il transporte
+    // `entreprise_logo`, un data-URI de plusieurs mégaoctets. Seul l'écart sur
+    // les champs suivis est consigné — les taux de taxe au premier chef, dont
+    // un changement discret fausserait toutes les factures suivantes.
+    const changements = ecart(avant, settings, CHAMPS_SUIVIS);
+    if (changements) {
+      await journaliser(db, req, {
+        action: ACTIONS.PARAMETRES_MODIFICATION,
+        entite: 'parametres',
+        entite_id: settings.id,
+        details: { changements }
+      });
+    }
+
     res.json({ message: 'Paramètres mis à jour.', settings: nettoyer(settings) });
   }));
 

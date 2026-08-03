@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from '../api';
+import { api, CONDITIONS } from '../api';
 import { useModale } from '../useModale';
 
 /**
@@ -31,7 +31,8 @@ function ClientModal({ onClose, onSuccess, clientToEdit }) {
     email: clientToEdit?.email || '',
     adresse: clientToEdit?.adresse || '',
     langue: clientToEdit?.langue || 'fr',
-    province: clientToEdit?.province || 'QC'
+    province: clientToEdit?.province || 'QC',
+    conditions_paiement: clientToEdit?.conditions_paiement || 'net30'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -100,10 +101,23 @@ function ClientModal({ onClose, onSuccess, clientToEdit }) {
             </div>
           </div>
 
+          <div className="form-group">
+            <label htmlFor="client-conditions">Conditions de paiement</label>
+            <select
+              id="client-conditions" className="form-control" name="conditions_paiement"
+              value={formData.conditions_paiement} onChange={handleChange}
+            >
+              {CONDITIONS.map((c) => <option key={c.valeur} value={c.valeur}>{c.libelle}</option>)}
+            </select>
+            <small style={{ color: 'var(--text-muted)' }}>
+              L'échéance des nouvelles factures se calcule à partir de ce terme.
+            </small>
+          </div>
+
           {clientToEdit && (
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '5px 0 0 0' }}>
-              Changer la province n'affecte que les futurs documents : les taxes des factures
-              déjà émises restent figées.
+              Changer la province ou les conditions n'affecte que les futurs documents :
+              les taxes et l'échéance des factures déjà émises restent figées.
             </p>
           )}
 

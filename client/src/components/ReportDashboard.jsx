@@ -31,12 +31,14 @@ function Carte({ titre, valeur, couleur, aide }) {
 function ReportDashboard() {
   const [stats, setStats] = useState(null);
   const [taxStats, setTaxStats] = useState(null);
+  const [balance, setBalance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const anneeCourante = new Date().getFullYear();
   const [annee, setAnnee] = useState(String(anneeCourante));
   const [mois, setMois] = useState('');
+  const [trimestre, setTrimestre] = useState('');
 
   useEffect(() => {
     let annule = false;
@@ -44,6 +46,13 @@ function ReportDashboard() {
       .then((data) => { if (!annule) setStats(data); })
       .catch((err) => { if (!annule) setError(err.message); })
       .finally(() => { if (!annule) setLoading(false); });
+
+    // La balance âgée est indépendante de la période : elle décrit ce qui est
+    // dû aujourd'hui, pas ce qui a été facturé sur un exercice.
+    api.get('/api/rapports/balance-agee')
+      .then((data) => { if (!annule) setBalance(data); })
+      .catch(() => {});
+
     return () => { annule = true; };
   }, []);
 
@@ -54,12 +63,13 @@ function ReportDashboard() {
     const params = new URLSearchParams();
     if (annee) params.set('annee', annee);
     if (mois) params.set('mois', mois);
+    else if (trimestre) params.set('trimestre', trimestre);
 
     api.get(`/api/rapports/taxes?${params.toString()}`)
       .then((data) => { if (!annule) setTaxStats(data); })
       .catch((err) => { if (!annule) setError(err.message); });
     return () => { annule = true; };
-  }, [annee, mois]);
+  }, [annee, mois, trimestre]);
 
   const anneesDisponibles = useMemo(() => {
     const annees = [];
@@ -75,6 +85,15 @@ function ReportDashboard() {
   // sur les achats sont récupérables et ne constituent pas une charge.
   const beneficeNet = stats.total_encaisse - stats.total_depenses_ht;
 
+  /** Les registres suivent la période choisie pour le rapport de taxes. */
+  const lienExport = (registre) => {
+    const params = new URLSearchParams();
+    if (annee) params.set('annee', annee);
+    if (mois) params.set('mois', mois);
+    else if (trimestre) params.set('trimestre', trimestre);
+    return `/api/rapports/export/${registre}?${params.toString()}`;
+  };
+
   return (
     <div>
       <div className="toolbar">
@@ -82,6 +101,94 @@ function ReportDashboard() {
         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', background: 'var(--glass-bg)', padding: '6px 12px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
           🇨🇦 Tous les montants sont consolidés en dollars canadiens
         </span>
+      </div>
+
+      {balance && balance.clients.length > 0 && (
+        <div className="glass-panel" style={{ padding: '25px', marginTop: '30px' }}>
+          <div className="toolbar">
+            <div>
+              <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
+                ⏳ Balance âgée
+                <InfoTooltip text="Répartition de ce qui vous est dû selon l'ancienneté du retard. Plus une créance vieillit, moins elle a de chances d'être recouvrée." />
+              </h3>
+              <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                Au {new Date(balance.date_reference).toLocaleDateString('fr-CA')}
+              </p>
+            </div>
+            <a className="btn-secondary" href="/api/rapports/export/balance-agee" download>
+              Exporter en CSV
+            </a>
+          </div>
+
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  {balance.tranches.map((t) => (
+                    <th key={t.cle} style={{ textAlign: 'right' }}>{t.libelle}</th>
+                  ))}
+                  <th style={{ textAlign: 'right' }}>Total dû</th>
+                </tr>
+              </thead>
+              <tbody>
+                {balance.clients.map((c) => (
+                  <tr key={c.client_id}>
+                    <td>{c.client}</td>
+                    {balance.tranches.map((t) => (
+                      <td
+                        key={t.cle}
+                        style={{
+                          textAlign: 'right',
+                          // Le retard le plus ancien est celui qui doit sauter aux yeux.
+                          color: t.cle === 'jours_91_plus' && c[t.cle] > 0
+                            ? 'var(--status-danger)' : 'inherit'
+                        }}
+                      >
+                        {c[t.cle] > 0 ? formatMontant(c[t.cle]) : '—'}
+                      </td>
+                    ))}
+                    <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatMontant(c.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr style={{ fontWeight: 700, borderTop: '2px solid var(--glass-border)' }}>
+                  <td>Total</td>
+                  {balance.tranches.map((t) => (
+                    <td key={t.cle} style={{ textAlign: 'right' }}>
+                      {formatMontant(balance.totaux[t.cle])}
+                    </td>
+                  ))}
+                  <td style={{ textAlign: 'right' }}>{formatMontant(balance.totaux.total)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <div className="glass-panel" style={{ padding: '20px', marginTop: '25px' }}>
+        <div className="toolbar">
+          <div>
+            <h3 style={{ margin: 0, color: 'var(--text-main)' }}>📤 Registres pour votre comptable</h3>
+            <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+              Fichiers CSV directement lisibles dans Excel, à transmettre au logiciel comptable
+              (Acomba, Sage, QuickBooks) pour la fin d'année.
+            </p>
+          </div>
+          <div className="toolbar-group">
+            {/* Un lien, et non un appel `api.get` : la réponse est un fichier,
+                pas du JSON. Le cookie de session part avec la requête, l'API
+                étant servie par la même origine. */}
+            <a className="btn-secondary" href={lienExport('ventes')} download>
+              Registre des ventes
+            </a>
+            <a className="btn-secondary" href={lienExport('encaissements')} download>
+              Registre des encaissements
+            </a>
+          </div>
+        </div>
       </div>
 
       {error && <p className="alert alert-error" role="alert">{error}</p>}
@@ -185,7 +292,25 @@ function ReportDashboard() {
             <select className="search-input" style={{ minWidth: '120px' }} value={annee} onChange={(e) => setAnnee(e.target.value)} aria-label="Année">
               {anneesDisponibles.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
-            <select className="search-input" style={{ minWidth: '160px' }} value={mois} onChange={(e) => setMois(e.target.value)} aria-label="Mois">
+            {/* Trimestre et mois s'excluent : choisir l'un remet l'autre à
+                zéro, plutôt que de laisser l'écran décrire une période
+                contradictoire que le serveur refuserait. */}
+            <select
+              className="search-input" style={{ minWidth: '150px' }} value={trimestre}
+              onChange={(e) => { setTrimestre(e.target.value); if (e.target.value) setMois(''); }}
+              aria-label="Trimestre"
+            >
+              <option value="">Aucun trimestre</option>
+              <option value="1">T1 — janv. à mars</option>
+              <option value="2">T2 — avr. à juin</option>
+              <option value="3">T3 — juill. à sept.</option>
+              <option value="4">T4 — oct. à déc.</option>
+            </select>
+            <select
+              className="search-input" style={{ minWidth: '160px' }} value={mois}
+              onChange={(e) => { setMois(e.target.value); if (e.target.value) setTrimestre(''); }}
+              aria-label="Mois"
+            >
               <option value="">Toute l'année</option>
               {MOIS.map((nom, i) => (
                 <option key={nom} value={String(i + 1).padStart(2, '0')}>{nom}</option>
