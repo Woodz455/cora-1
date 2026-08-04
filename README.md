@@ -4,6 +4,16 @@ Application de bureau de facturation, devis et suivi financier pour les PME
 canadiennes. Interface React, API Express, base SQLite locale, empaquetée avec
 Electron.
 
+> **Vous cherchez à installer Clora, pas à le compiler ?**
+> Téléchargez l'installateur Windows depuis la [dernière publication][versions]
+> et suivez [INSTALLATION.md](INSTALLATION.md). Ce qui suit s'adresse au
+> développement.
+
+[versions]: https://github.com/Woodz455/cora-1/releases/latest
+
+Le code est consultable, mais il n'est pas libre de droits : voir
+[LICENSE](LICENSE).
+
 ## Démarrage
 
 ```bash

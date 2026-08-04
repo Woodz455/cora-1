@@ -1,0 +1,159 @@
+<!doctype html>
+<!--
+  Bloc de téléchargement à intégrer au site web de Safehill.
+
+  Ce fichier ne fait pas partie de l'application : il est versionné ici pour
+  qu'on le retrouve, et pour que le texte évolue avec le logiciel qu'il décrit.
+
+  Ouvrez-le dans un navigateur pour voir le rendu. Pour l'intégrer, copiez
+  uniquement ce qui se trouve entre les deux marqueurs « À COPIER » plus bas —
+  le <style> est inclus dans le bloc et toutes les classes sont préfixées
+  « clora- » pour ne rien heurter dans vos feuilles existantes.
+
+  L'adresse du bouton est permanente : GitHub redirige
+  /releases/latest/download/Clora-Installateur.exe vers la dernière version
+  publiée. Vous n'aurez jamais à revenir modifier ce lien.
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Télécharger Clora — aperçu du bloc</title>
+<style>
+  /* Décor de la page d'aperçu seulement. Ne pas copier. */
+  body { margin: 0; padding: 3rem 1.5rem; background: #f1f5f9; color: #0f172a;
+         font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  @media (prefers-color-scheme: dark) { body { background: #0f172a; color: #f8fafc; } }
+  .apercu-note { max-width: 40rem; margin: 0 auto 2rem; font-size: .875rem; opacity: .7; }
+</style>
+</head>
+<body>
+
+<p class="apercu-note">
+  Aperçu — la page réelle n'affichera que le bloc ci-dessous.
+</p>
+
+<!-- ==================== À COPIER — DÉBUT ==================== -->
+<style>
+  .clora-telechargement {
+    --clora-vert: #197665;          /* 5,5:1 sur blanc — accessible */
+    --clora-vert-actif: #145d4f;
+    --clora-accent: #24a890;        /* le vert du logo, pour les fonds sombres */
+
+    max-width: 34rem;
+    margin: 0 auto;
+    padding: 2rem;
+    border: 1px solid rgba(127, 127, 127, .28);
+    border-radius: 14px;
+    background: rgba(127, 127, 127, .045);
+    font-family: inherit;
+    line-height: 1.6;
+  }
+
+  .clora-telechargement h2 {
+    margin: 0 0 .35rem;
+    font-size: 1.5rem;
+    letter-spacing: -.01em;
+  }
+
+  /* Scopé sous le conteneur : la règle « .clora-telechargement p » plus bas est
+     plus spécifique et écraserait sinon cette marge basse. */
+  .clora-telechargement .clora-version {
+    margin: 0 0 1.5rem;
+    font-size: .875rem;
+    opacity: .7;
+  }
+
+  .clora-bouton {
+    display: inline-flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .9rem 1.6rem;
+    border-radius: 9px;
+    background: var(--clora-vert);
+    color: #fff;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background .15s ease;
+  }
+  .clora-bouton:hover,
+  .clora-bouton:focus-visible { background: var(--clora-vert-actif); color: #fff; }
+  .clora-bouton:focus-visible { outline: 3px solid var(--clora-accent); outline-offset: 3px; }
+
+  .clora-telechargement p { margin: 1.15rem 0 0; }
+
+  .clora-avis {
+    margin-top: 1.5rem;
+    padding: 1rem 1.15rem;
+    border-left: 3px solid var(--clora-accent);
+    border-radius: 0 8px 8px 0;
+    background: rgba(36, 168, 144, .09);
+    font-size: .9375rem;
+  }
+  .clora-avis strong { display: block; margin-bottom: .3rem; }
+  .clora-avis em { font-style: normal; font-weight: 600; }
+
+  .clora-telechargement .clora-confidentialite {
+    margin-top: 1.5rem;
+    padding-top: 1.15rem;
+    border-top: 1px solid rgba(127, 127, 127, .22);
+    font-size: .875rem;
+    opacity: .82;
+  }
+
+  /* Sur un site en thème sombre, on remonte légèrement le vert pour que le
+     bouton se détache du fond. Pas jusqu'au vert du logo : #24a890 ne donne
+     que 2,97:1 avec du texte blanc, sous le seuil AA de 4,5. #1b8069 tient les
+     deux contraintes — 4,84:1 avec le texte, et au moins 3:1 contre un fond
+     sombre, seuil applicable au contour d'un composant. Le survol assombrit,
+     comme en thème clair. */
+  @media (prefers-color-scheme: dark) {
+    .clora-telechargement { --clora-vert: #1b8069; --clora-vert-actif: #197665; }
+  }
+
+  @media (max-width: 30rem) {
+    .clora-telechargement { padding: 1.5rem; }
+    .clora-bouton { width: 100%; justify-content: center; }
+  }
+</style>
+
+<section class="clora-telechargement">
+  <h2>Télécharger Clora</h2>
+  <p class="clora-version">Version 1.2.0 — Windows 10 et 11 (64&nbsp;bits)</p>
+
+  <a class="clora-bouton"
+     href="https://github.com/Woodz455/cora-1/releases/latest/download/Clora-Installateur.exe">
+    <!-- Flèche de téléchargement, tracée en ligne : aucune image à héberger. -->
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"/>
+    </svg>
+    Télécharger pour Windows
+  </a>
+
+  <p>
+    Un seul fichier. Double-cliquez&nbsp;: Clora s'installe sans poser de
+    question et place une icône sur votre bureau. Aucun mot de passe
+    administrateur n'est demandé.
+  </p>
+
+  <div class="clora-avis">
+    <strong>Windows affichera un avertissement bleu. C'est attendu.</strong>
+    Il apparaît pour tout logiciel dont l'éditeur n'a pas acheté de certificat
+    de signature auprès de Microsoft. Cliquez sur
+    <em>Informations complémentaires</em>, puis sur
+    <em>Exécuter quand même</em>.
+  </div>
+
+  <p class="clora-confidentialite">
+    Vos factures, vos clients et vos écritures restent sur votre ordinateur,
+    dans un fichier que vous pouvez copier ou emporter. Clora ne les envoie
+    nulle part. Sa seule connexion sortante sert à vérifier s'il existe une
+    version plus récente, et elle se coupe depuis les Paramètres.
+  </p>
+</section>
+<!-- ==================== À COPIER — FIN ==================== -->
+
+</body>
+</html>

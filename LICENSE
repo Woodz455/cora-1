@@ -1,0 +1,58 @@
+Clora — Logiciel propriétaire
+Copyright © 2026 Safehill. Tous droits réservés.
+
+
+VISIBILITÉ DU CODE
+
+Le code source de ce logiciel est publié à des fins de transparence : les
+clients de Safehill peuvent vérifier ce que le logiciel fait de leurs données
+comptables avant de l'installer.
+
+Cette visibilité ne constitue pas une licence. Le fait que ce code soit
+consultable ne confère aucun droit de l'utiliser.
+
+
+RESTRICTIONS
+
+Sauf autorisation écrite préalable de Safehill, il est interdit :
+
+  - de copier, reproduire ou redistribuer tout ou partie de ce code source ;
+  - de le modifier ou d'en dériver une œuvre, y compris par réécriture ;
+  - de l'utiliser à des fins commerciales, directement ou indirectement ;
+  - d'en exploiter tout ou partie dans le cadre d'un service offert à des
+    tiers, hébergé ou non ;
+  - de retirer ou d'altérer les mentions de propriété qu'il contient.
+
+
+USAGE AUTORISÉ
+
+L'installateur publié sur la page des versions du dépôt peut être téléchargé,
+installé et utilisé par les clients de Safehill, dans les conditions convenues
+avec Safehill.
+
+Les données saisies dans le logiciel — factures, clients, écritures — sont la
+propriété exclusive de son utilisateur. Elles résident dans une base SQLite
+locale sur sa machine, et rien dans la présente licence ne restreint son droit
+de les consulter, de les exporter ou de les emporter.
+
+
+ABSENCE DE GARANTIE
+
+CE LOGICIEL EST FOURNI « EN L'ÉTAT », SANS GARANTIE D'AUCUNE SORTE, EXPRESSE
+OU IMPLICITE, Y COMPRIS SANS S'Y LIMITER LES GARANTIES DE QUALITÉ MARCHANDE,
+D'ADÉQUATION À UN USAGE PARTICULIER ET D'ABSENCE DE CONTREFAÇON.
+
+EN AUCUN CAS SAFEHILL NE POURRA ÊTRE TENUE RESPONSABLE D'UNE RÉCLAMATION, D'UN
+DOMMAGE OU D'UNE AUTRE RESPONSABILITÉ, QU'ELLE SOIT CONTRACTUELLE, DÉLICTUELLE
+OU AUTRE, DÉCOULANT DU LOGICIEL, DE SON UTILISATION OU DE TOUTE AUTRE
+OPÉRATION S'Y RAPPORTANT.
+
+L'UTILISATEUR DEMEURE SEUL RESPONSABLE DE L'EXACTITUDE DE SES DÉCLARATIONS
+FISCALES ET DE LA CONSERVATION DE SES REGISTRES COMPTABLES. LE LOGICIEL PRODUIT
+DES SAUVEGARDES AUTOMATIQUES ; IL APPARTIENT À L'UTILISATEUR DE VÉRIFIER
+QU'ELLES SONT CONSERVÉES DANS UN EMPLACEMENT SÛR ET DISTINCT DE SA MACHINE.
+
+
+CONTACT
+
+Toute demande d'autorisation doit être adressée à Safehill.
