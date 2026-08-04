@@ -59,6 +59,22 @@ jobs:
           path: dist/*.exe
           if-no-files-found: error
 
+      # Le nom produit par electron-builder porte la version
+      # (Clora-Installateur-1.2.0.exe), ce qui rend mort à chaque publication
+      # tout lien direct posé sur un site web. On dépose donc aussi une copie
+      # sous un nom fixe : GitHub sert alors en permanence
+      # /releases/latest/download/Clora-Installateur.exe, et le bouton de
+      # téléchargement n'a plus jamais à être modifié.
+      #
+      # Le fichier versionné reste publié : au support, savoir quelle version
+      # le client a réellement installée vaut la peine des deux actifs.
+      - name: Nommer une copie stable pour le lien du site web
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist/*.exe | Select-Object -First 1
+          Copy-Item $exe.FullName dist/Clora-Installateur.exe
+
       - name: Publier
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2

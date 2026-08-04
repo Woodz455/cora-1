@@ -1,6 +1,7 @@
 {
   "name": "clora",
   "version": "1.2.0",
+  "private": true,
   "description": "Clora — facturation, devis et suivi financier pour PME canadiennes",
   "main": "main.js",
   "scripts": {
@@ -70,8 +71,8 @@
     "TVQ",
     "PME"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Safehill",
+  "license": "UNLICENSED",
   "type": "commonjs",
   "engines": {
     "node": ">=20"
