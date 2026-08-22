@@ -9,6 +9,7 @@ const { app, BrowserWindow, dialog, shell } = require('electron');
 const path = require('path');
 const { startServer } = require('./server.js');
 const { sauvegardeSiNecessaire } = require('./backupService.js');
+const { connexionsOuvertes, fermerTout } = require('./companyStore.js');
 
 /**
  * `CLORA_UI_COMPILEE=1` force le chemin de production sur une application non
@@ -135,22 +136,27 @@ app.on('before-quit', async () => {
   if (serverInstance) {
     if (serverInstance.server) serverInstance.server.close();
 
-    if (serverInstance.db) {
-      // Sauvegarde de fin de journée, avant fermeture : sur un poste éteint
-      // chaque soir, le planificateur horaire n'a pas toujours l'occasion
-      // d'atteindre son échéance de 24 h.
+    // Sauvegarde de fin de journée, avant fermeture : sur un poste éteint
+    // chaque soir, le planificateur horaire n'a pas toujours l'occasion
+    // d'atteindre son échéance de 24 h.
+    //
+    // Tous les dossiers ouverts pendant la session y passent, pas seulement le
+    // dernier consulté : un comptable qui a travaillé sur trois clients dans la
+    // journée doit repartir avec trois copies, pas une.
+    for (const { chemin, db } of connexionsOuvertes()) {
       try {
-        await sauvegardeSiNecessaire(serverInstance.db);
+        await sauvegardeSiNecessaire(db);
       } catch (error) {
-        console.error('[Electron] Sauvegarde à la fermeture :', error.message);
+        console.error(`[Electron] Sauvegarde à la fermeture (${chemin}) :`, error.message);
       }
+    }
 
-      // Ferme proprement la base pour que le journal WAL soit consolidé.
-      try {
-        await serverInstance.db.close();
-      } catch (error) {
-        console.error('[Electron] Fermeture de la base :', error.message);
-      }
+    // Ferme proprement les bases pour que les journaux WAL soient consolidés.
+    try {
+      await fermerTout();
+      if (serverInstance.comptesDb) await serverInstance.comptesDb.close();
+    } catch (error) {
+      console.error('[Electron] Fermeture des bases :', error.message);
     }
   }
 });

@@ -12,6 +12,7 @@
 const { checkAndGenerateRecurringInvoices } = require('./subscriptionService.js');
 const { envoyerRelancesDues } = require('./relanceService.js');
 const { sauvegardeSiNecessaire } = require('./backupService.js');
+const { ouvrirEntreprise } = require('./companyStore.js');
 
 /** Intervalle entre deux vérifications. */
 const INTERVALLE_MS = 60 * 60 * 1000; // 1 heure
@@ -44,13 +45,42 @@ async function runOnce(db) {
 }
 
 /**
- * Démarre la vérification périodique des abonnements.
- * @param {import('sqlite').Database} db
+ * Passe sur **tous** les dossiers enregistrés.
+ *
+ * Le planificateur ne traitait qu'une base. Avec plusieurs dossiers, s'en tenir
+ * à celui qui est ouvert aurait laissé les autres sans relances, sans factures
+ * récurrentes et surtout **sans sauvegarde** — un comptable qui ne rouvre un
+ * dossier qu'au trimestre n'en aurait plus aucune copie entre-temps.
+ *
+ * Un dossier en échec — fichier déplacé, disque plein — n'interrompt pas les
+ * suivants : c'est la même règle que pour les relances individuelles.
  */
-function startScheduler(db) {
-  runOnce(db);
+async function runOnceTousDossiers(comptesDb) {
+  const dossiers = await comptesDb.all('SELECT id, nom, chemin FROM entreprises WHERE archive = 0');
 
-  timer = setInterval(() => runOnce(db), INTERVALLE_MS);
+  for (const dossier of dossiers) {
+    try {
+      const db = await ouvrirEntreprise(dossier.chemin);
+      await runOnce(db);
+    } catch (error) {
+      console.error(`Passage impossible sur le dossier « ${dossier.nom} » :`, error.message);
+    }
+  }
+}
+
+/**
+ * Démarre la vérification périodique, sur l'ensemble des dossiers.
+ *
+ * Le planificateur tourne sur minuterie, donc hors de toute requête : il reçoit
+ * le registre explicitement plutôt que par le contexte asynchrone, qui n'existe
+ * que le temps d'une requête HTTP.
+ *
+ * @param {import('sqlite').Database} comptesDb
+ */
+function startScheduler(comptesDb) {
+  runOnceTousDossiers(comptesDb);
+
+  timer = setInterval(() => runOnceTousDossiers(comptesDb), INTERVALLE_MS);
   // Ne pas maintenir le processus en vie pour ce seul minuteur.
   if (typeof timer.unref === 'function') timer.unref();
 
@@ -64,4 +94,4 @@ function stopScheduler() {
   }
 }
 
-module.exports = { startScheduler, stopScheduler, runOnce, INTERVALLE_MS };
+module.exports = { startScheduler, stopScheduler, runOnce, runOnceTousDossiers, INTERVALLE_MS };
