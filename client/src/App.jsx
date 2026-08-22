@@ -5,6 +5,7 @@ import Settings from './components/Settings';
 import DevisList from './components/DevisList';
 import Login from './components/Login';
 import Setup from './components/Setup';
+import ChoixEntreprise from './components/ChoixEntreprise';
 import CatalogueList from './components/CatalogueList';
 import ExpenseList from './components/ExpenseList';
 import BankReconciliation from './components/BankReconciliation';
@@ -149,6 +150,11 @@ function App() {
   const [parametresVue, setParametresVue] = useState(null);
   const [user, setUser] = useState(null);
   const [majDisponible, setMajDisponible] = useState(null);
+  // Dossiers accessibles et dossier ouvert. `ouvert` à null avec plusieurs
+  // dossiers signifie qu'un choix reste à faire.
+  const [entreprises, setEntreprises] = useState([]);
+  const [ouvert, setOuvert] = useState(null);
+  const [changementDossier, setChangementDossier] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
@@ -166,14 +172,14 @@ function App() {
   // Vérification une fois par session, après connexion. Elle échoue en silence :
   // hors ligne ou derrière un pare-feu, l'application ne signale rien.
   useEffect(() => {
-    if (!isAuthenticated) return undefined;
+    if (!isAuthenticated || !ouvert) return undefined;
 
     let annule = false;
     api.get('/api/version')
       .then((info) => { if (!annule && info.disponible) setMajDisponible(info); })
       .catch(() => {});
     return () => { annule = true; };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, ouvert]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -196,6 +202,8 @@ function App() {
             const authData = await api.get('/api/auth/check');
             if (authData.authenticated) {
               setUser({ username: authData.username, role: authData.role });
+              setEntreprises(authData.entreprises || []);
+              setOuvert(authData.ouvert || null);
             }
           } catch {
             // 401 attendu tant que l'utilisateur n'est pas connecté.
@@ -228,11 +236,52 @@ function App() {
   }
 
   if (setupRequired) {
-    return <Setup onSetupComplete={(compte) => { setSetupRequired(false); setUser(compte); }} />;
+    return (
+      <Setup
+        onSetupComplete={({ entreprises: liste, ouvert: actif, ...compte }) => {
+          setSetupRequired(false);
+          setUser(compte);
+          setEntreprises(liste || []);
+          setOuvert(actif || null);
+        }}
+      />
+    );
   }
 
   if (!isAuthenticated) {
-    return <Login onLogin={(compte) => setUser(compte)} />;
+    return (
+      <Login
+        onLogin={({ entreprises: liste, ouvert: actif, ...compte }) => {
+          setUser(compte);
+          setEntreprises(liste || []);
+          setOuvert(actif || null);
+        }}
+      />
+    );
+  }
+
+  /** Applique le dossier retourné par l'écran de choix. */
+  const ouvrirDossier = (dossier) => {
+    setOuvert(dossier);
+    setUser((prev) => ({ ...prev, role: dossier.role }));
+    setChangementDossier(false);
+    setCurrentView('dashboard');
+    // Les listes affichées appartiennent au dossier précédent : les laisser en
+    // place ferait croire un instant que la comptabilité d'un client vient de
+    // se déverser dans celle d'un autre.
+    setParametresVue(null);
+  };
+
+  // Aucun dossier ouvert, ou bascule demandée : le choix passe avant tout le
+  // reste. Une facture saisie dans le mauvais dossier se répare mal.
+  if (!ouvert || changementDossier) {
+    return (
+      <ChoixEntreprise
+        entreprises={entreprises}
+        onOuvert={ouvrirDossier}
+        onAnnuler={changementDossier ? () => setChangementDossier(false) : null}
+      />
+    );
   }
 
   const ContenuActif = vueActive.composant;
@@ -268,6 +317,33 @@ function App() {
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             </h1>
+          </div>
+
+          {/* Le dossier ouvert, affiché en permanence.
+
+              C'est le repère le plus important d'un logiciel multi-dossier :
+              saisir une facture chez le mauvais client se répare mal, et
+              l'ambiguïté sur « chez qui suis-je » est le premier risque. Le
+              bouton n'apparaît que s'il y a réellement ailleurs où aller. */}
+          <div style={{ marginBottom: '28px', padding: '0 10px' }}>
+            <p style={{ margin: 0, fontSize: '.7rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+              Dossier
+            </p>
+            <p style={{ margin: '.15rem 0 0', fontWeight: 600, lineHeight: 1.3 }}>
+              {ouvert.nom}
+            </p>
+            {entreprises.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setChangementDossier(true)}
+                style={{
+                  marginTop: '.35rem', padding: 0, background: 'none', border: 'none',
+                  color: 'var(--safehill-teal)', cursor: 'pointer', font: 'inherit', fontSize: '.8rem'
+                }}
+              >
+                Changer de dossier
+              </button>
+            )}
           </div>
 
           {/* Des <button> et non des <div> : la navigation était inatteignable

@@ -34,7 +34,14 @@ function Setup({ onSetupComplete }) {
     try {
       await api.post('/api/auth/setup', { username, password });
       const session = await api.get('/api/auth/check');
-      onSetupComplete({ username: session.username, role: session.role });
+      // La configuration crée aussi le premier dossier : le transmettre évite
+      // de faire choisir entre une seule possibilité juste après l'inscription.
+      onSetupComplete({
+        username: session.username,
+        role: session.role,
+        entreprises: session.entreprises || [],
+        ouvert: session.ouvert || null
+      });
     } catch (err) {
       setError(err.message);
       setLoading(false);
