@@ -38,8 +38,13 @@ dans [INSTALLATION.md](INSTALLATION.md).
 et dépose le fichier sur la page des publications :
 
 ```bash
-git tag v1.2.0 && git push origin v1.2.0
+git tag v1.2.1 && git push origin v1.2.1
 ```
+
+L'étiquette doit correspondre au champ `version` de `package.json` : c'est lui
+que la vérification de mise à jour compare à la dernière étiquette publiée.
+Publier sans l'avoir incrémenté ne signalerait aucune nouveauté aux
+installations existantes.
 
 Ce détour est obligatoire : `sqlite3` est une bibliothèque native, et son
 binaire Windows n'est téléchargé que par un `npm ci` exécuté sous Windows. La
