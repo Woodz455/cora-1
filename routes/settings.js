@@ -7,18 +7,36 @@ const express = require('express');
 const { anyRole, adminOnly } = require('../authMiddleware.js');
 const { journaliser, ecart, ACTIONS } = require('../auditService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
-const { sanitizeText } = require('../validators.js');
+const { sanitizeText, isValidEmailList } = require('../validators.js');
 const { parsePaliers: analyserPaliers } = require('../relanceService.js');
+const { chiffrer, estProtege, coffreDisponible } = require('../secretStorage.js');
+const { envoyerCourrielTest } = require('../emailService.js');
 
 /** Taille maximale du logo, encodé en data-URI. */
 const MAX_LOGO_CHARS = 3 * 1024 * 1024;
 
 /** Champs jamais exposés par l'API, quel que soit le rôle. */
-const CHAMPS_INTERNES = ['admin_username', 'admin_password'];
+const CHAMPS_INTERNES = ['admin_username', 'admin_password', 'smtp_pass_chiffre'];
 
+/**
+ * Retire les champs internes et remplace le mot de passe d'envoi par deux
+ * indicateurs.
+ *
+ * Le formulaire doit pouvoir afficher « un mot de passe est enregistré » sans
+ * que ce mot de passe transite : une réponse d'API finit dans l'historique du
+ * navigateur, dans les journaux d'un mandataire, dans une capture d'écran de
+ * support. `smtp_pass_protege` dit en plus s'il est réellement chiffré par le
+ * coffre du système — c'est faux hors Electron, et l'utilisateur mérite de le
+ * savoir plutôt que de le supposer.
+ */
 function nettoyer(settings) {
   if (!settings) return {};
   const copie = { ...settings };
+
+  copie.smtp_pass_defini = Boolean(settings.smtp_pass_chiffre);
+  copie.smtp_pass_protege = estProtege(settings.smtp_pass_chiffre);
+  copie.coffre_disponible = coffreDisponible();
+
   for (const champ of CHAMPS_INTERNES) delete copie[champ];
   return copie;
 }
@@ -76,6 +94,20 @@ function parseRetention(valeur) {
 }
 
 /**
+ * Port du serveur d'envoi. Une valeur absente laisse le réglage inchangé ;
+ * `emailService` retombe de lui-même sur 587 quand rien n'est enregistré.
+ */
+function parsePort(valeur) {
+  if (valeur === undefined || valeur === null || valeur === '') return null;
+
+  const n = Number(valeur);
+  if (!Number.isInteger(n) || n < 1 || n > 65535) {
+    throw httpError(400, 'Le port du serveur d\'envoi doit être un entier entre 1 et 65535.');
+  }
+  return n;
+}
+
+/**
  * Champs dont la modification est consignée.
  *
  * Le logo en est volontairement absent : sa valeur est un data-URI massif, et
@@ -87,7 +119,11 @@ const CHAMPS_SUIVIS = [
   'taxe_2_nom', 'taxe_2_taux', 'taxe_2_numero',
   'payment_instructions', 'relances_actives', 'relances_paliers',
   'sauvegarde_active', 'sauvegarde_dossier', 'sauvegarde_retention',
-  'verifier_maj'
+  'verifier_maj',
+  // Le serveur et le compte d'envoi sont suivis ; le mot de passe ne l'est
+  // évidemment pas, et son absence de cette liste est la seule chose qui
+  // l'empêche d'être recopié dans un journal conçu pour être inaltérable.
+  'smtp_host', 'smtp_port', 'smtp_user'
 ];
 
 module.exports = function settingsRoutes(getDb) {
@@ -135,11 +171,28 @@ module.exports = function settingsRoutes(getDb) {
       sauvegarde_active: parseInterrupteur(body.sauvegarde_active),
       sauvegarde_dossier: sanitizeText(body.sauvegarde_dossier, 500),
       sauvegarde_retention: parseRetention(body.sauvegarde_retention),
-      verifier_maj: parseInterrupteur(body.verifier_maj)
+      verifier_maj: parseInterrupteur(body.verifier_maj),
+      smtp_host: sanitizeText(body.smtp_host, 200),
+      smtp_port: parsePort(body.smtp_port),
+      smtp_user: sanitizeText(body.smtp_user, 200)
     };
 
     if (!valeurs.entreprise_nom) {
       throw httpError(400, "Le nom de l'entreprise est requis.");
+    }
+
+    // Le mot de passe n'est enregistré que lorsqu'il est réellement fourni : le
+    // formulaire ne le renvoie jamais, et l'écrire à chaque sauvegarde des
+    // paramètres l'effacerait dès la première modification d'un taux de taxe.
+    //
+    // Vider le serveur d'envoi efface en revanche le mot de passe : garder un
+    // secret pour un compte qu'on vient de retirer n'aurait aucun usage, et le
+    // laisserait dans chaque sauvegarde produite ensuite.
+    const motDePasse = typeof body.smtp_pass === 'string' ? body.smtp_pass : '';
+    if (motDePasse) {
+      valeurs.smtp_pass_chiffre = chiffrer(motDePasse);
+    } else if (!valeurs.smtp_host) {
+      valeurs.smtp_pass_chiffre = '';
     }
 
     const avant = await db.get('SELECT * FROM settings LIMIT 1');
@@ -177,6 +230,40 @@ module.exports = function settingsRoutes(getDb) {
     }
 
     res.json({ message: 'Paramètres mis à jour.', settings: nettoyer(settings) });
+  }));
+
+  /**
+   * Envoie un courriel de contrôle.
+   *
+   * Sans cette route, la seule façon de savoir si la configuration tient était
+   * d'envoyer une vraie facture à un vrai client et d'attendre de voir. Les
+   * erreurs SMTP sont ici renvoyées telles que le serveur les formule — « 535
+   * mot de passe d'application requis » guide bien mieux qu'un « échec de
+   * l'envoi » poli.
+   */
+  router.post('/smtp/test', adminOnly(), asyncRoute(async (req, res) => {
+    const db = getDb();
+    const settings = await db.get('SELECT entreprise_nom, entreprise_email, smtp_user FROM settings LIMIT 1');
+
+    const destinataire = sanitizeText(req.body && req.body.destinataire, 200)
+      || (settings && settings.entreprise_email)
+      || (settings && settings.smtp_user)
+      || '';
+
+    if (!isValidEmailList(destinataire)) {
+      throw httpError(400, 'Indiquez une adresse de destination valide pour le courriel de test.');
+    }
+
+    // Volontairement absent du journal d'audit : celui-ci retrace ce qui engage
+    // la comptabilité — un taux modifié, un encaissement annulé. Un courriel de
+    // test n'engage rien, et l'y consigner diluerait ce que le journal sert à
+    // prouver.
+    const resultat = await envoyerCourrielTest(db, destinataire, settings || {});
+
+    res.json({
+      message: `Courriel de test envoyé à ${destinataire}.`,
+      ...resultat
+    });
   }));
 
   return router;

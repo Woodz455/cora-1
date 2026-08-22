@@ -251,8 +251,13 @@ test('les en-têtes de sécurité sont présents et aucun en-tête CORS ne l\'es
 test('un 503 délibéré parvient à l\'utilisateur, un 500 imprévu reste opaque', async (t) => {
   const api = await withAdmin(t);
 
-  // Sans SMTP, le message doit dire quoi faire : « Erreur interne du serveur »
-  // renverrait l'utilisateur d'un logiciel de bureau lire des journaux.
+  // Sans configuration d'envoi, le message doit dire quoi faire : « Erreur
+  // interne du serveur » renverrait l'utilisateur d'un logiciel de bureau lire
+  // des journaux.
+  //
+  // Il désigne désormais l'écran des Paramètres, et non plus des variables d'un
+  // fichier `.env` que l'application installée ne pouvait de toute façon pas
+  // lire — le message envoyait chercher un fichier inatteignable.
   const res = await api.post('/api/emails/send', {
     to: 'client@exemple.ca',
     subject: 'Facture',
@@ -260,7 +265,9 @@ test('un 503 délibéré parvient à l\'utilisateur, un 500 imprévu reste opaqu
     attachmentBase64: 'data:application/pdf;base64,JVBERi0='
   });
   assert.equal(res.status, 503, JSON.stringify(res.data));
-  assert.match(res.data.error, /SMTP_HOST/);
+  assert.match(res.data.error, /Paramètres/);
+  assert.match(res.data.error, /Courriel/);
+  assert.doesNotMatch(res.data.error, /\.env/);
 
   // Une anomalie non prévue ne divulgue toujours rien.
   const { errorHandler, httpError } = require('../httpUtils.js');

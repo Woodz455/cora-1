@@ -305,6 +305,19 @@ async function runMigrations(db) {
   // l'application, et le couper doit rester possible.
   await addColumn(db, 'settings', 'verifier_maj', 'INTEGER DEFAULT 1');
 
+  // Serveur d'envoi de courriels. Ces réglages vivaient dans un fichier `.env`
+  // que l'application empaquetée lisait à l'intérieur de son archive, donc
+  // introuvable pour l'utilisateur : l'envoi de courriels était inconfigurable
+  // sur toute installation réelle.
+  //
+  // Le mot de passe est chiffré par `secretStorage.js` avant d'arriver ici. Il
+  // ne doit jamais être écrit en clair : les sauvegardes automatiques recopient
+  // cette base vers un dossier fréquemment synchronisé.
+  await addColumn(db, 'settings', 'smtp_host', 'TEXT');
+  await addColumn(db, 'settings', 'smtp_port', 'INTEGER');
+  await addColumn(db, 'settings', 'smtp_user', 'TEXT');
+  await addColumn(db, 'settings', 'smtp_pass_chiffre', 'TEXT');
+
   await figerMontants(db);
 }
 

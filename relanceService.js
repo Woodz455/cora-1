@@ -159,8 +159,10 @@ async function envoyerRelancesDues(db, options = {}) {
     return { envoyees: 0, erreurs: 0, ignorees: 0, inactif: true };
   }
 
-  const envoyer = options.envoyer || defaultEnvoyer;
-  if (!options.envoyer && !isConfigured()) {
+  // La base porte désormais la configuration d'envoi : elle doit donc parvenir
+  // au service. Le point d'injection des tests, lui, garde sa signature.
+  const envoyer = options.envoyer || ((message, expediteur) => sendEmail(db, message, expediteur));
+  if (!options.envoyer && !(await isConfigured(db))) {
     return { envoyees: 0, erreurs: 0, ignorees: 0, smtpManquant: true };
   }
 
@@ -204,10 +206,6 @@ async function envoyerRelancesDues(db, options = {}) {
   return { envoyees, erreurs, ignorees: Math.max(0, dues.length - MAX_ENVOIS_PAR_PASSAGE) };
 }
 
-/** Envoi réel, par courriel texte. */
-async function defaultEnvoyer(message, settings) {
-  return sendEmail(message, settings);
-}
 
 module.exports = {
   envoyerRelancesDues,
