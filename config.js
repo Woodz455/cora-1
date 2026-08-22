@@ -6,8 +6,6 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-require('dotenv').config({ path: path.join(__dirname, '.env') });
-
 /**
  * Répertoire où sont stockées les données de l'utilisateur (base, secret).
  * En développement : la racine du projet. En application installée :
@@ -24,6 +22,27 @@ function getDataDir() {
   }
   return __dirname;
 }
+
+/**
+ * Chargement du fichier d'environnement.
+ *
+ * Il était lu depuis `__dirname` seulement — c'est-à-dire, une fois
+ * l'application empaquetée, depuis l'intérieur de `app.asar` : une archive en
+ * lecture seule, d'où le fichier est de surcroît explicitement exclu
+ * (`"!.env"` dans package.json). Personne ne pouvait donc configurer l'envoi de
+ * courriels sur une installation réelle, et le message d'erreur renvoyait vers
+ * un fichier inatteignable.
+ *
+ * Le dossier de données passe en premier : c'est le seul emplacement
+ * accessible à l'utilisateur. La racine du projet suit, pour le développement.
+ * dotenv n'écrase jamais une variable déjà définie, donc les variables
+ * d'environnement du système gardent la priorité sur les deux.
+ *
+ * Ce chemin reste un dépannage : la configuration normale passe par
+ * Paramètres → Courriel, qui écrit dans la base.
+ */
+require('dotenv').config({ path: path.join(getDataDir(), '.env') });
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const DB_FILENAME = 'database.sqlite';
 const SECRET_FILENAME = '.jwt-secret';

@@ -38,8 +38,13 @@ dans [INSTALLATION.md](INSTALLATION.md).
 et dépose le fichier sur la page des publications :
 
 ```bash
-git tag v1.2.0 && git push origin v1.2.0
+git tag v1.2.1 && git push origin v1.2.1
 ```
+
+L'étiquette doit correspondre au champ `version` de `package.json` : c'est lui
+que la vérification de mise à jour compare à la dernière étiquette publiée.
+Publier sans l'avoir incrémenté ne signalerait aucune nouveauté aux
+installations existantes.
 
 Ce détour est obligatoire : `sqlite3` est une bibliothèque native, et son
 binaire Windows n'est téléchargé que par un `npm ci` exécuté sous Windows. La
@@ -93,14 +98,21 @@ thème sombre, où le bleu marine disparaîtrait sur le panneau foncé.
 
 ## Configuration
 
-Un fichier `.env` optionnel, à la racine, permet de régler :
+**L'envoi de courriels se règle dans l'application**, onglet
+Paramètres → Courriel. Le mot de passe y est chiffré par le coffre du système
+(`secretStorage.js`) avant d'être enregistré : les sauvegardes automatiques
+partent souvent vers un dossier synchronisé, et un mot de passe en clair les
+y suivrait.
+
+Un fichier `.env` optionnel permet de régler le reste :
 
 ```ini
 # Signature des sessions. Généré automatiquement au premier lancement
 # (fichier .jwt-secret) si absent. 32 caractères minimum.
 JWT_SECRET=
 
-# Envoi des factures et des relances par courriel
+# Repli pour l'envoi de courriels, quand les Paramètres sont vides.
+# Sert surtout au développement et aux serveurs sans interface.
 SMTP_HOST=smtp.exemple.ca
 SMTP_PORT=587
 SMTP_USER=compta@exemple.ca
@@ -110,6 +122,12 @@ PORT=3000
 HOST=127.0.0.1     # l'API n'est pas exposée au réseau local par défaut
 SESSION_HOURS=12
 ```
+
+Le fichier est lu **dans le dossier de données** (`%APPDATA%\Clora` sous
+Windows), puis à la racine du projet. Il était auparavant cherché uniquement à
+la racine — c'est-à-dire, une fois l'application empaquetée, à l'intérieur de
+`app.asar`, en lecture seule et d'où il est exclu : aucune installation réelle
+ne pouvait donc configurer l'envoi de courriels.
 
 `.env`, `.jwt-secret` et `database.sqlite` ne sont pas versionnés : ils
 contiennent des secrets et les données réelles de l'entreprise.
@@ -256,7 +274,8 @@ par défaut).
   aussi de le déclencher à la demande, après avoir prévisualisé les factures
   concernées.
 
-L'envoi exige une configuration SMTP (voir la section Configuration).
+L'envoi exige un serveur de courriel configuré dans
+Paramètres → Courriel (voir la section Configuration).
 
 ## Sauvegardes
 

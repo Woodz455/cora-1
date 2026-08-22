@@ -45,8 +45,15 @@ function Settings() {
     payment_instructions: '', entreprise_logo: '',
     relances_actives: 0, relances_paliers: '7,15,30',
     sauvegarde_active: 1, sauvegarde_dossier: '', sauvegarde_retention: 30,
-    verifier_maj: 1
+    verifier_maj: 1,
+    smtp_host: '', smtp_port: '', smtp_user: '', smtp_pass_defini: false
   });
+  // Le mot de passe d'envoi n'entre jamais dans `settings` : l'API ne le renvoie
+  // pas, et l'y mêler ferait réenregistrer une valeur vide à chaque sauvegarde.
+  const [motDePasseSmtp, setMotDePasseSmtp] = useState('');
+  const [testEnCours, setTestEnCours] = useState(false);
+  const [testMessage, setTestMessage] = useState(null);
+
   const [infoSauvegardes, setInfoSauvegardes] = useState(null);
   const [sauvegardeEnCours, setSauvegardeEnCours] = useState(false);
   const [relancesDues, setRelancesDues] = useState(null);
@@ -157,12 +164,42 @@ function Settings() {
     setSaving(true);
     setMessage(null);
     try {
-      await api.put('/api/settings', settings);
+      // Le mot de passe d'envoi voyage à part et n'est transmis que s'il vient
+      // d'être saisi : le serveur conserve l'existant quand le champ est vide.
+      const enregistres = await api.put('/api/settings', { ...settings, smtp_pass: motDePasseSmtp });
+      // Il n'est jamais réaffiché — on vide le champ et on retient seulement
+      // qu'un mot de passe existe.
+      setMotDePasseSmtp('');
+      if (enregistres && enregistres.settings) setSettings(enregistres.settings);
       notifier('Paramètres enregistrés.');
     } catch (err) {
       setMessage({ type: 'error', texte: err.message });
     } finally {
       setSaving(false);
+    }
+  };
+
+  /**
+   * Envoie un courriel de contrôle.
+   *
+   * Enregistre d'abord : tester une configuration qui n'est pas encore dans la
+   * base éprouverait l'ancienne, et le message de succès porterait sur un
+   * serveur que l'utilisateur vient justement de remplacer.
+   */
+  const envoyerCourrielTest = async () => {
+    setTestEnCours(true);
+    setTestMessage(null);
+    try {
+      const enregistres = await api.put('/api/settings', { ...settings, smtp_pass: motDePasseSmtp });
+      setMotDePasseSmtp('');
+      if (enregistres && enregistres.settings) setSettings(enregistres.settings);
+
+      const r = await api.post('/api/settings/smtp/test', {});
+      setTestMessage({ type: 'success', texte: r.message });
+    } catch (err) {
+      setTestMessage({ type: 'error', texte: err.message });
+    } finally {
+      setTestEnCours(false);
     }
   };
 
@@ -474,6 +511,103 @@ function Settings() {
                 </ul>
               </>
             )
+          )}
+        </div>
+
+        <div>
+          <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
+            Courriel
+          </h3>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
+            Nécessaire pour transmettre vos factures et vos devis depuis Clora, et pour les
+            relances automatiques. Ces renseignements vous sont fournis par votre service de
+            messagerie.
+          </p>
+
+          <div className="form-group">
+            <label htmlFor="smtp_host">Serveur d'envoi (SMTP)</label>
+            <input
+              id="smtp_host" type="text" className="form-control" name="smtp_host"
+              value={settings.smtp_host || ''} onChange={handleChange}
+              placeholder="smtp.gmail.com"
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="smtp_port">Port</label>
+            <input
+              id="smtp_port" type="number" min="1" max="65535" className="form-control"
+              name="smtp_port"
+              value={settings.smtp_port ?? ''} onChange={handleChange}
+              placeholder="587"
+            />
+            <small style={{ color: 'var(--text-muted)' }}>
+              Laissez vide pour 587, accepté par la quasi-totalité des fournisseurs.
+            </small>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="smtp_user">Adresse d'envoi</label>
+            <input
+              id="smtp_user" type="email" className="form-control" name="smtp_user"
+              value={settings.smtp_user || ''} onChange={handleChange}
+              placeholder="facturation@votreentreprise.ca"
+              autoComplete="off"
+            />
+            <small style={{ color: 'var(--text-muted)' }}>
+              C'est l'adresse qui apparaîtra comme expéditeur chez vos clients.
+            </small>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="smtp_pass">Mot de passe</label>
+            <input
+              id="smtp_pass" type="password" className="form-control"
+              value={motDePasseSmtp}
+              onChange={(e) => setMotDePasseSmtp(e.target.value)}
+              placeholder={settings.smtp_pass_defini ? '•••••••• (enregistré)' : ''}
+              autoComplete="new-password"
+            />
+            <small style={{ color: 'var(--text-muted)' }}>
+              {settings.smtp_pass_defini
+                ? 'Un mot de passe est enregistré. Laissez ce champ vide pour le conserver.'
+                : 'Gmail, Outlook et la plupart des fournisseurs exigent un « mot de passe '
+                  + 'd\'application », à créer dans les réglages de sécurité de votre compte. '
+                  + 'Votre mot de passe habituel sera refusé.'}
+            </small>
+          </div>
+
+          {/* Hors Electron — serveur lancé seul — le coffre du système n'existe
+              pas. Le taire laisserait croire à une protection absente. */}
+          {settings.smtp_pass_defini && settings.coffre_disponible === false && (
+            <p style={{ fontSize: '0.85rem', color: 'var(--status-warning)', marginBottom: '15px' }}>
+              Le coffre-fort de Windows n'est pas accessible : ce mot de passe est enregistré
+              sans chiffrement. Évitez d'envoyer vos sauvegardes vers un dossier partagé tant
+              que c'est le cas.
+            </p>
+          )}
+
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+            <button
+              type="button" className="btn-secondary"
+              disabled={testEnCours || !settings.smtp_host}
+              onClick={envoyerCourrielTest}
+            >
+              {testEnCours ? 'Envoi en cours…' : 'Enregistrer et envoyer un courriel de test'}
+            </button>
+          </div>
+
+          {testMessage && (
+            <p
+              style={{
+                fontSize: '0.9rem',
+                color: testMessage.type === 'error' ? 'var(--status-danger)' : 'var(--status-paid)',
+                margin: 0
+              }}
+            >
+              {testMessage.texte}
+            </p>
           )}
         </div>
 

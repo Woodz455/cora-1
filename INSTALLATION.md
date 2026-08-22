@@ -9,14 +9,17 @@ Comptez deux minutes.
 
 ## 1. Télécharger le fichier
 
-Rendez-vous sur la page des versions du projet et téléchargez le fichier dont
-le nom ressemble à :
+Rendez-vous sur la page des versions du projet. Deux fichiers y sont proposés :
 
 ```
-Clora-Installateur-1.2.0.exe
+Clora-Installateur.exe          ← toujours la dernière version
+Clora-Installateur-1.2.1.exe    ← la même, avec le numéro de version
 ```
 
-Il fait environ 100 Mo. Votre navigateur le déposera dans le dossier
+**Prenez le premier.** Le second est identique ; son nom porte le numéro de
+version, ce qui aide à savoir de quoi l'on parle en cas de question au support.
+
+Il fait environ 104 Mo. Votre navigateur le déposera dans le dossier
 **Téléchargements**.
 
 Il se peut que le navigateur affiche un avertissement du genre « ce fichier

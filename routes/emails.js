@@ -4,7 +4,7 @@
 
 const express = require('express');
 
-const { sendEmailWithAttachment, isConfigured, SMTP_NON_CONFIGURE } = require('../emailService.js');
+const { sendEmailWithAttachment } = require('../emailService.js');
 const { anyRole } = require('../authMiddleware.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { isValidEmailList, sanitizeText } = require('../validators.js');
@@ -26,15 +26,15 @@ module.exports = function emailRoutes(getDb) {
     if (typeof attachmentBase64 !== 'string' || attachmentBase64.length === 0) {
       throw httpError(400, 'La pièce jointe est requise.');
     }
-    if (!isConfigured()) {
-      throw httpError(503, SMTP_NON_CONFIGURE);
-    }
+    // L'absence de configuration n'est plus contrôlée ici : `sendEmailWithAttachment`
+    // lève la même erreur 503 avec le même message, et l'interroger deux fois
+    // relisait la base pour rien.
 
     // L'expéditeur affiché reprend la raison sociale des paramètres plutôt qu'un
     // nom d'entreprise codé en dur.
     const settings = await getDb().get('SELECT entreprise_nom FROM settings LIMIT 1');
 
-    await sendEmailWithAttachment({
+    await sendEmailWithAttachment(getDb(), {
       to,
       cc,
       subject: sanitizeText(subject, 300),
