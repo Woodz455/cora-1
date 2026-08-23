@@ -20,7 +20,8 @@ const ACTIONS = {
   UTILISATEUR_MODIFICATION: 'utilisateur.modification',
   UTILISATEUR_SUPPRESSION: 'utilisateur.suppression',
   IDENTIFIANTS_MODIFICATION: 'identifiants.modification',
-  SAUVEGARDE_RESTAURATION: 'sauvegarde.restauration'
+  SAUVEGARDE_RESTAURATION: 'sauvegarde.restauration',
+  IMPORT: 'import.execution'
 };
 
 /** Libellés lisibles, partagés avec l'interface. */
@@ -35,7 +36,8 @@ const LIBELLES = {
   [ACTIONS.UTILISATEUR_MODIFICATION]: 'Compte modifié',
   [ACTIONS.UTILISATEUR_SUPPRESSION]: 'Compte supprimé',
   [ACTIONS.IDENTIFIANTS_MODIFICATION]: 'Identifiants modifiés',
-  [ACTIONS.SAUVEGARDE_RESTAURATION]: 'Sauvegarde restaurée'
+  [ACTIONS.SAUVEGARDE_RESTAURATION]: 'Sauvegarde restaurée',
+  [ACTIONS.IMPORT]: 'Import depuis un tableur'
 };
 
 /** Longueur maximale du détail sérialisé, pour qu'une ligne reste une ligne. */

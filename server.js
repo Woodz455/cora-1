@@ -37,6 +37,7 @@ const relanceRoutes = require('./routes/relances.js');
 const sauvegardeRoutes = require('./routes/sauvegardes.js');
 const auditRoutes = require('./routes/audit.js');
 const entrepriseRoutes = require('./routes/entreprises.js');
+const importRoutes = require('./routes/import.js');
 
 /** Limite de corps par défaut. */
 const LIMITE_CORPS = '1mb';
@@ -100,7 +101,11 @@ function createApp(db, options = {}) {
   const jsonStandard = express.json({ limit: LIMITE_CORPS });
   const jsonVolumineux = express.json({ limit: LIMITE_CORPS_COURRIEL });
   app.use((req, res, next) => (
-    req.path === '/api/emails/send' ? jsonVolumineux(req, res, next) : jsonStandard(req, res, next)
+    // L'envoi de courriels transporte un PDF, l'import un tableur : les deux
+    // dépassent la limite ordinaire, qui protège toutes les autres routes.
+    req.path === '/api/emails/send' || req.path.startsWith('/api/import/')
+      ? jsonVolumineux(req, res, next)
+      : jsonStandard(req, res, next)
   ));
 
   app.use(cookieParser());
@@ -169,6 +174,7 @@ function createApp(db, options = {}) {
   app.use('/api/relances', relanceRoutes(getDb));
   app.use('/api/sauvegardes', sauvegardeRoutes(getDb));
   app.use('/api/audit', auditRoutes(getDb));
+  app.use('/api/import', importRoutes(getDb));
   app.use('/api/settings', settingsRoutes(getDb));
   app.use('/api', rapportRoutes(getDb));
 
