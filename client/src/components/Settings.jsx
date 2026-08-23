@@ -54,6 +54,7 @@ function Settings() {
   const [testEnCours, setTestEnCours] = useState(false);
   const [testMessage, setTestMessage] = useState(null);
 
+  const [licence, setLicence] = useState(null);
   const [infoSauvegardes, setInfoSauvegardes] = useState(null);
   const [sauvegardeEnCours, setSauvegardeEnCours] = useState(false);
   const [relancesDues, setRelancesDues] = useState(null);
@@ -82,6 +83,7 @@ function Settings() {
     api.get('/api/users').then(setUsers).catch(() => setUsers([]));
     api.get('/api/relances/dues').then(setRelancesDues).catch(() => setRelancesDues(null));
     api.get('/api/sauvegardes').then(setInfoSauvegardes).catch(() => setInfoSauvegardes(null));
+    api.get('/api/licence').then(setLicence).catch(() => setLicence(null));
     api.get('/api/auth/setup-status')
       .then((data) => { if (data.minPasswordLength) setMinLength(data.minPasswordLength); })
       .catch(() => {});
@@ -513,6 +515,33 @@ function Settings() {
             )
           )}
         </div>
+
+        {/* La section n'apparaît que si l'éditeur a configuré une clé publique :
+            sur une version dont le contrôle est inerte, parler de licence
+            n'apprendrait rien et inquiéterait pour rien. */}
+        {licence && licence.etat !== 'desactive' && (
+          <div>
+            <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
+              Licence
+            </h3>
+            {licence.etat === 'activee' ? (
+              <>
+                <p style={{ margin: '0 0 .4rem' }}>
+                  Licence au nom de <strong>{licence.titulaire}</strong>.
+                </p>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
+                  Maintenance jusqu'au <strong>{licence.maintenance_jusqu_au}</strong>. Passé cette
+                  date, Clora continue de fonctionner&nbsp;: seules les versions publiées ensuite
+                  ne pourront plus être installées.
+                </p>
+              </>
+            ) : (
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
+                Version d'essai — <strong>{licence.jours_restants} jour(s)</strong> restant(s).
+              </p>
+            )}
+          </div>
+        )}
 
         <div>
           <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>

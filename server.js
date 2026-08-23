@@ -16,6 +16,7 @@ const { startScheduler } = require('./scheduler.js');
 const { apiNotFound, errorHandler } = require('./httpUtils.js');
 const { PORT, HOST } = require('./config.js');
 const { avecDossier, baseCourante } = require('./dbContext.js');
+const { etatLicence, ETATS } = require('./licenceService.js');
 const {
   ouvrirComptes, migrerSiNecessaire, ouvrirEntreprise, roleSur
 } = require('./companyStore.js');
@@ -37,6 +38,7 @@ const relanceRoutes = require('./routes/relances.js');
 const sauvegardeRoutes = require('./routes/sauvegardes.js');
 const auditRoutes = require('./routes/audit.js');
 const entrepriseRoutes = require('./routes/entreprises.js');
+const licenceRoutes = require('./routes/licence.js');
 const importRoutes = require('./routes/import.js');
 
 /** Limite de corps par défaut. */
@@ -109,6 +111,36 @@ function createApp(db, options = {}) {
   ));
 
   app.use(cookieParser());
+
+  // La licence se consulte et s'active sans session : un essai expiré bloque
+  // l'application avant la connexion, et exiger d'être connecté pour saisir
+  // une clé enfermerait l'utilisateur dehors.
+  app.use('/api/licence', licenceRoutes(getComptesDb));
+
+  /**
+   * Refuse l'API quand l'installation n'est plus utilisable.
+   *
+   * Placé avant l'authentification : sans licence valable, il n'y a pas lieu de
+   * se connecter. Le contrôle est inerte tant qu'aucune clé publique n'est
+   * configurée — une version compilée avant que l'éditeur n'ait généré sa paire
+   * ne doit pas se verrouiller d'elle-même au trentième jour.
+   */
+  async function licenceMiddleware(req, res, next) {
+    try {
+      const etat = await etatLicence(comptesDb);
+      if (etat.utilisable) return next();
+
+      return res.status(402).json({
+        error: etat.etat === ETATS.MAINTENANCE_EXPIREE
+          ? 'La maintenance de votre licence ne couvre pas cette version de Clora.'
+          : "Votre période d'essai est terminée.",
+        licence: etat
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+  app.use('/api', licenceMiddleware);
 
   // L'authentification couvre toute l'API sauf les routes d'authentification
   // elles-mêmes ; chaque routeur applique ensuite ses contraintes de rôle.

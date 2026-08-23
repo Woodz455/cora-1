@@ -16,3 +16,13 @@ database.sqlite
 
 # Sauvegardes produites par reset_data.js
 *.backup-*
+
+# Clé privée d'émission des licences. Elle seule permet d'émettre une licence
+# valide : une clé privée versionnée, même dans un dépôt privé, est une clé
+# privée diffusée.
+clef-privee-licence.pem
+*.pem
+
+# Écrit à la compilation : la date de la version, que le contrôle de licence
+# compare à l'échéance de maintenance d'une clé.
+build-info.json

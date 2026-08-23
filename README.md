@@ -38,7 +38,7 @@ dans [INSTALLATION.md](INSTALLATION.md).
 et dépose le fichier sur la page des publications :
 
 ```bash
-git tag v1.3.1 && git push origin v1.3.1
+git tag v1.4.0 && git push origin v1.4.0
 ```
 
 L'étiquette doit correspondre au champ `version` de `package.json` : c'est lui
@@ -132,6 +132,56 @@ ne pouvait donc configurer l'envoi de courriels.
 `.env`, `.jwt-secret` et `database.sqlite` ne sont pas versionnés : ils
 contiennent des secrets et les données réelles de l'entreprise.
 
+## Licence et maintenance
+
+Clora se vend en **licence perpétuelle** avec une **maintenance annuelle
+facultative**. Le client achète une fois et garde son logiciel pour toujours ;
+la maintenance lui donne les versions publiées pendant qu'elle court.
+
+Une clé est un message signé en Ed25519. L'application embarque la clé
+**publique** et vérifie la signature sur place : aucun serveur, aucun appel
+sortant, et l'activation fonctionne hors ligne.
+
+### La règle
+
+Chaque version publiée porte sa date (`build-info.json`, écrit à la
+compilation). Si cette date dépasse l'échéance de maintenance d'une clé, **cette
+version-là** refuse de s'activer — mais toute version antérieure continue de
+fonctionner indéfiniment. Le client qui cesse de payer garde son logiciel et ses
+données ; il ne reçoit simplement plus les nouveautés.
+
+### Mise en service, une seule fois
+
+```bash
+node scripts/generer-licence.js --nouvelle-paire
+```
+
+Écrit `clef-privee-licence.pem` — **jamais versionnée** — et renseigne
+`licencePublique.js`, qui l'est. Sauvegardez la clé privée ailleurs que sur
+votre disque de travail : la perdre, c'est ne plus pouvoir émettre ni renouveler
+aucune licence.
+
+Tant que `CLE_PUBLIQUE` est vide, **le contrôle est inerte** : ni essai, ni
+expiration. Une version compilée avant que la paire n'existe ne se verrouille
+pas d'elle-même.
+
+### À chaque vente
+
+```bash
+node scripts/generer-licence.js --titulaire "Plomberie Tremblay" \
+  --courriel marc@tremblay.ca --mois 12
+```
+
+Affiche la clé à transmettre. Le client la colle dans l'écran d'activation.
+
+### Ce que ce mécanisme ne fait pas
+
+Une clé peut être partagée entre plusieurs postes ; sans serveur, rien ne
+l'empêche. Supprimer `comptes.sqlite` réinitialise l'essai. Le paquet est
+ouvrable. **C'est le bon compromis** : la fraude marginale coûte moins cher que
+l'infrastructure et la friction qu'un vrai verrou imposerait aux clients
+honnêtes.
+
 ## Rôles
 
 | Rôle | Accès |
@@ -154,6 +204,8 @@ dbUtils.js         Transactions sérialisées et réentrantes
 validators.js      Validation des données entrantes
 rateLimit.js       Limitation des tentatives de connexion
 scheduler.js       Passage horaire : factures récurrentes et relances dues
+licenceService.js  Vérification Ed25519 des clés, essai, maintenance
+companyStore.js    Registre des dossiers d'entreprise et comptes partagés
 bankService.js     Rapprochement bancaire et imputation des dépôts
 *Service.js        Logique métier par domaine
 routes/            Points d'entrée HTTP, avec leurs contraintes de rôle

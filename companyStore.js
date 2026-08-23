@@ -76,7 +76,25 @@ async function ouvrirComptes(chemin = cheminComptes()) {
       role TEXT NOT NULL DEFAULT 'employe',
       PRIMARY KEY (user_id, entreprise_id)
     );
+
+    -- Une licence vaut pour l'installation, pas pour un dossier : la loger
+    -- dans une base d'entreprise permettrait d'en créer une neuve pour
+    -- repartir l'essai à zéro. Ligne unique, contrainte par la clé primaire.
+    CREATE TABLE IF NOT EXISTS licence (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      cle TEXT,
+      active_le TEXT,
+      essai_debut TEXT,
+      date_max TEXT
+    );
   `);
+
+  // L'essai commence à la création du registre, donc à la première ouverture
+  // de l'application — et non à la première consultation de l'écran de
+  // licence, qu'un utilisateur pourrait ne jamais atteindre.
+  await db.run(
+    "INSERT OR IGNORE INTO licence (id, essai_debut, date_max) VALUES (1, date('now'), date('now'))"
+  );
 
   return db;
 }
