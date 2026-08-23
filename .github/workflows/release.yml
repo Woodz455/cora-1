@@ -47,6 +47,21 @@ jobs:
         working-directory: client
         run: npm ci
 
+      # La date de la version décide si une clé de licence couvre encore cette
+      # installation : une version publiée après l'échéance de maintenance
+      # refuse de s'activer, tandis que les antérieures continuent de
+      # fonctionner. Sans ce fichier, l'application retombe sur la date du jour
+      # et aucune clé ne serait jamais refusée.
+      - name: Inscrire la date de la version
+        shell: pwsh
+        run: |
+          $info = @{
+            date = (Get-Date -Format 'yyyy-MM-dd')
+            version = '${{ github.ref_name }}'.TrimStart('v')
+          } | ConvertTo-Json
+          Set-Content -Path build-info.json -Value $info -Encoding utf8
+          Get-Content build-info.json
+
       - name: Compiler l'interface et l'installateur
         run: npm run build
 

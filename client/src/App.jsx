@@ -6,6 +6,7 @@ import DevisList from './components/DevisList';
 import Login from './components/Login';
 import Setup from './components/Setup';
 import ChoixEntreprise from './components/ChoixEntreprise';
+import Licence from './components/Licence';
 import CatalogueList from './components/CatalogueList';
 import ExpenseList from './components/ExpenseList';
 import BankReconciliation from './components/BankReconciliation';
@@ -155,6 +156,9 @@ function App() {
   const [entreprises, setEntreprises] = useState([]);
   const [ouvert, setOuvert] = useState(null);
   const [changementDossier, setChangementDossier] = useState(false);
+  // État de la licence. `null` tant qu'il n'est pas connu : on n'affiche
+  // surtout pas un écran de blocage avant d'avoir la réponse du serveur.
+  const [licence, setLicence] = useState(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
@@ -194,6 +198,15 @@ function App() {
   useEffect(() => {
     const checkStatus = async () => {
       try {
+        // La licence passe avant : un essai expiré bloque tout le reste, et
+        // interroger l'état de configuration donnerait un 402 déroutant.
+        const etatLicence = await api.get('/api/licence').catch(() => null);
+        setLicence(etatLicence);
+        if (etatLicence && etatLicence.utilisable === false) {
+          setIsCheckingAuth(false);
+          return;
+        }
+
         const setupData = await api.get('/api/auth/setup-status');
         setSetupRequired(setupData.setupRequired);
 
@@ -232,6 +245,17 @@ function App() {
       <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)' }}>
         Chargement…
       </div>
+    );
+  }
+
+  // Avant Setup et Login : sans licence valable, il n'y a pas lieu de créer un
+  // compte ni de se connecter.
+  if (licence && licence.utilisable === false) {
+    return (
+      <Licence
+        etat={licence}
+        onActive={(nouvel) => { setLicence(nouvel); setIsCheckingAuth(true); window.location.reload(); }}
+      />
     );
   }
 
