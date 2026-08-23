@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import ClientModal from './ClientModal';
+import ImportModal from './ImportModal';
 import { useApiResource } from '../useApiResource';
 import { usePagination } from '../usePagination';
 import Pagination from './Pagination';
@@ -10,6 +11,7 @@ function ClientList() {
   const { data: clients, loading, error, refresh } = useApiResource('/api/clients', []);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [clientToEdit, setClientToEdit] = useState(null);
+  const [importOuvert, setImportOuvert] = useState(false);
   const [recherche, setRecherche] = useState('');
 
   // La pagination repart à la première page dès que la recherche change.
@@ -45,9 +47,14 @@ function ClientList() {
             {clientsFiltres.length} client{clientsFiltres.length > 1 ? 's' : ''}
           </span>
         </div>
-        <button type="button" className="btn-primary" onClick={() => { setClientToEdit(null); setIsModalOpen(true); }}>
-          + Nouveau client
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button type="button" className="btn-secondary" onClick={() => setImportOuvert(true)}>
+            Importer
+          </button>
+          <button type="button" className="btn-primary" onClick={() => { setClientToEdit(null); setIsModalOpen(true); }}>
+            + Nouveau client
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -86,6 +93,15 @@ function ClientList() {
       )}
 
       <Pagination {...pagination} />
+
+      {importOuvert && (
+        <ImportModal
+          modele="clients"
+          titre="Importer des clients"
+          onFerme={() => setImportOuvert(false)}
+          onTermine={refresh}
+        />
+      )}
 
       {isModalOpen && (
         <ClientModal

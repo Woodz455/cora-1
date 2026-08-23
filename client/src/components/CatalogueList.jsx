@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import ImportModal from './ImportModal';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useModale } from '../useModale';
@@ -17,6 +18,7 @@ function CatalogueList() {
   const { notifier, confirmer } = useFeedback();
   const { data: items, loading, error, setError, refresh } = useApiResource('/api/catalogue', []);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [importOuvert, setImportOuvert] = useState(false);
   const modaleRef = useModale(() => setIsModalOpen(false), { actif: isModalOpen });
   const [currentItem, setCurrentItem] = useState(ARTICLE_VIDE);
   const [recherche, setRecherche] = useState('');
@@ -100,7 +102,10 @@ function CatalogueList() {
             onChange={(e) => setRecherche(e.target.value)}
           />
         </div>
-        <button type="button" className="btn-primary" onClick={() => openModal()}>+ Nouveau service</button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button type="button" className="btn-secondary" onClick={() => setImportOuvert(true)}>Importer</button>
+          <button type="button" className="btn-primary" onClick={() => openModal()}>+ Nouveau service</button>
+        </div>
       </div>
 
       <div className="table-scroll">
@@ -138,6 +143,23 @@ function CatalogueList() {
       </div>
 
       <Pagination {...pagination} />
+
+      {importOuvert && (
+
+        <ImportModal
+
+          modele="catalogue"
+
+          titre="Importer des services"
+
+          onFerme={() => setImportOuvert(false)}
+
+          onTermine={refresh}
+
+        />
+
+      )}
+
 
       {isModalOpen && (
         <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={currentItem.id ? 'Modifier le service' : 'Ajouter un service'}>

@@ -12,6 +12,11 @@ const path = require('path');
  * le dossier de données utilisateur d'Electron (%APPDATA%/Clora sous Windows).
  */
 function getDataDir() {
+  // Emplacement imposé : indispensable aux tests, qui créent de vrais dossiers
+  // d'entreprise et ne doivent pas les semer dans le dépôt, et commode pour
+  // lancer le serveur seul sur un jeu de données choisi.
+  if (process.env.CLORA_DATA_DIR) return process.env.CLORA_DATA_DIR;
+
   if (process.versions && process.versions.electron) {
     try {
       const { app } = require('electron');

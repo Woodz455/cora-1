@@ -18,7 +18,14 @@ function Login({ onLogin }) {
       const session = await api.get('/api/auth/check');
       // Un rechargement complet de la page n'est plus nécessaire : l'état
       // applicatif suffit, et l'interface ne clignote plus à la connexion.
-      onLogin({ username: session.username, role: session.role });
+      // Les dossiers accompagnent la session : c'est `App` qui décide s'il
+      // faut en faire choisir un, ou en ouvrir le seul qui existe.
+      onLogin({
+        username: session.username,
+        role: session.role,
+        entreprises: session.entreprises || [],
+        ouvert: session.ouvert || null
+      });
     } catch (err) {
       setError(err.message);
       setLoading(false);

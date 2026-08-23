@@ -18,8 +18,16 @@ async function createTestDb() {
   const dbPath = path.join(dir, 'test.sqlite');
   const db = await initDb(dbPath);
 
+  // Le registre a besoin du chemin pour enregistrer ce fichier comme dossier.
+  db.__dbPath = dbPath;
   db.__cleanup = async () => {
-    await db.close();
+    // Le registre a pu la fermer avant nous ; ce qui compte est que le
+    // répertoire temporaire disparaisse.
+    try {
+      await db.close();
+    } catch (e) {
+      // déjà fermée
+    }
     fs.rmSync(dir, { recursive: true, force: true });
   };
   return db;
@@ -57,10 +65,29 @@ async function insertSettings(db, overrides = {}) {
  * Démarre l'application sur un port libre et retourne un client HTTP qui
  * conserve les cookies de session.
  */
-async function startTestServer() {
+async function startTestServer(options = {}) {
   const { createApp } = require('../server.js');
+  const { ouvrirComptes, enregistrerConnexion } = require('../companyStore.js');
+
   const db = await createTestDb();
-  const app = createApp(db);
+
+  // Les dossiers créés par l'API atterrissent dans le répertoire de données ;
+  // sans cette redirection, les tests les sèmeraient dans le dépôt.
+  process.env.CLORA_DATA_DIR = path.dirname(db.__dbPath);
+
+  // Les tests exercent le mode multi-dossier, celui qui est livré. Les faire
+  // tourner sur le mode mono aurait vérifié un chemin que personne n'emprunte.
+  const comptesDb = await ouvrirComptes(path.join(path.dirname(db.__dbPath), 'comptes.sqlite'));
+  await comptesDb.run(
+    'INSERT INTO entreprises (nom, chemin) VALUES (?, ?)',
+    [options.entreprise || 'Entreprise Test', db.__dbPath]
+  );
+  // Sans cela, les routes ouvriraient une seconde connexion sur le même
+  // fichier, et les assertions portant sur `api.db` observeraient autre chose
+  // que ce que l'API vient d'écrire.
+  enregistrerConnexion(db.__dbPath, db);
+
+  const app = createApp(db, { comptesDb });
 
   const server = await new Promise((resolve) => {
     const s = app.listen(0, '127.0.0.1', () => resolve(s));
@@ -113,8 +140,14 @@ async function startTestServer() {
     // exemple — que `request` ne sait pas rendre telles quelles.
     cookie: () => cookie,
     clearCookie: () => { cookie = ''; },
+    comptesDb,
     async close() {
       await new Promise((resolve) => server.close(resolve));
+      // Le registre garde les connexions ouvertes d'un test à l'autre : sans
+      // purge, le test suivant réutiliserait la base du précédent.
+      const { fermerTout } = require('../companyStore.js');
+      await fermerTout();
+      await comptesDb.close();
       await db.__cleanup();
     }
   };
