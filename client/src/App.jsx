@@ -270,6 +270,13 @@ function App() {
     // place ferait croire un instant que la comptabilité d'un client vient de
     // se déverser dans celle d'un autre.
     setParametresVue(null);
+
+    // La liste est relue plutôt que devinée : un dossier qui vient d'être créé
+    // n'y figure pas encore, et sans cela il resterait invisible jusqu'à la
+    // prochaine connexion — y compris depuis l'écran censé le proposer.
+    api.get('/api/entreprises')
+      .then((r) => setEntreprises(r.entreprises || []))
+      .catch(() => {});
   };
 
   // Aucun dossier ouvert, ou bascule demandée : le choix passe avant tout le
@@ -332,18 +339,20 @@ function App() {
             <p style={{ margin: '.15rem 0 0', fontWeight: 600, lineHeight: 1.3 }}>
               {ouvert.nom}
             </p>
-            {entreprises.length > 1 && (
-              <button
-                type="button"
-                onClick={() => setChangementDossier(true)}
-                style={{
-                  marginTop: '.35rem', padding: 0, background: 'none', border: 'none',
-                  color: 'var(--safehill-teal)', cursor: 'pointer', font: 'inherit', fontSize: '.8rem'
-                }}
-              >
-                Changer de dossier
-              </button>
-            )}
+            {/* Toujours affiché, même avec un seul dossier : c'est le seul
+                chemin pour en créer un second. Le conditionner au nombre de
+                dossiers existants enfermait l'utilisateur dans une boucle — le
+                bouton de création vivant dans l'écran auquel ce bouton mène. */}
+            <button
+              type="button"
+              onClick={() => setChangementDossier(true)}
+              style={{
+                marginTop: '.35rem', padding: 0, background: 'none', border: 'none',
+                color: 'var(--safehill-teal)', cursor: 'pointer', font: 'inherit', fontSize: '.8rem'
+              }}
+            >
+              {entreprises.length > 1 ? 'Changer de dossier' : 'Ajouter une entreprise'}
+            </button>
           </div>
 
           {/* Des <button> et non des <div> : la navigation était inatteignable
