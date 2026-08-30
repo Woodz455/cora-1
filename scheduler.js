@@ -13,6 +13,7 @@ const { checkAndGenerateRecurringInvoices } = require('./subscriptionService.js'
 const { envoyerRelancesDues } = require('./relanceService.js');
 const { sauvegardeSiNecessaire } = require('./backupService.js');
 const { ouvrirEntreprise } = require('./companyStore.js');
+const { relever } = require('./paiementEnLigneService.js');
 
 /** Intervalle entre deux vérifications. */
 const INTERVALLE_MS = 60 * 60 * 1000; // 1 heure
@@ -36,6 +37,20 @@ async function runOnce(db) {
     }
   } catch (error) {
     console.error('Échec de l\'envoi des relances :', error.message);
+  }
+
+  // Les règlements reçus en ligne sont portés aux comptes ici : c'est ce qui
+  // dispense l'utilisateur d'aller consulter son tableau de bord Stripe et de
+  // ressaisir à la main ce qu'il y trouve. `relever` ne lève pas et ne fait
+  // rien tant que le paiement en ligne n'est pas configuré.
+  try {
+    const stripe = await relever(db);
+    if (stripe.inscrits > 0 || stripe.refuses > 0) {
+      console.log(`Paiements en ligne : ${stripe.inscrits} encaissement(s) inscrit(s), `
+        + `${stripe.refuses} non imputé(s).`);
+    }
+  } catch (error) {
+    console.error('Échec du relevé des paiements en ligne :', error.message);
   }
 
   // `sauvegardeSiNecessaire` ne lève pas : un dossier de destination absent —

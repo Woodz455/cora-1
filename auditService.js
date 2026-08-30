@@ -21,7 +21,11 @@ const ACTIONS = {
   UTILISATEUR_SUPPRESSION: 'utilisateur.suppression',
   IDENTIFIANTS_MODIFICATION: 'identifiants.modification',
   SAUVEGARDE_RESTAURATION: 'sauvegarde.restauration',
-  IMPORT: 'import.execution'
+  IMPORT: 'import.execution',
+  PAIEMENT_EN_LIGNE: 'paiement.en_ligne',
+  // Un règlement reçu chez Stripe que Clora n'a pas pu imputer. Consigné au
+  // même titre qu'un encaissement : c'est de l'argent réellement entré.
+  PAIEMENT_EN_LIGNE_REFUSE: 'paiement.en_ligne_refuse'
 };
 
 /** Libellés lisibles, partagés avec l'interface. */
@@ -37,7 +41,9 @@ const LIBELLES = {
   [ACTIONS.UTILISATEUR_SUPPRESSION]: 'Compte supprimé',
   [ACTIONS.IDENTIFIANTS_MODIFICATION]: 'Identifiants modifiés',
   [ACTIONS.SAUVEGARDE_RESTAURATION]: 'Sauvegarde restaurée',
-  [ACTIONS.IMPORT]: 'Import depuis un tableur'
+  [ACTIONS.IMPORT]: 'Import depuis un tableur',
+  [ACTIONS.PAIEMENT_EN_LIGNE]: 'Encaissement en ligne',
+  [ACTIONS.PAIEMENT_EN_LIGNE_REFUSE]: 'Encaissement en ligne non imputé'
 };
 
 /** Longueur maximale du détail sérialisé, pour qu'une ligne reste une ligne. */

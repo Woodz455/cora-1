@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '../api';
+import { api, formatMontant } from '../api';
 import { useUser } from '../UserContext';
 import { useFeedback } from '../FeedbackContext';
 
@@ -46,13 +46,21 @@ function Settings() {
     relances_actives: 0, relances_paliers: '7,15,30',
     sauvegarde_active: 1, sauvegarde_dossier: '', sauvegarde_retention: 30,
     verifier_maj: 1,
-    smtp_host: '', smtp_port: '', smtp_user: '', smtp_pass_defini: false
+    smtp_host: '', smtp_port: '', smtp_user: '', smtp_pass_defini: false,
+    stripe_actif: 0, stripe_cle_definie: false, stripe_mode: ''
   });
   // Le mot de passe d'envoi n'entre jamais dans `settings` : l'API ne le renvoie
   // pas, et l'y mêler ferait réenregistrer une valeur vide à chaque sauvegarde.
   const [motDePasseSmtp, setMotDePasseSmtp] = useState('');
   const [testEnCours, setTestEnCours] = useState(false);
   const [testMessage, setTestMessage] = useState(null);
+
+  // Même régime pour la clé Stripe, pour la même raison.
+  const [cleStripe, setCleStripe] = useState('');
+  const [testStripeEnCours, setTestStripeEnCours] = useState(false);
+  const [testStripeMessage, setTestStripeMessage] = useState(null);
+  const [releveEnCours, setReleveEnCours] = useState(false);
+  const [enSouffrance, setEnSouffrance] = useState([]);
 
   const [licence, setLicence] = useState(null);
   const [infoSauvegardes, setInfoSauvegardes] = useState(null);
@@ -83,6 +91,9 @@ function Settings() {
     api.get('/api/users').then(setUsers).catch(() => setUsers([]));
     api.get('/api/relances/dues').then(setRelancesDues).catch(() => setRelancesDues(null));
     api.get('/api/sauvegardes').then(setInfoSauvegardes).catch(() => setInfoSauvegardes(null));
+    api.get('/api/paiements-en-ligne/en-souffrance')
+      .then((r) => setEnSouffrance(r.encaissements || []))
+      .catch(() => setEnSouffrance([]));
     api.get('/api/licence').then(setLicence).catch(() => setLicence(null));
     api.get('/api/auth/setup-status')
       .then((data) => { if (data.minPasswordLength) setMinLength(data.minPasswordLength); })
@@ -205,6 +216,67 @@ function Settings() {
     }
   };
 
+  /**
+   * Enregistre la clé Stripe puis éprouve la connexion.
+   *
+   * Comme pour le courriel : tester avant d'enregistrer éprouverait la clé
+   * précédente, et annoncerait un succès portant sur une configuration que
+   * l'utilisateur vient justement de remplacer.
+   */
+  const testerStripe = async () => {
+    setTestStripeEnCours(true);
+    setTestStripeMessage(null);
+    try {
+      const enregistres = await api.put('/api/settings', { ...settings, stripe_cle: cleStripe });
+      setCleStripe('');
+      if (enregistres && enregistres.settings) setSettings(enregistres.settings);
+
+      const r = await api.post('/api/settings/stripe/test', {});
+      setTestStripeMessage({ type: r.mode === 'test' ? 'avertissement' : 'success', texte: r.message });
+    } catch (err) {
+      setTestStripeMessage({ type: 'error', texte: err.message });
+    } finally {
+      setTestStripeEnCours(false);
+    }
+  };
+
+  const retirerCleStripe = async () => {
+    const accepte = await confirmer({
+      titre: 'Retirer la clé Stripe ?',
+      message: 'Le paiement en ligne sera désactivé et les factures cesseront de porter un lien. '
+        + 'Les encaissements déjà inscrits sont conservés.',
+      libelleConfirmer: 'Retirer la clé',
+      danger: true
+    });
+    if (!accepte) return;
+
+    try {
+      const enregistres = await api.put('/api/settings', { ...settings, stripe_cle_effacer: true });
+      if (enregistres && enregistres.settings) setSettings(enregistres.settings);
+      setTestStripeMessage(null);
+      notifier('Clé Stripe retirée.');
+    } catch (err) {
+      setTestStripeMessage({ type: 'error', texte: err.message });
+    }
+  };
+
+  /** Relève immédiatement les règlements, sans attendre le passage horaire. */
+  const releverMaintenant = async () => {
+    setReleveEnCours(true);
+    try {
+      const bilan = await api.post('/api/paiements-en-ligne/relever', {});
+      notifier(bilan.inscrits > 0
+        ? `${bilan.inscrits} encaissement(s) inscrit(s).`
+        : 'Aucun nouveau règlement reçu.');
+      const r = await api.get('/api/paiements-en-ligne/en-souffrance');
+      setEnSouffrance(r.encaissements || []);
+    } catch (err) {
+      notifier(err.message, 'erreur');
+    } finally {
+      setReleveEnCours(false);
+    }
+  };
+
   const handleSecuritySave = async (e) => {
     e.preventDefault();
     setSavingSec(true);
@@ -315,6 +387,147 @@ function Settings() {
             <label htmlFor="payment_instructions" style={{ position: 'absolute', left: '-9999px' }}>Instructions de paiement</label>
             <textarea id="payment_instructions" className="form-control" name="payment_instructions" value={settings.payment_instructions || ''} onChange={handleChange} rows="4" placeholder="Ex. : virement Interac à comptabilite@exemple.ca, ou paiement en ligne à l'adresse…"></textarea>
           </div>
+        </div>
+
+        <div>
+          <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
+            Paiement en ligne (Stripe)
+          </h3>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
+            Chaque facture porte alors un lien de paiement. Votre client règle par carte ou par
+            débit bancaire, sans créer de compte, et Clora inscrit l'encaissement tout seul dans
+            l'heure qui suit.
+          </p>
+
+          {/* L'argent ne transite jamais par Clora : le dire explicitement évite
+              la question, et c'est aussi ce qui distingue un logiciel de
+              facturation d'un service de paiement. */}
+          <p className="alert alert-info">
+            L'argent est versé <strong>directement sur votre compte Stripe</strong>, puis à votre
+            compte bancaire. Clora ne perçoit rien au passage. Ouvrez un compte sur stripe.com,
+            puis copiez ci-dessous une <strong>clé restreinte</strong> (Développeurs → Clés d'API →
+            Créer une clé restreinte) avec les droits d'écriture sur « Prix », « Produits » et
+            « Liens de paiement », et de lecture sur « Sessions de paiement ».
+          </p>
+
+          <div className="form-group">
+            <label htmlFor="stripe_cle">Clé d'API Stripe</label>
+            <input
+              id="stripe_cle" type="password" className="form-control"
+              value={cleStripe}
+              onChange={(e) => setCleStripe(e.target.value)}
+              placeholder={settings.stripe_cle_definie ? '•••••••• (enregistrée)' : 'rk_live_…'}
+              autoComplete="new-password"
+            />
+            <small style={{ color: 'var(--text-muted)' }}>
+              {settings.stripe_cle_definie
+                ? 'Une clé est enregistrée. Laissez ce champ vide pour la conserver.'
+                : 'Une clé restreinte (« rk_… ») limite les dégâts en cas de vol : elle ne '
+                  + 'permet ni de virer de l\'argent, ni de lire vos clients.'}
+            </small>
+          </div>
+
+          {settings.stripe_cle_definie && settings.stripe_cle_restreinte === false && (
+            <p style={{ fontSize: '0.85rem', color: 'var(--status-warning)', marginBottom: '15px' }}>
+              Cette clé est une clé secrète complète : elle donne tous les droits sur votre compte
+              Stripe. Remplacez-la par une clé restreinte dès que possible.
+            </p>
+          )}
+
+          {settings.stripe_cle_illisible && (
+            <p style={{ fontSize: '0.85rem', color: 'var(--status-danger)', marginBottom: '15px' }}>
+              La clé enregistrée n'est plus déchiffrable sur cette machine — la base vient sans
+              doute d'une sauvegarde restaurée ailleurs. Saisissez-la de nouveau.
+            </p>
+          )}
+
+          {settings.stripe_cle_definie && settings.coffre_disponible === false && (
+            <p style={{ fontSize: '0.85rem', color: 'var(--status-warning)', marginBottom: '15px' }}>
+              Le coffre-fort de Windows n'est pas accessible : cette clé est enregistrée sans
+              chiffrement. Évitez d'envoyer vos sauvegardes vers un dossier partagé tant que
+              c'est le cas.
+            </p>
+          )}
+
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={Boolean(settings.stripe_actif)}
+                onChange={(e) => setSettings((prev) => ({ ...prev, stripe_actif: e.target.checked ? 1 : 0 }))}
+                style={{ width: 'auto' }}
+              />
+              <span>Ajouter un lien de paiement sur mes factures</span>
+            </label>
+          </div>
+
+          {/* Le mode test se voit ici et sur la facture elle-même : une
+              installation restée en mode test encaisserait de l'argent fictif
+              sans que rien ne le signale. */}
+          {settings.stripe_actif && settings.stripe_mode === 'test' && (
+            <p className="alert alert-warning" role="status">
+              Compte Stripe en <strong>mode test</strong> : les liens envoyés n'encaissent pas
+              d'argent réel. Parfait pour vos essais ; pensez à passer en clé « live » avant de
+              facturer un vrai client.
+            </p>
+          )}
+
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
+            <button
+              type="button" className="btn-secondary"
+              disabled={testStripeEnCours || (!cleStripe && !settings.stripe_cle_definie)}
+              onClick={testerStripe}
+            >
+              {testStripeEnCours ? 'Vérification…' : 'Enregistrer et vérifier la connexion'}
+            </button>
+            {settings.stripe_cle_definie && (
+              <>
+                <button
+                  type="button" className="btn-secondary"
+                  disabled={releveEnCours || !settings.stripe_actif}
+                  onClick={releverMaintenant}
+                >
+                  {releveEnCours ? 'Relevé en cours…' : 'Relever les paiements maintenant'}
+                </button>
+                <button type="button" className="btn-secondary" onClick={retirerCleStripe}>
+                  Retirer la clé
+                </button>
+              </>
+            )}
+          </div>
+
+          {testStripeMessage && (
+            <p
+              style={{
+                fontSize: '0.9rem',
+                color: testStripeMessage.type === 'error' ? 'var(--status-danger)'
+                  : testStripeMessage.type === 'avertissement' ? 'var(--status-warning)'
+                    : 'var(--status-paid)',
+                margin: 0
+              }}
+            >
+              {testStripeMessage.texte}
+            </p>
+          )}
+
+          {/* De l'argent réellement reçu qui n'a pas pu être imputé : c'est le
+              seul défaut de ce mécanisme qu'on ne peut pas laisser silencieux. */}
+          {enSouffrance.length > 0 && (
+            <div style={{ marginTop: '20px' }}>
+              <p className="alert alert-error" role="alert">
+                {enSouffrance.length} règlement(s) reçu(s) chez Stripe n'ont pas pu être portés à
+                une facture. Vérifiez-les, puis saisissez-les à la main si nécessaire.
+              </p>
+              <ul style={{ margin: 0, paddingLeft: '20px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                {enSouffrance.map((e) => (
+                  <li key={e.id} style={{ marginBottom: '6px' }}>
+                    {e.recu_le} — {formatMontant(e.montant, e.devise)}
+                    {e.numero_facture ? ` — facture ${e.numero_facture}` : ''} — {e.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div>

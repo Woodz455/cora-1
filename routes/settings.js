@@ -9,14 +9,15 @@ const { journaliser, ecart, ACTIONS } = require('../auditService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { sanitizeText, isValidEmailList } = require('../validators.js');
 const { parsePaliers: analyserPaliers } = require('../relanceService.js');
-const { chiffrer, estProtege, coffreDisponible } = require('../secretStorage.js');
+const { chiffrer, dechiffrer, estProtege, coffreDisponible } = require('../secretStorage.js');
 const { envoyerCourrielTest } = require('../emailService.js');
+const stripe = require('../stripeService.js');
 
 /** Taille maximale du logo, encodé en data-URI. */
 const MAX_LOGO_CHARS = 3 * 1024 * 1024;
 
 /** Champs jamais exposés par l'API, quel que soit le rôle. */
-const CHAMPS_INTERNES = ['admin_username', 'admin_password', 'smtp_pass_chiffre'];
+const CHAMPS_INTERNES = ['admin_username', 'admin_password', 'smtp_pass_chiffre', 'stripe_cle_chiffree'];
 
 /**
  * Retire les champs internes et remplace le mot de passe d'envoi par deux
@@ -36,6 +37,19 @@ function nettoyer(settings) {
   copie.smtp_pass_defini = Boolean(settings.smtp_pass_chiffre);
   copie.smtp_pass_protege = estProtege(settings.smtp_pass_chiffre);
   copie.coffre_disponible = coffreDisponible();
+
+  // Même régime pour la clé Stripe. Son *mode* est en revanche exposé : une
+  // installation restée en mode test encaisserait de l'argent fictif sans que
+  // rien ne le dise, et c'est précisément ce qu'il faut rendre visible.
+  copie.stripe_cle_definie = Boolean(settings.stripe_cle_chiffree);
+  copie.stripe_cle_protegee = estProtege(settings.stripe_cle_chiffree);
+
+  const cleStripe = dechiffrer(settings.stripe_cle_chiffree);
+  copie.stripe_mode = cleStripe ? stripe.modeDeLaCle(cleStripe) : '';
+  copie.stripe_cle_restreinte = cleStripe ? stripe.estRestreinte(cleStripe) : false;
+  // Vraie lorsqu'une clé est enregistrée mais que le coffre ne sait plus la
+  // déchiffrer — base restaurée sur une autre machine, ou sous un autre compte.
+  copie.stripe_cle_illisible = Boolean(settings.stripe_cle_chiffree) && !cleStripe;
 
   for (const champ of CHAMPS_INTERNES) delete copie[champ];
   return copie;
@@ -123,7 +137,11 @@ const CHAMPS_SUIVIS = [
   // Le serveur et le compte d'envoi sont suivis ; le mot de passe ne l'est
   // évidemment pas, et son absence de cette liste est la seule chose qui
   // l'empêche d'être recopié dans un journal conçu pour être inaltérable.
-  'smtp_host', 'smtp_port', 'smtp_user'
+  'smtp_host', 'smtp_port', 'smtp_user',
+  // L'activation du paiement en ligne est consignée : elle décide si des liens
+  // partent chez les clients. La clé, elle, n'y figure pas, pour la même raison
+  // que le mot de passe d'envoi.
+  'stripe_actif'
 ];
 
 module.exports = function settingsRoutes(getDb) {
@@ -174,7 +192,8 @@ module.exports = function settingsRoutes(getDb) {
       verifier_maj: parseInterrupteur(body.verifier_maj),
       smtp_host: sanitizeText(body.smtp_host, 200),
       smtp_port: parsePort(body.smtp_port),
-      smtp_user: sanitizeText(body.smtp_user, 200)
+      smtp_user: sanitizeText(body.smtp_user, 200),
+      stripe_actif: parseInterrupteur(body.stripe_actif)
     };
 
     if (!valeurs.entreprise_nom) {
@@ -195,8 +214,33 @@ module.exports = function settingsRoutes(getDb) {
       valeurs.smtp_pass_chiffre = '';
     }
 
+    // La clé Stripe suit la même règle, à une différence près : rien d'autre
+    // dans le formulaire ne dit qu'on veut s'en défaire. Le retrait est donc
+    // demandé explicitement, plutôt que déduit d'un champ vide — un formulaire
+    // qui ne renvoie jamais la clé effacerait sinon la configuration à chaque
+    // enregistrement.
+    const cleStripe = typeof body.stripe_cle === 'string' ? body.stripe_cle.trim() : '';
+    if (body.stripe_cle_effacer) {
+      valeurs.stripe_cle_chiffree = '';
+      valeurs.stripe_actif = 0;
+    } else if (cleStripe) {
+      if (!stripe.cleValide(cleStripe)) {
+        throw httpError(400, 'Cette clé Stripe n\'est pas reconnue. Elle commence par « rk_live_ », '
+          + '« rk_test_ », « sk_live_ » ou « sk_test_ ».');
+      }
+      valeurs.stripe_cle_chiffree = chiffrer(cleStripe);
+    }
+
     const avant = await db.get('SELECT * FROM settings LIMIT 1');
     const existant = avant ? { id: avant.id } : null;
+
+    // Activer le paiement en ligne sans clé ne produirait rien du tout : aucun
+    // lien sur les factures, aucun relevé, et un interrupteur en position
+    // « activé » qui laisse croire le contraire.
+    const cleDejaLa = Boolean(avant && avant.stripe_cle_chiffree);
+    if (valeurs.stripe_actif === 1 && !cleStripe && !cleDejaLa) {
+      throw httpError(400, 'Renseignez votre clé Stripe avant d\'activer le paiement en ligne.');
+    }
     // Un champ absent de la requête garde sa valeur : ne pas filtrer reviendrait
     // à effacer un réglage que le formulaire n'a simplement pas envoyé.
     const colonnes = Object.keys(valeurs).filter((c) => valeurs[c] !== null);
@@ -263,6 +307,35 @@ module.exports = function settingsRoutes(getDb) {
     res.json({
       message: `Courriel de test envoyé à ${destinataire}.`,
       ...resultat
+    });
+  }));
+
+  /**
+   * Éprouve la clé Stripe enregistrée.
+   *
+   * La vérification porte sur l'opération dont le relevé automatique dépend —
+   * la lecture des sessions de paiement. Une clé qui se contenterait de créer
+   * des liens sans pouvoir relire les règlements passerait un contrôle plus
+   * complaisant, et l'utilisateur ne s'en apercevrait qu'au premier
+   * encaissement jamais inscrit.
+   */
+  router.post('/stripe/test', adminOnly(), asyncRoute(async (req, res) => {
+    const ligne = await getDb().get('SELECT stripe_cle_chiffree FROM settings LIMIT 1');
+    const cle = dechiffrer(ligne && ligne.stripe_cle_chiffree);
+
+    if (!cle) {
+      throw httpError(400, ligne && ligne.stripe_cle_chiffree
+        ? 'La clé enregistrée n\'est plus déchiffrable sur cette machine. Saisissez-la de nouveau.'
+        : 'Aucune clé Stripe n\'est enregistrée.');
+    }
+
+    const compte = await stripe.verifierCle(cle);
+
+    res.json({
+      message: compte.mode === 'test'
+        ? 'Connexion établie avec Stripe, en mode test : aucun paiement réel ne sera encaissé.'
+        : `Connexion établie avec Stripe${compte.nom ? ` (${compte.nom})` : ''}.`,
+      ...compte
     });
   }));
 
