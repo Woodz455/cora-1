@@ -13,9 +13,12 @@ import { useModale } from '../useModale';
  */
 function construireDictionnaire(isEn, nomEntreprise) {
   const societe = nomEntreprise || '';
-  const signature = societe ? `\n\n${isEn ? 'Thank you,' : 'Merci de votre confiance,'}\n${societe}` : '';
 
   return {
+    // La signature est rendue séparément du corps : le lien de paiement doit
+    // s'insérer avant elle, et non après, sous peine de figurer sous le nom de
+    // l'expéditeur comme une pièce rapportée.
+    signature: societe ? `\n\n${isEn ? 'Thank you,' : 'Merci de votre confiance,'}\n${societe}` : '',
     invoice: isEn ? 'INVOICE' : 'FACTURE',
     quote: isEn ? 'QUOTE' : 'SOUMISSION',
     note: isEn ? 'CREDIT NOTE' : 'NOTE DE CRÉDIT',
@@ -31,9 +34,9 @@ function construireDictionnaire(isEn, nomEntreprise) {
       ? 'This amount is deducted from the balance of invoice'
       : 'Ce montant vient en déduction du solde de la facture',
     emailSubjNote: isEn ? 'Credit Note' : 'Note de crédit',
-    emailBodyNote: (isEn
+    emailBodyNote: isEn
       ? 'Please find attached your credit note in PDF format.'
-      : 'Veuillez trouver ci-joint votre note de crédit au format PDF.') + signature,
+      : 'Veuillez trouver ci-joint votre note de crédit au format PDF.',
     billedTo: isEn ? 'BILLED TO' : 'FACTURÉ À',
     attn: isEn ? 'Attn:' : 'À l\'attention de :',
     service: isEn ? 'Service' : 'Service',
@@ -56,15 +59,22 @@ function construireDictionnaire(isEn, nomEntreprise) {
     emailSubjQuote: isEn ? 'Quote' : 'Soumission',
     emailSubjRelance: isEn ? 'Payment Reminder - Invoice' : 'Rappel de paiement - Facture',
     emailHello: isEn ? 'Hello' : 'Bonjour',
-    emailBodyFact: (isEn
+    emailBodyFact: isEn
       ? 'Please find attached your invoice in PDF format.'
-      : 'Veuillez trouver ci-joint votre facture au format PDF.') + signature,
-    emailBodyQuote: (isEn
+      : 'Veuillez trouver ci-joint votre facture au format PDF.',
+    emailBodyQuote: isEn
       ? 'Please find attached your quote in PDF format.'
-      : 'Veuillez trouver ci-joint votre soumission au format PDF.') + signature,
-    emailBodyRelance: (isEn
+      : 'Veuillez trouver ci-joint votre soumission au format PDF.',
+    emailBodyRelance: isEn
       ? 'This is a friendly reminder that your invoice is due.\nPlease find it attached in PDF format.'
-      : 'Ceci est un rappel amical concernant votre facture arrivée à échéance.\nVous la trouverez ci-jointe au format PDF.') + signature
+      : 'Ceci est un rappel amical concernant votre facture arrivée à échéance.\nVous la trouverez ci-jointe au format PDF.',
+    payOnline: isEn ? 'Pay this invoice online' : 'Payer cette facture en ligne',
+    payOnlineHint: isEn
+      ? 'Secure payment by credit card or bank debit. No account required.'
+      : 'Paiement sécurisé par carte ou par débit bancaire. Aucun compte à créer.',
+    payOnlineTest: isEn
+      ? 'TEST MODE — this link does not collect real money.'
+      : 'MODE TEST — ce lien n\'encaisse pas d\'argent réel.'
   };
 }
 
@@ -86,6 +96,8 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
   const [error, setError] = useState(null);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(isRelance);
   const [message, setMessage] = useState(null);
+  const [lienPaiement, setLienPaiement] = useState(null);
+  const [erreurLien, setErreurLien] = useState(null);
   const printRef = useRef(null);
   const modaleRef = useModale(() => onClose(false), { actif: !loading });
 
@@ -117,6 +129,28 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
     charger();
     return () => { annule = true; };
   }, [factureId, mode, estDevis, estNote]);
+
+  /**
+   * Lien de paiement en ligne.
+   *
+   * Demandé à l'affichage du document, et non au moment de l'envoi : le lien
+   * doit figurer aussi bien sur le PDF joint au courriel que sur la facture
+   * imprimée et remise en main propre. Le serveur réutilise le lien existant
+   * tant que le solde n'a pas bougé — un second affichage ne crée rien.
+   *
+   * Une soumission et une note de crédit n'attendent pas d'argent : elles n'en
+   * demandent aucun.
+   */
+  useEffect(() => {
+    if (estDevis || estNote) return undefined;
+
+    let annule = false;
+    api.post(`/api/paiements-en-ligne/factures/${factureId}/lien`)
+      .then((reponse) => { if (!annule) setLienPaiement(reponse.lien); })
+      .catch((err) => { if (!annule) setErreurLien(err.message); });
+
+    return () => { annule = true; };
+  }, [factureId, estDevis, estNote]);
 
   if (loading) {
     return (
@@ -203,7 +237,13 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
     : estNote ? dict.emailBodyNote
       : estDevis ? dict.emailBodyQuote
         : dict.emailBodyFact;
-  const corps = `${dict.emailHello} ${client.nom_contact || client.nom_entreprise},\n\n${texteCourriel}`;
+
+  // Le lien est écrit tel quel : les logiciels de courriel le rendent
+  // cliquable, et un client qui préfère l'imprimer le retrouve sur le PDF.
+  const blocLien = lienPaiement ? `\n\n${dict.payOnline} :\n${lienPaiement.url}` : '';
+
+  const corps = `${dict.emailHello} ${client.nom_contact || client.nom_entreprise},`
+    + `\n\n${texteCourriel}${blocLien}${dict.signature}`;
 
   return (
     <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={`Aperçu ${numero}`}
@@ -219,6 +259,17 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
       {message && (
         <div className="no-print" style={{ maxWidth: '800px', margin: '0 auto 20px' }}>
           <p className="alert alert-success" role="status">{message}</p>
+        </div>
+      )}
+
+      {/* Visible à l'écran seulement : le document part chez le client, et une
+          difficulté de configuration ne le regarde pas. La taire laisserait
+          croire que le paiement en ligne est simplement inactif. */}
+      {erreurLien && (
+        <div className="no-print" style={{ maxWidth: '800px', margin: '0 auto 20px' }}>
+          <p className="alert alert-error" role="alert">
+            Lien de paiement indisponible : {erreurLien}
+          </p>
         </div>
       )}
 
@@ -371,6 +422,31 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
             )}
           </div>
         </div>
+
+        {/* Le lien de paiement est imprimé en toutes lettres plutôt que posé
+            sur un mot cliquable : le PDF est produit par capture d'image, où
+            aucun lien ne survit, et la facture peut être remise sur papier. */}
+        {lienPaiement && (
+          <div style={{ marginTop: '40px', padding: '20px', background: '#ecfdf5', borderRadius: '8px', borderLeft: '4px solid #0f766e' }}>
+            <p style={{ margin: '0 0 6px 0', color: '#0f172a', fontWeight: 'bold', fontSize: '1rem' }}>
+              {dict.payOnline}
+            </p>
+            <p style={{ margin: '0 0 10px 0', color: '#475569', fontSize: '0.9rem' }}>
+              {dict.payOnlineHint}
+            </p>
+            <p style={{ margin: 0, color: '#0f766e', fontSize: '0.9rem', wordBreak: 'break-all' }}>
+              {lienPaiement.url}
+            </p>
+            {/* Un lien de test ne doit jamais partir chez un vrai client sans
+                que cela se voie — sur le document lui-même, pas seulement
+                dans les réglages. */}
+            {lienPaiement.mode === 'test' && (
+              <p style={{ margin: '10px 0 0 0', color: '#b45309', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                {dict.payOnlineTest}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Les instructions de paiement n'ont pas de sens sur une note de
             crédit : c'est l'entreprise qui doit, pas le client. */}

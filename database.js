@@ -210,6 +210,46 @@ async function createTables(db) {
       FOREIGN KEY (client_id) REFERENCES clients (id)
     );
 
+    -- Liens de paiement en ligne. Un lien actif au plus par facture : c'est ce
+    -- qui empêche qu'un client à qui l'on a renvoyé sa facture se retrouve avec
+    -- deux liens vivants et règle deux fois.
+    CREATE TABLE IF NOT EXISTS liens_paiement (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      facture_id INTEGER NOT NULL,
+      lien_id TEXT NOT NULL UNIQUE,
+      url TEXT NOT NULL,
+      montant REAL NOT NULL,
+      devise TEXT NOT NULL DEFAULT 'CAD',
+      mode TEXT NOT NULL DEFAULT 'live',
+      cree_le TEXT NOT NULL,
+      actif INTEGER NOT NULL DEFAULT 1,
+      FOREIGN KEY (facture_id) REFERENCES factures (id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_liens_paiement_facture ON liens_paiement (facture_id);
+
+    -- Règlements relevés chez Stripe. La colonne session_id est unique, et c'est
+    -- cette contrainte — et non la prudence du code appelant — qui garantit qu'un
+    -- même paiement ne peut pas être inscrit deux fois aux comptes, quel que
+    -- soit le nombre de passages du planificateur.
+    --
+    -- Les règlements que Clora n'a pas pu inscrire y figurent aussi, avec leur
+    -- motif : un client qui paie une facture déjà soldée est un problème
+    -- d'argent réel, qui doit se voir plutôt que de disparaître.
+    CREATE TABLE IF NOT EXISTS encaissements_stripe (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL UNIQUE,
+      lien_id TEXT,
+      facture_id INTEGER,
+      paiement_id INTEGER,
+      montant REAL NOT NULL,
+      devise TEXT,
+      mode TEXT NOT NULL DEFAULT 'live',
+      recu_le TEXT NOT NULL,
+      etat TEXT NOT NULL,
+      message TEXT
+    );
+
     -- Journal des actions sensibles. Aucune clé étrangère : la trace doit
     -- survivre à la suppression de ce qu'elle décrit, sans quoi effacer une
     -- facture effacerait la preuve qu'on l'a effacée.
@@ -317,6 +357,13 @@ async function runMigrations(db) {
   await addColumn(db, 'settings', 'smtp_port', 'INTEGER');
   await addColumn(db, 'settings', 'smtp_user', 'TEXT');
   await addColumn(db, 'settings', 'smtp_pass_chiffre', 'TEXT');
+
+  // Paiement en ligne. La clé d'API suit le même régime que le mot de passe
+  // d'envoi : chiffrée par le coffre du système avant d'arriver ici, jamais
+  // relue par l'interface. Désactivé par défaut — aucun appel ne part vers
+  // Stripe tant que l'entreprise ne l'a pas demandé.
+  await addColumn(db, 'settings', 'stripe_cle_chiffree', 'TEXT');
+  await addColumn(db, 'settings', 'stripe_actif', 'INTEGER DEFAULT 0');
 
   await figerMontants(db);
 }

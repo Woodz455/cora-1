@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useModale } from '../useModale';
 
 function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaultMessage }) {
@@ -9,6 +9,19 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
   const [message, setMessage] = useState(defaultMessage || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  /**
+   * Message proposé la dernière fois. Le lien de paiement en ligne arrive après
+   * l'ouverture de la fenêtre : le texte proposé doit alors se compléter, mais
+   * jamais écraser ce que l'utilisateur a commencé à écrire.
+   */
+  const proposition = useRef(defaultMessage || '');
+  useEffect(() => {
+    const nouveau = defaultMessage || '';
+    if (nouveau === proposition.current) return;
+    setMessage((actuel) => (actuel === proposition.current ? nouveau : actuel));
+    proposition.current = nouveau;
+  }, [defaultMessage]);
 
   if (!isOpen) return null;
 

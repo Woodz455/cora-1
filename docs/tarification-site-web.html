@@ -1,0 +1,221 @@
+<!doctype html>
+<!--
+  Bloc de tarification à intégrer au site web de Safehill.
+
+  Même principe que docs/telechargement-site-web.html : ouvrez ce fichier dans
+  un navigateur pour voir le rendu, puis copiez ce qui se trouve entre les deux
+  marqueurs « À COPIER ». Toutes les classes sont préfixées « clora- » et le
+  <style> est inclus dans le bloc.
+
+  DEUX ADRESSES À REMPLACER AVANT LA MISE EN LIGNE, toutes deux marquées
+  « À REMPLACER » dans le code :
+
+    1. le lien d'achat, qui pointera vers votre lien de paiement Stripe ;
+    2. l'adresse de contact du support.
+
+  Les prix affichés sont hors taxes. La TPS/TVQ que vous facturerez dépend de
+  la province de l'acheteur — 13 % en Ontario, 5 % en Alberta, 14,975 % au
+  Québec — et non de la vôtre : c'est la règle du lieu de fourniture, celle-là
+  même que Clora applique aux factures de vos clients. Stripe sait la calculer,
+  mais il faut l'activer ; par défaut il ne facture aucune taxe.
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tarification de Clora — aperçu du bloc</title>
+<style>
+  /* Décor de la page d'aperçu seulement. Ne pas copier. */
+  body { margin: 0; padding: 3rem 1.5rem; background: #f1f5f9; color: #0f172a;
+         font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  @media (prefers-color-scheme: dark) { body { background: #0f172a; color: #f8fafc; } }
+  .apercu-note { max-width: 44rem; margin: 0 auto 2rem; font-size: .875rem; opacity: .7; }
+</style>
+</head>
+<body>
+
+<p class="apercu-note">Aperçu — la page réelle n'affichera que le bloc ci-dessous.</p>
+
+<!-- ==================== À COPIER — DÉBUT ==================== -->
+<style>
+  .clora-prix {
+    /* Mêmes verts que le bloc de téléchargement, tous deux vérifiés : le vert
+       du logo (#24a890) ne donne que 2,97:1 avec du texte blanc et ne peut
+       donc pas servir de fond à du texte. */
+    --clora-vert: #197665;
+    --clora-vert-actif: #145d4f;
+    --clora-accent: #24a890;
+
+    max-width: 44rem;
+    margin: 0 auto;
+    font-family: inherit;
+    line-height: 1.6;
+  }
+
+  .clora-prix h2 { margin: 0 0 .3rem; font-size: 1.75rem; letter-spacing: -.02em; }
+  .clora-prix .clora-chapeau { margin: 0 0 2rem; color: inherit; opacity: .72; }
+
+  .clora-carte {
+    padding: 2rem;
+    border: 1px solid rgba(127, 127, 127, .28);
+    border-radius: 14px;
+    background: rgba(127, 127, 127, .045);
+  }
+
+  .clora-montant {
+    display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap;
+    margin-bottom: .25rem;
+  }
+  .clora-montant b { font-size: 2.5rem; letter-spacing: -.03em; line-height: 1; }
+  .clora-montant span { opacity: .72; }
+
+  .clora-maintenance {
+    margin: 1.25rem 0 1.75rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid rgba(127, 127, 127, .22);
+    font-size: .9375rem;
+  }
+  .clora-maintenance b { font-size: 1.15rem; }
+
+  .clora-bouton {
+    display: inline-flex; align-items: center; gap: .6rem;
+    padding: .9rem 1.75rem; border-radius: 9px;
+    background: var(--clora-vert); color: #fff;
+    font-size: 1.0625rem; font-weight: 600; text-decoration: none;
+    transition: background .15s ease;
+  }
+  .clora-bouton:hover, .clora-bouton:focus-visible { background: var(--clora-vert-actif); color: #fff; }
+  .clora-bouton:focus-visible { outline: 3px solid var(--clora-accent); outline-offset: 3px; }
+
+  .clora-essai { margin-top: .9rem; font-size: .9rem; opacity: .75; }
+
+  .clora-liste { list-style: none; padding: 0; margin: 2rem 0 0; }
+  .clora-liste li {
+    display: flex; gap: .65rem; align-items: flex-start;
+    padding: .45rem 0; font-size: .9375rem;
+  }
+  .clora-liste svg { flex-shrink: 0; margin-top: .28rem; color: var(--clora-accent); }
+
+  .clora-promesse {
+    margin-top: 2rem; padding: 1.15rem 1.25rem;
+    border-left: 3px solid var(--clora-accent); border-radius: 0 8px 8px 0;
+    background: rgba(36, 168, 144, .09); font-size: .9375rem;
+  }
+  .clora-promesse strong { display: block; margin-bottom: .3rem; }
+
+  .clora-menu { margin-top: 1.5rem; font-size: .875rem; opacity: .8; }
+  .clora-menu dt { font-weight: 600; margin-top: 1rem; }
+  .clora-menu dd { margin: .2rem 0 0; }
+
+  /* Sur fond sombre, le vert accessible sur blanc se détacherait mal : on
+     remonte à #1b8069, qui garde 4,84:1 avec le texte et au moins 3:1 contre
+     le fond. Le survol assombrit, comme en thème clair. */
+  @media (prefers-color-scheme: dark) {
+    .clora-prix { --clora-vert: #1b8069; --clora-vert-actif: #197665; }
+  }
+
+  @media (max-width: 32rem) {
+    .clora-carte { padding: 1.5rem; }
+    .clora-bouton { width: 100%; justify-content: center; }
+  }
+</style>
+
+<section class="clora-prix">
+  <h2>Un prix, une fois</h2>
+  <p class="clora-chapeau">
+    Clora s'achète, il ne se loue pas. Pas d'abonnement obligatoire, pas de hausse annuelle.
+  </p>
+
+  <div class="clora-carte">
+    <p class="clora-montant" style="margin-top:0">
+      <b>299&nbsp;$</b>
+      <span>une seule fois, + taxes</span>
+    </p>
+    <p style="margin:0; opacity:.8; font-size:.9375rem">
+      Licence perpétuelle pour votre entreprise, sur autant d'ordinateurs que vous voulez.
+    </p>
+
+    <div class="clora-maintenance">
+      Puis, si vous le souhaitez&nbsp;: <b>99&nbsp;$&nbsp;/&nbsp;an</b> pour recevoir les
+      nouvelles versions et le support. <strong>Facultatif.</strong>
+    </div>
+
+    <!-- À REMPLACER : votre lien de paiement Stripe. -->
+    <a class="clora-bouton" href="#lien-de-paiement-stripe">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M5 12h14M13 6l6 6-6 6"/>
+      </svg>
+      Acheter Clora
+    </a>
+
+    <p class="clora-essai">
+      Essayez d'abord&nbsp;: <strong>30 jours complets</strong>, sans carte de crédit.
+    </p>
+  </div>
+
+  <!-- La promesse qui distingue Clora d'un abonnement, et la raison pour
+       laquelle ce modèle a été retenu. Elle mérite d'être dite en toutes
+       lettres : c'est la première inquiétude d'un acheteur échaudé. -->
+  <div class="clora-promesse">
+    <strong>Si vous arrêtez la maintenance, Clora continue de fonctionner.</strong>
+    Vous gardez le logiciel et vos données, indéfiniment. Vous cessez simplement
+    de recevoir les versions publiées ensuite. Personne ne vous coupera l'accès
+    à votre comptabilité.
+  </div>
+
+  <ul class="clora-liste">
+    <li>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+      <span><strong>Vos données restent sur votre ordinateur.</strong> Clora ne les envoie nulle part.</span>
+    </li>
+    <li>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+      <span><strong>TPS, TVQ et TVH correctes</strong>, calculées selon la province de chaque client, et figées à l'émission de la facture.</span>
+    </li>
+    <li>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+      <span><strong>Plusieurs entreprises</strong> dans le même logiciel, chacune avec sa comptabilité séparée.</span>
+    </li>
+    <li>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+      <span><strong>Sauvegardes automatiques</strong> vers le dossier de votre choix — OneDrive, Dropbox, un disque externe.</span>
+    </li>
+    <li>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+      <span><strong>Import depuis Excel</strong> de vos clients et de votre catalogue, pour ne rien ressaisir.</span>
+    </li>
+    <li>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+      <span>Factures, devis, relances automatiques, rapprochement bancaire, balance âgée et journal d'audit.</span>
+    </li>
+  </ul>
+
+  <dl class="clora-menu">
+    <dt>Que se passe-t-il si je change d'ordinateur&nbsp;?</dt>
+    <!-- Formulation vérifiée sur le fonctionnement réel : les données vivent
+         dans %APPDATA%\Clora, et le mot de passe du serveur de courriel est
+         chiffré par le coffre de Windows, donc lié à la machine. Promettre que
+         « tout suit » aurait été faux sur ce point précis. -->
+    <dd>
+      Votre licence vous suit. Copiez le dossier de données de Clora
+      (<code>%APPDATA%\Clora</code>), réinstallez, saisissez la même clé. Seul le
+      mot de passe de votre serveur de courriel est à ressaisir&nbsp;: il est
+      chiffré par le coffre-fort de Windows, donc lié à votre ancien poste.
+    </dd>
+
+    <dt>Puis-je essayer avant d'acheter&nbsp;?</dt>
+    <dd>Trente jours complets, sans carte de crédit et sans engagement. Vos données saisies pendant l'essai restent les vôtres.</dd>
+
+    <dt>Et si je ne suis pas satisfait&nbsp;?</dt>
+    <dd>Remboursement intégral dans les 30 jours suivant l'achat, sans avoir à se justifier.</dd>
+
+    <dt>Une question avant d'acheter&nbsp;?</dt>
+    <!-- À REMPLACER : votre adresse de support. -->
+    <dd>Écrivez-nous à <a href="mailto:support@exemple.ca">support@exemple.ca</a>.</dd>
+  </dl>
+</section>
+<!-- ==================== À COPIER — FIN ==================== -->
+
+</body>
+</html>

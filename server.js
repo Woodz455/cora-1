@@ -40,6 +40,7 @@ const auditRoutes = require('./routes/audit.js');
 const entrepriseRoutes = require('./routes/entreprises.js');
 const licenceRoutes = require('./routes/licence.js');
 const importRoutes = require('./routes/import.js');
+const paiementEnLigneRoutes = require('./routes/paiementsEnLigne.js');
 
 /** Limite de corps par défaut. */
 const LIMITE_CORPS = '1mb';
@@ -207,6 +208,7 @@ function createApp(db, options = {}) {
   app.use('/api/sauvegardes', sauvegardeRoutes(getDb));
   app.use('/api/audit', auditRoutes(getDb));
   app.use('/api/import', importRoutes(getDb));
+  app.use('/api/paiements-en-ligne', paiementEnLigneRoutes(getDb));
   app.use('/api/settings', settingsRoutes(getDb));
   app.use('/api', rapportRoutes(getDb));
 

@@ -42,7 +42,11 @@
   --status-danger: #b91c1c;
   --status-danger-bg: rgba(239, 68, 68, 0.08);
   --status-danger-border: rgba(239, 68, 68, 0.35);
-  --status-warning: #ea580c;
+  /* L'orange d'avertissement était resté à #ea580c, soit 3,19:1 sur le fond
+     ambré des messages : sous le seuil AA, alors qu'il porte du texte dans une
+     dizaine d'écrans. #c2410c mesure 4,64:1 sur ce même fond et 5,06:1 sur les
+     panneaux. En thème sombre, #fb923c est déjà à 6,94:1 et reste inchangé. */
+  --status-warning: #c2410c;
   --status-warning-bg: rgba(234, 88, 12, 0.08);
   --status-warning-border: rgba(234, 88, 12, 0.35);
 
@@ -331,6 +335,12 @@ textarea:focus-visible {
   color: var(--status-paid);
   background: rgba(16, 185, 129, 0.12);
   border-color: rgba(16, 185, 129, 0.35);
+}
+
+.alert-warning {
+  color: var(--status-warning);
+  background: var(--status-warning-bg);
+  border-color: var(--status-warning-border);
 }
 
 .alert-info {

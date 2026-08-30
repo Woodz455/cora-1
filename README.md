@@ -259,6 +259,65 @@ figure l'historique complet.
   attente** et se détache de la facture : le dépôt retourne dans la file, prêt à
   être affecté correctement.
 
+## Paiement de facture en ligne
+
+Chaque facture peut porter un lien de paiement : le client règle par carte ou
+par débit préautorisé, sans créer de compte, et l'encaissement s'inscrit tout
+seul. Le lien figure sur le PDF et dans le corps du courriel.
+
+**L'argent ne transite jamais par Clora.** Il va directement au compte Stripe de
+l'entreprise, puis à son compte bancaire. Clora fabrique le lien et relève les
+règlements ; il n'est à aucun moment intermédiaire de paiement — ce qui relèverait
+d'un tout autre régime réglementaire.
+
+### Mise en service
+
+1. Ouvrir un compte sur stripe.com au nom de l'entreprise.
+2. Créer une **clé restreinte** (Développeurs → Clés d'API), avec l'écriture sur
+   « Prix », « Produits » et « Liens de paiement », et la lecture sur « Sessions
+   de paiement ». Une clé secrète complète fonctionne aussi, mais donne tous les
+   droits sur le compte à un logiciel installé sur un poste de bureau.
+3. La coller dans Paramètres → Paiement en ligne, cocher la case, et vérifier la
+   connexion.
+
+Les moyens de paiement proposés au client sont **ceux activés dans le tableau de
+bord Stripe** : la carte l'est d'emblée, le débit préautorisé (ACSS) se demande
+séparément auprès de Stripe. Clora ne les impose pas par paramètre, ce qui ferait
+échouer la création du lien tant que l'activation n'est pas faite — et priverait
+la facture de tout moyen de paiement pour rien. Le débit préautorisé coûte
+nettement moins cher que la carte sur les gros montants ; il vaut la peine d'être
+demandé.
+
+La clé est chiffrée par le coffre du système au même titre que le mot de passe
+d'envoi (voir Configuration). Une base restaurée sur une autre machine ne sait
+plus la déchiffrer : le paiement en ligne se désactive et l'écran des paramètres
+invite à la ressaisir, plutôt que de laisser croire qu'il fonctionne encore.
+
+### Ce qui garantit la justesse des comptes
+
+- **Un lien actif au plus par facture.** Il porte le solde restant, pas le total.
+  Un acompte encaissé entre-temps retire l'ancien lien et en crée un juste : deux
+  liens vivants, ce serait un client qui peut payer deux fois.
+- **Un règlement inscrit une seule fois.** L'identifiant de session Stripe est
+  unique en base ; c'est cette contrainte, et non la prudence du code, qui
+  l'empêche, quel que soit le nombre de passages du planificateur.
+- **Seul l'argent réellement reçu est inscrit.** Un débit préautorisé met
+  plusieurs jours ouvrables à se dénouer : tant que Stripe ne le donne pas pour
+  réglé, rien n'est porté aux comptes. Le relevé le rattrape ensuite tout seul.
+- **Un règlement qui n'a pas pu être imputé ne disparaît pas.** Une facture
+  soldée à la main pendant qu'un client payait en ligne : le cas est consigné
+  avec son motif, signalé dans les paramètres et porté au journal d'audit.
+- **Le mode test se voit.** Une clé « test » n'encaisse pas d'argent réel : la
+  mention figure dans les paramètres, sur la facture elle-même et dans la note de
+  l'encaissement.
+
+Le relevé est automatique, à chaque passage horaire du planificateur et pour
+chaque dossier. Un bouton permet de le déclencher sans attendre.
+
+Les frais de Stripe sont prélevés sur le versement, pas sur la facture : celle-ci
+est réglée en totalité. La dépense correspondante n'est pas encore reprise
+automatiquement dans les dépenses.
+
 ## Rapprochement bancaire
 
 Un relevé s'importe au format CSV : les colonnes de date, de description et de
