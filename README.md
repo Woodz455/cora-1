@@ -314,6 +314,17 @@ invite à la ressaisir, plutôt que de laisser croire qu'il fonctionne encore.
 Le relevé est automatique, à chaque passage horaire du planificateur et pour
 chaque dossier. Un bouton permet de le déclencher sans attendre.
 
+**Un lien que personne n'a emprunté cesse d'être interrogé au bout de
+quatre-vingt-dix jours** — un mois de grâce après le terme le plus long
+proposé. Sans cette borne, une facture d'essai jamais réglée serait sondée
+indéfiniment, une fois l'heure, et remplirait les journaux d'API sans qu'aucun
+encaissement ne soit à en attendre. Deux précautions l'accompagnent, parce
+qu'un lien mal retiré coûte de l'argent : le lien est **aussi désactivé chez
+Stripe** — cesser de l'interroger en le laissant vivant ferait qu'un client
+paierait sans que Clora ne le voie jamais — et **un lien qui a vu passer la
+moindre session est épargné**, le temps qu'un débit préautorisé se dénoue. La
+facture reste payable : rouvrir son aperçu fabrique un lien neuf.
+
 Les frais de Stripe sont prélevés sur le versement, pas sur la facture : celle-ci
 est réglée en totalité. La dépense correspondante n'est pas encore reprise
 automatiquement dans les dépenses.

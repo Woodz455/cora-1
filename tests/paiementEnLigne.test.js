@@ -20,7 +20,7 @@ const { startTestServer, MOT_DE_PASSE } = require('./helpers.js');
 const { reset: resetRateLimit } = require('../rateLimit.js');
 const { demarrerFauxStripe } = require('./fauxStripe.js');
 const { encoderFormulaire, cleValide, modeDeLaCle } = require('../stripeService.js');
-const { relever } = require('../paiementEnLigneService.js');
+const { relever, joursDepuis, JOURS_SANS_ACTIVITE } = require('../paiementEnLigneService.js');
 
 /**
  * Clés fictives.
@@ -381,6 +381,88 @@ test('le relevé ne lève pas quand Stripe est injoignable', async (t) => {
   const bilan = await relever(api.db);
   assert.equal(bilan.erreurs, 1);
   assert.equal(bilan.inscrits, 0);
+});
+
+// --- Les liens qui dorment ----------------------------------------------------
+
+/** Recule la date de création d'un lien, pour simuler le temps qui passe. */
+async function vieillir(api, lienId, jours) {
+  const quand = new Date(Date.now() - jours * 86400000).toISOString();
+  await api.db.run('UPDATE liens_paiement SET cree_le = ? WHERE lien_id = ?', [quand, lienId]);
+}
+
+test('le compte des jours résiste à une date illisible', () => {
+  assert.equal(joursDepuis(new Date(Date.now() - 100 * 86400000).toISOString()), 100);
+  // Une date qu'on ne sait pas lire ne doit pas faire retirer un lien vivant :
+  // zéro jour, donc jamais assez vieux.
+  assert.equal(joursDepuis('n\'importe quoi'), 0);
+  assert.equal(joursDepuis(null), 0);
+});
+
+test('un lien que personne n\'a emprunté cesse d\'être interrogé', async (t) => {
+  const { api, stripe } = await withStripe(t);
+  const f = await facture(api, { montant: 100 });
+  await demanderLien(api, f.id);
+
+  await vieillir(api, 'plink_2', JOURS_SANS_ACTIVITE + 5);
+
+  const bilan = await api.post('/api/paiements-en-ligne/relever', {});
+  assert.equal(bilan.data.dormants, 1);
+
+  // Il est aussi retiré chez Stripe : cesser de l'interroger en le laissant
+  // vivant ferait qu'un client paierait sans que Clora ne le voie jamais.
+  assert.equal(stripe.liens.get('plink_2').active, false);
+
+  // Et le passage suivant ne s'y intéresse plus.
+  const avant = stripe.compter('/v1/checkout/sessions', 'GET');
+  await api.post('/api/paiements-en-ligne/relever', {});
+  assert.equal(stripe.compter('/v1/checkout/sessions', 'GET'), avant);
+});
+
+test('un lien ancien mais déjà emprunté reste sous surveillance', async (t) => {
+  const { api, stripe } = await withStripe(t);
+  const f = await facture(api, { montant: 100 });
+  await demanderLien(api, f.id);
+  await vieillir(api, 'plink_2', JOURS_SANS_ACTIVITE + 30);
+
+  // Un débit préautorisé ouvert la veille de l'échéance met plusieurs jours
+  // ouvrables à se dénouer. Retirer ce lien-là perdrait le règlement.
+  stripe.payer('plink_2', { montant: f.solde_restant, etat: 'unpaid' });
+
+  const bilan = await api.post('/api/paiements-en-ligne/relever', {});
+  assert.equal(bilan.data.dormants, 0);
+  assert.equal(stripe.liens.get('plink_2').active, true);
+
+  // Le règlement se dénoue : il est bien rattrapé, malgré l'âge du lien.
+  stripe.sessions[0].payment_status = 'paid';
+  const rattrapage = await api.post('/api/paiements-en-ligne/relever', {});
+  assert.equal(rattrapage.data.inscrits, 1);
+});
+
+test('un lien récent n\'est pas retiré', async (t) => {
+  const { api, stripe } = await withStripe(t);
+  const f = await facture(api, { montant: 100 });
+  await demanderLien(api, f.id);
+  await vieillir(api, 'plink_2', JOURS_SANS_ACTIVITE - 1);
+
+  const bilan = await api.post('/api/paiements-en-ligne/relever', {});
+  assert.equal(bilan.data.dormants, 0);
+  assert.equal(stripe.liens.get('plink_2').active, true);
+});
+
+test('la facture reste payable : un nouveau lien se fabrique à l\'affichage', async (t) => {
+  const { api } = await withStripe(t);
+  const f = await facture(api, { montant: 100 });
+  const premier = await demanderLien(api, f.id);
+
+  await vieillir(api, 'plink_2', JOURS_SANS_ACTIVITE + 5);
+  await api.post('/api/paiements-en-ligne/relever', {});
+
+  // L'expiration ne condamne pas la facture : elle arrête seulement le bruit
+  // de fond. Rouvrir l'aperçu redonne un lien vivant.
+  const second = await demanderLien(api, f.id);
+  assert.ok(second.data.lien.url);
+  assert.notEqual(second.data.lien.url, premier.data.lien.url);
 });
 
 // --- Le mode test -------------------------------------------------------------
