@@ -40,6 +40,15 @@ const EPSILON = 0.005;
 const MONTANT_MINIMAL = 0.5;
 
 /**
+ * Au-delà, un lien que personne n'a emprunté cesse d'être interrogé.
+ *
+ * Quatre-vingt-dix jours : un mois de grâce après le terme le plus long que
+ * Clora propose (net 60). Une facture encore payable ne doit jamais voir son
+ * lien expirer avant son échéance.
+ */
+const JOURS_SANS_ACTIVITE = 90;
+
+/**
  * Auteur porté au journal d'audit pour les inscriptions automatiques.
  *
  * Le relevé tourne sur minuterie, sans requête ni session : `journaliser` ne lit
@@ -303,10 +312,10 @@ async function inscrire(db, lien, session) {
  * relances ni la sauvegarde de s'exécuter parce que Stripe est indisponible.
  *
  * @param {import('sqlite').Database} db
- * @returns {Promise<{inscrits: number, refuses: number, erreurs: number, liens: number}>}
+ * @returns {Promise<{inscrits: number, refuses: number, erreurs: number, dormants: number, liens: number}>}
  */
 async function relever(db) {
-  const bilan = { inscrits: 0, refuses: 0, erreurs: 0, liens: 0 };
+  const bilan = { inscrits: 0, refuses: 0, erreurs: 0, dormants: 0, liens: 0 };
 
   const config = await configuration(db);
   if (!config.actif) return bilan;
@@ -335,7 +344,8 @@ async function relever(db) {
         if (resultat === 'reporte') bilan.erreurs += 1;
       }
 
-      await retirerSiSolde(db, config, lien);
+      const retire = await retirerSiSolde(db, config, lien);
+      if (!retire && await retirerSiDormant(db, config, lien, sessions)) bilan.dormants += 1;
     } catch (erreur) {
       bilan.erreurs += 1;
       console.error(`Relevé du lien ${lien.lien_id} impossible :`, erreur.message);
@@ -345,16 +355,61 @@ async function relever(db) {
   return bilan;
 }
 
-/** Retire le lien dès que la facture n'attend plus rien. */
+/**
+ * Retire le lien dès que la facture n'attend plus rien.
+ * @returns {Promise<boolean>} vrai si le lien a été retiré
+ */
 async function retirerSiSolde(db, config, lien) {
   const facture = await getSoldeFacture(db, lien.facture_id);
   if (!facture) {
     await db.run('UPDATE liens_paiement SET actif = 0 WHERE id = ?', [lien.id]);
-    return;
+    return true;
   }
   if (facture.statut === 'Annulée' || facture.solde_restant <= EPSILON) {
     await retirerLien(db, config, lien);
+    return true;
   }
+  return false;
+}
+
+/** Jours écoulés depuis une date ISO, en temps universel. */
+function joursDepuis(iso, maintenant = new Date()) {
+  const debut = Date.parse(iso);
+  // Date illisible : on préfère continuer d'interroger que retirer à tort.
+  if (!Number.isFinite(debut)) return 0;
+  return Math.floor((maintenant.getTime() - debut) / 86400000);
+}
+
+/**
+ * Retire un lien que personne n'a emprunté depuis longtemps.
+ *
+ * Le relevé interroge Stripe une fois l'heure et par lien actif. Sans cette
+ * borne, une facture d'essai jamais réglée serait sondée indéfiniment : c'est
+ * ce qui remplissait les journaux d'API sans qu'aucun encaissement ne soit à
+ * en attendre.
+ *
+ * Deux précautions, parce qu'un lien mal retiré coûte de l'argent :
+ *
+ *  - **le lien est aussi désactivé chez Stripe.** Cesser de l'interroger en le
+ *    laissant vivant serait le pire des deux mondes : un client paierait, et
+ *    Clora ne le verrait jamais.
+ *  - **un lien qui a vu passer la moindre session est épargné.** Un débit
+ *    préautorisé ouvert la veille de l'échéance met plusieurs jours ouvrables à
+ *    se dénouer ; tant qu'une session existe, la surveillance continue.
+ *
+ * La facture reste payable : rouvrir son aperçu fabrique un lien neuf.
+ *
+ * @returns {Promise<boolean>} vrai si le lien a été retiré
+ */
+async function retirerSiDormant(db, config, lien, sessions) {
+  if (sessions.length > 0) return false;
+
+  const jours = joursDepuis(lien.cree_le);
+  if (jours < JOURS_SANS_ACTIVITE) return false;
+
+  console.log(`Lien de paiement ${lien.lien_id} retiré : ${jours} jours sans la moindre session.`);
+  await retirerLien(db, config, lien);
+  return true;
 }
 
 /**
@@ -381,5 +436,7 @@ module.exports = {
   retirerLien,
   encaissementsEnSouffrance,
   noteEncaissement,
-  MONTANT_MINIMAL
+  joursDepuis,
+  MONTANT_MINIMAL,
+  JOURS_SANS_ACTIVITE
 };
