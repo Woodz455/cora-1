@@ -13,7 +13,7 @@ Rendez-vous sur la page des versions du projet. Deux fichiers y sont proposés :
 
 ```
 Clora-Installateur.exe          ← toujours la dernière version
-Clora-Installateur-1.5.0.exe    ← la même, avec le numéro de version
+Clora-Installateur-1.5.1.exe    ← la même, avec le numéro de version
 ```
 
 **Prenez le premier.** Le second est identique ; son nom porte le numéro de

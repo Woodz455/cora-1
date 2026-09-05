@@ -38,7 +38,7 @@ dans [INSTALLATION.md](INSTALLATION.md).
 et dépose le fichier sur la page des publications :
 
 ```bash
-git tag v1.5.0 && git push origin v1.5.0
+git tag v1.5.1 && git push origin v1.5.1
 ```
 
 L'étiquette doit correspondre au champ `version` de `package.json` : c'est lui
