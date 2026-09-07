@@ -37,15 +37,66 @@ francophone ; conditions de paiement Net 15/30/60.
 
 ## 2. À qui il s'adresse
 
+**Le critère n'est pas le secteur, c'est le modèle de facturation.** Clora
+convient à toute entreprise qui **facture des clients nommés, à terme**, plutôt
+que d'encaisser au comptoir.
+
+### Les trois questions qui décident
+
+**Facturez-vous des clients nommés, ou vendez-vous à un inconnu au comptoir ?**
+C'est la question déterminante. Une fiche client exige un nom et une adresse
+courriel : une vente sans client identifié n'existe pas dans Clora.
+
+**Vendez-vous du temps et des services, ou de la marchandise dont il faut suivre
+le stock ?** Le catalogue enregistre un libellé, une description et un prix.
+Rien n'y compte ce qui reste en inventaire.
+
+**Combien de documents par mois ?** Clora est bâti pour des dizaines à quelques
+centaines de factures mensuelles, pas pour des milliers de transactions
+quotidiennes.
+
+### Là où Clora est à sa place
+
 | Profil | Ce qu'il y trouve |
 | --- | --- |
-| **Entreprise de services** — plomberie, électricité, consultation, entretien | Factures, devis, relances, suivi des encaissements |
+| **Métiers de service** — plomberie, électricité, entretien, installation | Devis, factures, relances, suivi des encaissements |
+| **Agences, cabinets-conseils, pigistes** | Facturation au projet ou à l'heure, devis convertibles, catalogue de prestations |
+| **Services professionnels** — comptabilité, droit, traduction, design, formation | Termes de paiement, relances, registres pour la fin d'année |
+| **Startup B2B sous contrat** | Facturation récurrente mensuelle ou annuelle, paiement en ligne par carte ou débit préautorisé |
+| **Gestion immobilière** | Un loyer est une facture récurrente |
+| **Grossiste vendant à des entreprises** | Multidevises, termes Net 30/60 — à condition de suivre le stock ailleurs |
 | **PME avec un employé de bureau** | Trois niveaux d'accès : l'employé facture, le comptable encaisse, l'administrateur paramètre |
 | **Comptable indépendant** | Plusieurs dossiers d'entreprise dans une même installation, chacun dans son fichier séparé |
 | **Entreprise soucieuse de confidentialité** | Aucune donnée dans le nuage, aucun tiers hébergeur |
 
-Clora suppose **un poste de travail Windows**. Ce n'est pas une application web,
-ni mobile, et deux postes ne partagent pas la même comptabilité en simultané.
+### Là où Clora n'est pas à sa place
+
+**Le commerce de détail.** Un détaillant vend à un inconnu, au comptant, au
+comptoir. Chaque vente exigerait ici de créer une fiche client puis une facture :
+à deux cents ventes par jour, c'est inutilisable. Il n'y a par ailleurs ni
+caisse, ni lecteur de codes-barres, ni terminal de paiement — les liens de
+paiement sont conçus pour être envoyés par courriel, non présentés à un client
+debout devant vous.
+
+*L'exception :* un détaillant qui approvisionne aussi des entreprises sur compte
+peut se servir de Clora **pour cette activité-là seulement**.
+
+**Le commerce en ligne.** Ni panier, ni gestion de commandes, ni stock.
+
+**L'abonnement grand public en libre-service.** Des milliers d'abonnés qui
+s'inscrivent seuls par carte demandent une inscription autonome, un portail
+client et une relance automatisée des paiements échoués. La facturation
+récurrente de Clora génère des factures à partir d'une liste que vous tenez
+vous-même.
+
+### La limite qui vaut pour tous
+
+Clora suppose **un poste de travail Windows**. Ce n'est pas une application web
+ni mobile, et deux postes ne partagent pas la même comptabilité en simultané :
+les trois rôles existent, mais on se relaie sur la même machine.
+
+C'est ce point, plus que le secteur d'activité, qui décide si une entreprise en
+croissance restera à l'aise dans Clora.
 
 ---
 
@@ -117,9 +168,11 @@ clients.
 ### Abonnements — facturation récurrente
 *Administrateur et comptable*
 
-Pour un contrat d'entretien mensuel, un forfait trimestriel, un loyer. Une
-facture est émise automatiquement à chaque échéance, avec les lignes définies
-une fois pour toutes.
+Pour un contrat d'entretien, un forfait logiciel, un loyer. Une facture est émise
+automatiquement à chaque échéance, avec les lignes définies une fois pour toutes.
+
+**Deux cycles : mensuel ou annuel.** Une échéance fixée au 31 tombe le 28 ou le
+29 février, plutôt que de déborder sur mars.
 
 La génération est vérifiée à chaque passage horaire de l'application.
 
@@ -405,6 +458,7 @@ Dire ce qu'un logiciel ne fait pas évite les mauvaises surprises après l'achat
 | | |
 | --- | --- |
 | **Paie et feuilles de temps** | Absent |
+| **Point de vente** | Absent — ni caisse, ni lecteur de codes-barres, ni terminal de paiement |
 | **Gestion de stock** | Absent — le catalogue enregistre des prix, pas des quantités |
 | **Grand livre et plan comptable** | Absent — Clora produit les registres, le comptable tient les livres |
 | **Production des déclarations fiscales** | Clora prépare les chiffres de la remise ; il ne remplit ni ne transmet aucun formulaire |
