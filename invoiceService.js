@@ -364,7 +364,12 @@ async function getReportStats(db) {
     SELECT
       COALESCE(SUM(montant_ht), 0) AS total_depenses_ht,
       COALESCE(SUM(tps + tvq), 0) AS total_taxes_recuperables,
-      COALESCE(SUM(montant_ht + tps + tvq), 0) AS total_depenses_ttc
+      COALESCE(SUM(montant_ht + tps + tvq), 0) AS total_depenses_ttc,
+      -- Les déplacements sont des dépenses comme les autres et comptent déjà
+      -- dans les totaux ci-dessus ; ces deux colonnes en isolent la part.
+      COALESCE(SUM(kilometres), 0) AS total_kilometres,
+      COALESCE(SUM(CASE WHEN kilometres IS NOT NULL THEN montant_ht ELSE 0 END), 0)
+        AS total_indemnite_kilometrique
     FROM depenses
   `);
 
@@ -416,6 +421,8 @@ async function getReportStats(db) {
     total_depenses: depenses.total_depenses_ttc,
     total_depenses_ht: depenses.total_depenses_ht,
     total_taxes_recuperables: depenses.total_taxes_recuperables,
+    total_kilometres: depenses.total_kilometres,
+    total_indemnite_kilometrique: depenses.total_indemnite_kilometrique,
     statusDistribution,
     topClients,
     lateInvoices
@@ -971,7 +978,13 @@ async function getTaxReport(db, annee, mois, trimestre) {
     SELECT
       COALESCE(SUM(montant_ht), 0) AS total_depenses_ht,
       COALESCE(SUM(tps), 0) AS total_tps_payee,
-      COALESCE(SUM(tvq), 0) AS total_tvq_payee
+      COALESCE(SUM(tvq), 0) AS total_tvq_payee,
+      -- Le kilométrage de la période, isolé du reste des dépenses. Une
+      -- indemnité kilométrique n'ouvre à aucune taxe récupérable : elle ne pèse
+      -- donc sur aucune des deux colonnes de taxes ci-dessus.
+      COALESCE(SUM(kilometres), 0) AS total_kilometres,
+      COALESCE(SUM(CASE WHEN kilometres IS NOT NULL THEN montant_ht ELSE 0 END), 0)
+        AS total_indemnite_kilometrique
     FROM depenses
     ${depensesWhere}
   `, depensesParams);

@@ -256,7 +256,7 @@ async function activer(comptesDb, cle, options = {}) {
       new Error(
         `Cette clé couvre la maintenance jusqu'au ${licence.maintenance_jusqu_au}, `
         + `et cette version date du ${versionDate}. Renouvelez la maintenance, ou `
-        + 'installez une version antérieure — vos données restent intactes.'
+        + 'installez une version antérieure : vos données restent intactes.'
       ),
       { status: 400, expose: true }
     );

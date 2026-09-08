@@ -145,7 +145,7 @@ function ReportDashboard() {
                             ? 'var(--status-danger)' : 'inherit'
                         }}
                       >
-                        {c[t.cle] > 0 ? formatMontant(c[t.cle]) : '—'}
+                        {c[t.cle] > 0 ? formatMontant(c[t.cle]) : '-'}
                       </td>
                     ))}
                     <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatMontant(c.total)}</td>
@@ -268,7 +268,7 @@ function ReportDashboard() {
             {stats.lateInvoices.map((invoice) => (
               <div key={invoice.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px', padding: '15px', background: 'var(--status-danger-bg)', borderRadius: '8px' }}>
                 <div>
-                  <strong style={{ color: 'var(--text-main)' }}>{invoice.numero_facture}</strong> — {invoice.client}
+                  <strong style={{ color: 'var(--text-main)' }}>{invoice.numero_facture}</strong>, {invoice.client}
                   <p style={{ margin: '5px 0 0 0', fontSize: '0.9rem', color: 'var(--status-danger)' }}>
                     Échéance dépassée : {invoice.date_echeance}
                   </p>
@@ -301,10 +301,10 @@ function ReportDashboard() {
               aria-label="Trimestre"
             >
               <option value="">Aucun trimestre</option>
-              <option value="1">T1 — janv. à mars</option>
-              <option value="2">T2 — avr. à juin</option>
-              <option value="3">T3 — juill. à sept.</option>
-              <option value="4">T4 — oct. à déc.</option>
+              <option value="1">T1 : janv. à mars</option>
+              <option value="2">T2 : avr. à juin</option>
+              <option value="3">T3 : juill. à sept.</option>
+              <option value="4">T4 : oct. à déc.</option>
             </select>
             <select
               className="search-input" style={{ minWidth: '160px' }} value={mois}

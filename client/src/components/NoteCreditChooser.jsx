@@ -15,7 +15,7 @@ function NoteCreditChooser({ facture, notes, onChoisir, onClose }) {
     <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true"
       aria-label={`Notes de crédit de la facture ${facture.numero_facture}`}>
       <div className="modal-content glass-panel" style={{ maxWidth: '520px' }}>
-        <h3 style={{ marginTop: 0 }}>Notes de crédit — {facture.numero_facture}</h3>
+        <h3 style={{ marginTop: 0 }}>Notes de crédit : {facture.numero_facture}</h3>
         <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>
           {notes.length} notes ont été émises sur cette facture. Laquelle voulez-vous ouvrir ?
         </p>

@@ -49,7 +49,7 @@ const afficher = (valeur) => (
  * comptable ne l'aiderait pas.
  */
 function decrire(details) {
-  if (!details) return '—';
+  if (!details) return '-';
 
   const transition = (champ, { avant, apres }) => (
     `${nommer(champ)} : « ${afficher(avant)} » → « ${afficher(apres)} »`
@@ -67,7 +67,7 @@ function decrire(details) {
       return `${nommer(cle)} : ${valeur}`;
     })
     .filter(Boolean)
-    .join(' · ') || '—';
+    .join(' · ') || '-';
 }
 
 /**
@@ -192,7 +192,7 @@ function AuditLog() {
                       {new Date(l.date_heure).toLocaleString('fr-CA')}
                     </td>
                     <td>
-                      {l.utilisateur || '—'}
+                      {l.utilisateur || '-'}
                       {l.role && (
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}> ({l.role})</span>
                       )}

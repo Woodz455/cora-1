@@ -267,12 +267,12 @@ export default function BankReconciliation() {
                         value={valeur}
                         onChange={(e) => setSelections((prev) => ({ ...prev, [t.id]: e.target.value }))}
                       >
-                        <option value="">— Sélectionner —</option>
+                        <option value="">Sélectionner…</option>
                         {factures.map((f) => {
                           const exact = Math.abs(f.solde_restant - restant) < 0.01;
                           return (
                             <option key={f.id} value={f.id}>
-                              {f.numero_facture} — {f.client} (solde : {formatMontant(f.solde_restant)}){exact ? ' ⭐' : ''}
+                              {f.numero_facture}, {f.client} (solde : {formatMontant(f.solde_restant)}){exact ? ' ⭐' : ''}
                             </option>
                           );
                         })}

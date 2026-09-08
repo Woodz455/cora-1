@@ -48,7 +48,7 @@ function Licence({ etat, onActive }) {
           <p style={{ color: 'var(--text-muted)', margin: '0 0 1.5rem', lineHeight: 1.6 }}>
             Votre licence couvre la maintenance jusqu'au <strong>{etat.maintenance_jusqu_au}</strong>,
             et cette version date du <strong>{etat.version_date}</strong>. Renouvelez la maintenance
-            pour continuer ici, ou réinstallez une version antérieure —{' '}
+            pour continuer ici, ou réinstallez une version antérieure :{' '}
             <strong>votre licence y reste valable pour toujours.</strong>
           </p>
         ) : (

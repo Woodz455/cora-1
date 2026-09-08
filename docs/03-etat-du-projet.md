@@ -1,4 +1,4 @@
-# Clora — état du projet
+# Clora : état du projet
 
 *Ce qui a été fait, ce qui reste à faire. Arrêté au 5 septembre 2026,
 version 1.5.1.*
@@ -15,7 +15,7 @@ version 1.5.1.*
 | **Tests** | 314, tous au vert, exécutés à chaque fusion |
 | **Durée** | 6 semaines, du 24 juillet au 5 septembre 2026 |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca |
-| **Ventes** | Aucune — la phase de tests utilisateurs commence |
+| **Ventes** | Aucune : la phase de tests utilisateurs commence |
 
 **L'application est complète et livrable.** Ce qui manque avant de vendre n'est
 pas du code : c'est un certificat, une clé, et le retour des testeurs.
@@ -24,7 +24,7 @@ pas du code : c'est un certificat, une clé, et le retour des testeurs.
 
 ## 2. Ce qui a été fait
 
-### Phase 1 — Fiabiliser les fondations
+### Phase 1 : fiabiliser les fondations
 *24 au 30 juillet · publié en 1.1 · demande de fusion #1*
 
 Le point de départ était une application fonctionnelle mais fragile. Cette phase
@@ -33,7 +33,7 @@ a corrigé ce qui, autrement, aurait fini par produire de faux chiffres.
 - **Sécurisation générale** : suppression du CORS ouvert, en-têtes de sécurité,
   limitation des tentatives de connexion, secret de session tiré au hasard au
   lieu d'une valeur en dur.
-- **Montants figés à l'émission** — la décision structurante du projet. Une
+- **Montants figés à l'émission**, la décision structurante du projet. Une
   facture remise à un client ne change plus de montant, quelles que soient les
   évolutions ultérieures des taux ou des prix.
 - **Arithmétique monétaire alignée** entre JavaScript et SQL, avec des tests qui
@@ -43,7 +43,7 @@ a corrigé ce qui, autrement, aurait fini par produire de faux chiffres.
 - **Rapprochement partiel** : un dépôt bancaire peut régler plusieurs factures.
 - **Intégration continue** : plus aucune fusion au rouge.
 
-### Phase 2 — Rendre l'application utilisable au quotidien
+### Phase 2 : rendre l'application utilisable au quotidien
 *30 au 31 juillet · publié en 1.2.0 · demande de fusion #2*
 
 - Fenêtres modales utilisables au clavier.
@@ -55,14 +55,14 @@ a corrigé ce qui, autrement, aurait fini par produire de faux chiffres.
 - **Premier installateur Windows** : un fichier, un double-clic, une icône sur le
   bureau.
 
-### Phase 3 — Mettre la comptabilité à l'abri et outiller le comptable
+### Phase 3 : mettre la comptabilité à l'abri et outiller le comptable
 *1er au 4 août · publié en 1.3.0 et 1.3.1 · demandes de fusion #3 et #4*
 
 - **Sauvegardes automatiques** et restauration contrôlée.
 - **Journal d'audit inaltérable**, garanti par la base de données elle-même.
 - **Registres de ventes et d'encaissements** exportés au format qu'attend
   l'Excel francophone.
-- **Balance âgée** — les créances ventilées par ancienneté du retard.
+- **Balance âgée** : les créances ventilées par ancienneté du retard.
 - **Conditions de paiement** attachées au client, figées sur la facture.
 - **Préparation de la remise de taxes** par trimestre.
 - **Vérification des mises à jour**, sans rien installer à l'insu de
@@ -71,18 +71,18 @@ a corrigé ce qui, autrement, aurait fini par produire de faux chiffres.
 - Passage sous licence propriétaire, et lien de téléchargement permanent pour le
   site web.
 
-### Phase 4 — Ouvrir l'application à ses vrais utilisateurs
+### Phase 4 : ouvrir l'application à ses vrais utilisateurs
 *22 au 23 août · publié en 1.2.1 et 1.4 · demandes de fusion #5, #6, #7*
 
 - **Envoi de courriels configurable depuis l'application.** Auparavant, la
   configuration passait par un fichier enfermé dans l'archive du paquet :
   aucune installation réelle ne pouvait envoyer de courriel.
-- **Multi-entreprise** — un fichier de base par dossier, pour qu'un comptable
+- **Multi-entreprise** : un fichier de base par dossier, pour qu'un comptable
   puisse suivre vingt clients sans risque de mélange.
 - **Import de clients et d'articles depuis un tableur**, avec choix des colonnes
   à l'écran et aperçu avant écriture.
 
-### Phase 5 — Vendre
+### Phase 5 : vendre
 *23 au 30 août · publié en 1.5.0 · demandes de fusion #8, #9, #10*
 
 - **Licence perpétuelle et maintenance annuelle**, vérifiées hors ligne par
@@ -91,7 +91,7 @@ a corrigé ce qui, autrement, aurait fini par produire de faux chiffres.
   l'argent transite jamais par Clora.
 - **Page de tarification** sur le site web.
 
-### Phase 6 — Préparer les tests utilisateurs
+### Phase 6 : préparer les tests utilisateurs
 *5 septembre · publié en 1.5.1 · demandes de fusion #11, #12*
 
 - **Expiration des liens de paiement dormants** après quatre-vingt-dix jours,
@@ -100,13 +100,13 @@ a corrigé ce qui, autrement, aurait fini par produire de faux chiffres.
 - **Consignation des idées écartées**, avec la raison du refus, pour pouvoir les
   rouvrir sans refaire l'analyse.
 
-### En parallèle — le site web
+### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
 - Page de présentation de Clora, annonçant le produit à venir.
 - Images rangées, allégées et converties.
 - Lisibilité corrigée : 92 défauts de contraste relevés puis repris.
-- Référencement complété — `robots.txt`, plan de site, images de partage.
+- Référencement complété : `robots.txt`, plan de site, images de partage.
 - Politique de confidentialité réécrite selon la Loi 25 québécoise.
 
 ---
@@ -126,7 +126,7 @@ Rien d'autre ne devrait être décidé avant.
 
 Tant que `CLE_PUBLIQUE` est vide, le contrôle de licence est inerte : ni essai,
 ni expiration. **Le jour où la clé entre dans une version publiée, l'essai de
-trente jours se met à courir chez tous ceux qui l'installent** — vos testeurs se
+trente jours se met à courir chez tous ceux qui l'installent**, et vos testeurs se
 retrouveraient bloqués au milieu de leur évaluation.
 
 La marche à suivre :
@@ -144,7 +144,7 @@ installation. Rien n'est cassé, mais un prospect qui découvre le produit peut
 s'arrêter là.
 
 **Un piège à régler avant l'achat :** depuis juin 2023, la clé privée d'un
-certificat de signature de code doit résider sur du matériel certifié — une clé
+certificat de signature de code doit résider sur du matériel certifié : une clé
 USB, ou un service infonuagique. **Un exécuteur GitHub n'a pas de port USB.**
 Acheter un certificat livré sur jeton matériel sans avoir prévu ce point rendrait
 la signature impossible depuis le workflow de publication actuel.
@@ -154,7 +154,7 @@ exemple), ou un exécuteur auto-hébergé sur une machine Windows qui porte le
 jeton.
 
 À noter : un certificat de validation d'organisation ne fait pas disparaître
-l'avertissement du jour au lendemain — la réputation se construit avec les
+l'avertissement du jour au lendemain : la réputation se construit avec les
 téléchargements. Seul un certificat EV, plus cher, tend à l'écarter d'emblée.
 
 > **Un certificat de signature ne crée aucun numéro de licence par client.** Il
@@ -177,7 +177,7 @@ téléchargements. Seul un certificat EV, plus cher, tend à l'écarter d'emblé
 > **Réserve sur une quatrième idée** souvent proposée : la détection des
 > inversions de chiffres n'a presque aucune valeur ici. Elle attrape les
 > coquilles humaines, or les deux côtés du rapprochement sont produits par des
-> machines — le montant vient de la facture calculée par le logiciel, le relevé
+> machines : le montant vient de la facture calculée par le logiciel, le relevé
 > vient de la banque. Personne ne retape rien.
 
 ### Sur le site web
@@ -208,7 +208,7 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Jusqu'à la publication de la 1.5.1,
   aucune version plus récente n'existait à annoncer. Les installations en 1.5.0
-  devraient maintenant l'afficher dans les vingt-quatre heures — **c'est la
+  devraient maintenant l'afficher dans les vingt-quatre heures, et **c'est la
   première occasion de le vérifier.**
 - **Le redémarrage après restauration d'une sauvegarde.**
 
@@ -219,7 +219,7 @@ Ce sont deux choses à regarder pendant les tests utilisateurs.
 ## 6. Ce qui a été volontairement écarté
 
 Ces décisions ont été prises après analyse. Elles sont consignées pour ne pas
-être rediscutées sans raison nouvelle — et rouvertes si une raison nouvelle
+être rediscutées sans raison nouvelle, et rouvertes si une raison nouvelle
 apparaît.
 
 ### Le réconciliateur financier hors-ligne
@@ -231,7 +231,7 @@ client de Clora est une PME qui émet ses factures ; le client du réconciliateu
 est un comptable qui arbitre entre des données qu'il n'a pas produites. Cette
 personne n'achètera pas une licence de facturation pour obtenir un écran.
 
-S'y ajoute l'échelle — 100 000 lignes contre 5 000 aujourd'hui — et le calendrier :
+S'y ajoute l'échelle (100 000 lignes contre 5 000 aujourd'hui) et le calendrier :
 ouvrir un second produit avant d'avoir vendu le premier serait prématuré.
 
 Ce qui reste juste dans l'intuition : le refus du nuage par les départements
@@ -249,7 +249,7 @@ le jour où un certificat existe.
 Une clé peut être partagée, l'essai se réinitialise en supprimant un fichier, le
 paquet est ouvrable. **C'est le bon compromis** : la fraude marginale coûte moins
 cher que l'infrastructure et la friction qu'un vrai verrou imposerait aux clients
-honnêtes — et un verrou en ligne trahirait l'argument « rien ne sort de votre
+honnêtes, et un verrou en ligne trahirait l'argument « rien ne sort de votre
 poste ».
 
 ### Le multi-entreprise par colonne
@@ -271,7 +271,7 @@ ce qu'on perd :
 3. **Le journal d'audit est en ajout seul, garanti par la base**, pas par
    l'absence d'une route.
 4. **Un fichier de base par dossier d'entreprise.**
-5. **Aucun appel sortant, sauf la vérification de version** — et elle se coupe.
+5. **Aucun appel sortant, sauf la vérification de version**, et elle se coupe.
 6. **La clé privée de licence n'existe que sur la machine de l'éditeur**, et deux
    tests vérifient son absence du paquet livré.
 7. **L'argent ne transite jamais par Clora.** Être intermédiaire de paiement
@@ -284,8 +284,8 @@ ce qu'on perd :
 
 **Faire installer la 1.5.1 par des testeurs et écouter ce qu'ils disent.**
 
-Tout le reste — la clé de licence, le certificat, les améliorations du
-rapprochement bancaire — attend ce retour, et devrait être priorisé par lui.
+Tout le reste (la clé de licence, le certificat, les améliorations du
+rapprochement bancaire) attend ce retour, et devrait être priorisé par lui.
 
 ---
 

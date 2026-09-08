@@ -83,7 +83,7 @@ function ClientList() {
               {client.adresse && <p style={{ margin: '0 0 5px 0', color: 'var(--text-muted)' }}>📍 {client.adresse}</p>}
               {/* La province détermine les taxes appliquées : elle mérite d'être visible. */}
               <p style={{ margin: '10px 0 0 0' }}>
-                <span className="status-badge pending">{client.province || '—'}</span>
+                <span className="status-badge pending">{client.province || '-'}</span>
                 {' '}
                 <span className="status-badge">{client.langue === 'en' ? 'Anglais' : 'Français'}</span>
               </p>

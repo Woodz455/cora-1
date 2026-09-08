@@ -74,12 +74,12 @@ function composerRappel(facture, entreprise, jours) {
 
   if (isEn) {
     return {
-      sujet: `Payment reminder — invoice ${facture.numero_facture}`,
+      sujet: `Payment reminder: invoice ${facture.numero_facture}`,
       corps: [
         `Hello ${destinataire},`,
         '',
-        `Invoice ${facture.numero_facture}, issued on ${facture.date_emission}, was due on ${facture.date_echeance}`
-          + ` — that is ${jours} ${jours > 1 ? 'days' : 'day'} ago.`,
+        `Invoice ${facture.numero_facture}, issued on ${facture.date_emission}, was due on ${facture.date_echeance},`
+          + ` that is ${jours} ${jours > 1 ? 'days' : 'day'} ago.`,
         `Outstanding balance: ${montant}.`,
         '',
         'If payment has already been sent, please disregard this message.',
@@ -90,12 +90,12 @@ function composerRappel(facture, entreprise, jours) {
   }
 
   return {
-    sujet: `Rappel de paiement — facture ${facture.numero_facture}`,
+    sujet: `Rappel de paiement : facture ${facture.numero_facture}`,
     corps: [
       `Bonjour ${destinataire},`,
       '',
-      `La facture ${facture.numero_facture}, émise le ${facture.date_emission}, était due le ${facture.date_echeance}`
-        + ` — soit il y a ${jours} ${jours > 1 ? 'jours' : 'jour'}.`,
+      `La facture ${facture.numero_facture}, émise le ${facture.date_emission}, était due le ${facture.date_echeance},`
+        + ` soit il y a ${jours} ${jours > 1 ? 'jours' : 'jour'}.`,
       `Solde restant à régler : ${montant}.`,
       '',
       'Si votre paiement a déjà été effectué, merci de ne pas tenir compte de ce message.',

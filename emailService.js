@@ -247,7 +247,7 @@ async function envoyerCourrielTest(db, destinataire, expediteur = {}) {
   await transporter.sendMail({
     from: expediteurFrom(config.user, expediteur),
     to: destinataire,
-    subject: 'Clora — courriel de test',
+    subject: 'Clora : courriel de test',
     text:
       'Ce message confirme que Clora peut envoyer des courriels depuis votre '
       + "compte.\n\nVous pouvez maintenant transmettre vos factures et vos devis "

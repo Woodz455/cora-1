@@ -439,7 +439,7 @@ function App() {
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '15px' }}
             >
               <span>
-                Clora {majDisponible.derniere} est disponible — vous utilisez la {majDisponible.courante}.
+                Clora {majDisponible.derniere} est disponible. Vous utilisez la {majDisponible.courante}.
               </span>
               <span style={{ display: 'flex', gap: '12px', whiteSpace: 'nowrap' }}>
                 {/* Le lien s'ouvre dans le navigateur du système : rien n'est

@@ -68,11 +68,11 @@ autre changement.
 **Visuels.** Tous les dérivés du logo sont produits par `npm run visuels` à
 partir de `image/clora-source.png`, l'œuvre d'origine : logotype détouré,
 symbole carré, et l'icône Windows `image/clora.ico` en sept tailles. Ils sont
-versionnés — ne relancer la commande que si le logo change.
+versionnés : ne relancer la commande que si le logo change.
 
 Le logo existe sous **deux formes**, et ce n'est pas une coquetterie. Le
-logotype large sert partout où la place le permet ; le symbole carré — la
-flèche verte — sert à l'icône Windows et à l'onglet du navigateur, qui sont
+logotype large sert partout où la place le permet ; le symbole carré, la
+flèche verte, sert à l'icône Windows et à l'onglet du navigateur, qui sont
 carrés. Une icône s'affiche en 16 × 16 px dans la barre des tâches : un mot de
 750 px de large y serait illisible.
 
@@ -125,7 +125,7 @@ SESSION_HOURS=12
 
 Le fichier est lu **dans le dossier de données** (`%APPDATA%\Clora` sous
 Windows), puis à la racine du projet. Il était auparavant cherché uniquement à
-la racine — c'est-à-dire, une fois l'application empaquetée, à l'intérieur de
+la racine, c'est-à-dire, une fois l'application empaquetée, à l'intérieur de
 `app.asar`, en lecture seule et d'où il est exclu : aucune installation réelle
 ne pouvait donc configurer l'envoi de courriels.
 
@@ -146,7 +146,7 @@ sortant, et l'activation fonctionne hors ligne.
 
 Chaque version publiée porte sa date (`build-info.json`, écrit à la
 compilation). Si cette date dépasse l'échéance de maintenance d'une clé, **cette
-version-là** refuse de s'activer — mais toute version antérieure continue de
+version-là** refuse de s'activer, mais toute version antérieure continue de
 fonctionner indéfiniment. Le client qui cesse de payer garde son logiciel et ses
 données ; il ne reçoit simplement plus les nouveautés.
 
@@ -156,7 +156,7 @@ données ; il ne reçoit simplement plus les nouveautés.
 node scripts/generer-licence.js --nouvelle-paire
 ```
 
-Écrit `clef-privee-licence.pem` — **jamais versionnée** — et renseigne
+Écrit `clef-privee-licence.pem`, **jamais versionnée**, et renseigne
 `licencePublique.js`, qui l'est. Sauvegardez la clé privée ailleurs que sur
 votre disque de travail : la perdre, c'est ne plus pouvoir émettre ni renouveler
 aucune licence.
@@ -205,6 +205,7 @@ validators.js      Validation des données entrantes
 rateLimit.js       Limitation des tentatives de connexion
 scheduler.js       Passage horaire : factures récurrentes et relances dues
 licenceService.js  Vérification Ed25519 des clés, essai, maintenance
+kilometrageService.js  Indemnité kilométrique : paliers et recalcul de l'année
 companyStore.js    Registre des dossiers d'entreprise et comptes partagés
 bankService.js     Rapprochement bancaire et imputation des dépôts
 *Service.js        Logique métier par domaine
@@ -231,7 +232,7 @@ client/src/        Interface React
 - **Conservation.** Une facture comportant un paiement ne peut être ni modifiée,
   ni annulée, ni supprimée : elle doit faire l'objet d'une note de crédit.
 - **Note de crédit ou annulation de paiement ?** La note de crédit corrige ce
-  que le client **doit**, et reprend les taxes correspondantes — elle vaut pour
+  que le client **doit**, et reprend les taxes correspondantes : elle vaut pour
   un retour de marchandise ou une remise accordée après coup. L'annulation d'un
   encaissement corrige ce que l'entreprise a **reçu**, sans toucher aux taxes :
   elle vaut pour une erreur de saisie. Créditer une facture pour rattraper un
@@ -243,8 +244,8 @@ client/src/        Interface React
 Un paiement est enregistré depuis la facture, ou par rapprochement d'une
 transaction bancaire. Il ne peut jamais dépasser le solde restant.
 
-Un encaissement saisi à tort — chèque sans provision, montant erroné, dépôt
-pointé sur la mauvaise facture — s'annule depuis la fenêtre de paiement, où
+Un encaissement saisi à tort (chèque sans provision, montant erroné, dépôt
+pointé sur la mauvaise facture) s'annule depuis la fenêtre de paiement, où
 figure l'historique complet.
 
 - **La ligne n'est jamais effacée** : elle reste visible, barrée, avec la date
@@ -267,7 +268,7 @@ seul. Le lien figure sur le PDF et dans le corps du courriel.
 
 **L'argent ne transite jamais par Clora.** Il va directement au compte Stripe de
 l'entreprise, puis à son compte bancaire. Clora fabrique le lien et relève les
-règlements ; il n'est à aucun moment intermédiaire de paiement — ce qui relèverait
+règlements ; il n'est à aucun moment intermédiaire de paiement, ce qui relèverait
 d'un tout autre régime réglementaire.
 
 ### Mise en service
@@ -283,7 +284,7 @@ d'un tout autre régime réglementaire.
 Les moyens de paiement proposés au client sont **ceux activés dans le tableau de
 bord Stripe** : la carte l'est d'emblée, le débit préautorisé (ACSS) se demande
 séparément auprès de Stripe. Clora ne les impose pas par paramètre, ce qui ferait
-échouer la création du lien tant que l'activation n'est pas faite — et priverait
+échouer la création du lien tant que l'activation n'est pas faite, et priverait
 la facture de tout moyen de paiement pour rien. Le débit préautorisé coûte
 nettement moins cher que la carte sur les gros montants ; il vaut la peine d'être
 demandé.
@@ -315,13 +316,13 @@ Le relevé est automatique, à chaque passage horaire du planificateur et pour
 chaque dossier. Un bouton permet de le déclencher sans attendre.
 
 **Un lien que personne n'a emprunté cesse d'être interrogé au bout de
-quatre-vingt-dix jours** — un mois de grâce après le terme le plus long
+quatre-vingt-dix jours**, un mois de grâce après le terme le plus long
 proposé. Sans cette borne, une facture d'essai jamais réglée serait sondée
 indéfiniment, une fois l'heure, et remplirait les journaux d'API sans qu'aucun
 encaissement ne soit à en attendre. Deux précautions l'accompagnent, parce
 qu'un lien mal retiré coûte de l'argent : le lien est **aussi désactivé chez
-Stripe** — cesser de l'interroger en le laissant vivant ferait qu'un client
-paierait sans que Clora ne le voie jamais — et **un lien qui a vu passer la
+Stripe** : cesser de l'interroger en le laissant vivant ferait qu'un client
+paierait sans que Clora ne le voie jamais. Et **un lien qui a vu passer la
 moindre session est épargné**, le temps qu'un débit préautorisé se dénoue. La
 facture reste payable : rouvrir son aperçu fabrique un lien neuf.
 
@@ -341,19 +342,65 @@ affecter : un virement global de 3 000 $ solde d'abord une facture de 113 $,
 puis une autre, et ainsi de suite.
 
 - La colonne **Part** permet d'imputer un montant précis. Laissée vide, elle
-  affecte le plus petit du reste du dépôt et du solde de la facture — le geste
+  affecte le plus petit du reste du dépôt et du solde de la facture, le geste
   courant, qui ne demande aucune saisie.
 - Une part ne peut dépasser ni le reste du dépôt, ni le solde de la facture.
 - Le statut suit l'imputation : `En attente`, `Partiellement rapproché`, puis
   `Rapproché` une fois le dépôt épuisé.
 - **Le montant déjà imputé n'est pas stocké**, il se déduit des encaissements
-  qui désignent le dépôt. Un total conservé en base aurait fini par diverger —
-  annulation d'un encaissement, suppression d'une facture — sans que rien ne le
+  qui désignent le dépôt. Un total conservé en base aurait fini par diverger
+  (annulation d'un encaissement, suppression d'une facture) sans que rien ne le
   signale.
 - Annuler un encaissement libère aussitôt la part correspondante : le dépôt
   redevient imputable pour ce montant.
 - Une facture en devise étrangère est refusée : un dépôt en dollars canadiens
   imputé tel quel sur un solde en dollars américains fausserait les deux.
+
+## Indemnité kilométrique
+
+Un déplacement s'inscrit dans l'écran Dépenses : date, motif, véhicule ou mode
+de transport, et distance. **Le montant n'est pas saisi** : il découle des
+kilomètres et du taux de l'année, dégressif au-delà d'un seuil : les premiers
+kilomètres à un taux, le reste à un taux moindre. Un trajet qui enjambe le seuil
+est payé aux deux taux.
+
+Les taux se règlent dans Paramètres, **une ligne par année**. Ce n'est pas un
+réglage unique : l'ARC les révise chaque année, et inscrire ceux de l'an
+prochain réécrirait les montants d'une année close au premier recalcul.
+
+**Aucun taux n'est proposé par défaut.** Coder en dur un chiffre que le fisc
+révise le rendrait faux en silence ; tant qu'une année n'est pas réglée, la
+saisie d'un déplacement est refusée plutôt que de produire un montant nul.
+
+### Les montants sont recalculés, pas figés
+
+C'est la seule exception à la règle des montants figés, et elle est délibérée.
+
+Le montant d'un déplacement dépend du **cumul de l'année** : c'est lui qui décide
+de quel côté du seuil le trajet tombe. Le figer à la saisie ferait dépendre le
+montant de l'ordre d'entrée : antidater un trajet oublié laisserait l'année
+fausse. Toute l'année est donc réajustée à chaque ajout, modification ou
+suppression, et au changement d'un taux.
+
+L'exception se tient parce qu'un déplacement n'est remis à personne. C'est une
+ligne de journal interne, pas une pièce entre les mains d'un client : la
+recalculer ne trahit aucune promesse.
+
+Un changement de taux est **consigné au journal d'audit**, au même titre qu'un
+changement de taux de taxe : il réécrit les montants déductibles d'une année
+entière.
+
+### Deux réserves
+
+**C'est la méthode de l'indemnité**, pas celle de la déduction. Elle convient à
+un employé indemnisé ou à un actionnaire qui se verse une allocation de sa
+société. Un travailleur autonome non incorporé doit proratiser ses coûts réels de
+véhicule selon son usage d'affaires ; le montant calculé ici n'est alors qu'une
+estimation. L'interface le dit à l'écran des paramètres.
+
+**Aucune taxe récupérable n'est portée** sur une indemnité : `tps` et `tvq`
+restent à zéro. Un inscrit à la TPS peut avoir droit à un crédit sur une
+allocation versée, et c'est au comptable de le reprendre.
 
 ## Notes de crédit
 
@@ -387,7 +434,7 @@ par défaut).
   client n'a pas d'adresse courriel, est écartée.
 - Le rappel reprend le solde **net des notes de crédit** et suit la langue du
   client (français ou anglais).
-- Chaque envoi — réussi ou en échec — est consigné ; un échec SMTP n'interrompt
+- Chaque envoi, réussi ou en échec, est consigné ; un échec SMTP n'interrompt
   pas les suivants et le palier reste à envoyer au prochain passage.
 - Le rappel automatique est un courriel **texte** : le PDF est produit par le
   navigateur et n'existe pas côté serveur. Pour l'envoyer en pièce jointe,
@@ -405,7 +452,7 @@ L'application détient l'unique exemplaire de la comptabilité : une copie daté
 est donc produite automatiquement, **activée par défaut**.
 
 - **Quand.** Une par jour, vérifiée à chaque passage horaire du planificateur,
-  plus une à la fermeture de l'application — un poste éteint chaque soir
+  plus une à la fermeture de l'application : un poste éteint chaque soir
   n'atteindrait jamais l'échéance autrement.
 - **Où.** `sauvegardes/` dans le dossier de données, ou tout dossier choisi
   dans les Paramètres. **Viser un dossier synchronisé** (OneDrive, Dropbox,
@@ -421,7 +468,7 @@ un fichier amputé de tout ce qui n'a pas encore été reporté depuis le journa
 **Restauration.** Depuis les Paramètres, réservée à l'administrateur. La
 sauvegarde est d'abord contrôlée (intégrité SQLite, présence du schéma Clora) :
 un fichier douteux est refusé sans que rien ne soit modifié. Le remplacement
-n'a pas lieu tant que la base est ouverte — une demande est enregistrée, puis
+n'a pas lieu tant que la base est ouverte : une demande est enregistrée, puis
 appliquée au redémarrage, alors qu'aucune connexion ni journal ne décrit encore
 l'ancienne base. La base remplacée est conservée à côté sous
 `database.sqlite.avant-restauration-<horodatage>` : une restauration sur le
@@ -436,7 +483,7 @@ ouverte dans le navigateur du système.
 
 **Rien n'est téléchargé ni installé par l'application.** C'est délibéré :
 l'application n'étant pas signée, `electron-updater` exécuterait un binaire
-dont l'origine n'est vérifiée par rien — la vérification de signature est
+dont l'origine n'est vérifiée par rien, la vérification de signature étant
 précisément ce qui est désactivé faute de certificat. Sur un logiciel qui
 détient la comptabilité d'une entreprise, ce n'est pas acceptable. Le jour où
 un certificat existe, la mise à jour silencieuse devient envisageable.
@@ -447,7 +494,7 @@ hors ligne ou derrière un pare-feu, et n'affiche jamais rien dans ce cas.
 
 ## Conditions de paiement
 
-Chaque client porte un terme — payable sur réception, Net 15, Net 30, Net 60 —
+Chaque client porte un terme (payable sur réception, Net 15, Net 30, Net 60)
 qui détermine l'échéance des factures émises pour lui. Net 30 par défaut.
 
 Le terme est **figé sur la facture à l'émission**, au même titre que les taux de
@@ -464,8 +511,8 @@ et fausserait du même coup les relances et la balance âgée, qui en dépendent
 
 ## Balance âgée
 
-Écran Rapports : ce qui vous est dû, ventilé par ancienneté du retard — non
-échu, 1 à 30, 31 à 60, 61 à 90, 91 jours et plus — par client puis en total,
+Écran Rapports : ce qui vous est dû, ventilé par ancienneté du retard (non
+échu, 1 à 30, 31 à 60, 61 à 90, 91 jours et plus), par client puis en total,
 exportable en CSV.
 
 Les bornes sont inclusives des deux côtés : un retard de 30 jours appartient à
@@ -483,11 +530,11 @@ d'ensemble.
 
 Deux exports CSV depuis l'écran Rapports, suivant la période sélectionnée :
 
-- **Registre des ventes** — une ligne par facture : numéro, dates, client,
+- **Registre des ventes** : une ligne par facture, avec numéro, dates, client,
   statut, sous-total, chaque taxe nommée et chiffrée, total, crédité, encaissé,
   solde, devise et équivalent en dollars canadiens. Les factures annulées en
   sont absentes.
-- **Registre des encaissements** — une ligne par paiement reçu, avec son
+- **Registre des encaissements** : une ligne par paiement reçu, avec son
   origine (saisie manuelle ou rapprochement bancaire). **Les paiements annulés
   en sont exclus** : les faire figurer gonflerait les rentrées déclarées.
 
@@ -509,19 +556,19 @@ crédit, modification d'un client, **changement des taux de taxe**, création,
 modification ou suppression d'un compte, changement d'identifiants,
 restauration d'une sauvegarde.
 
-Chaque entrée porte l'horodatage, l'auteur, son rôle et l'écart constaté —
+Chaque entrée porte l'horodatage, l'auteur, son rôle et l'écart constaté,
 uniquement les champs qui ont changé, sous la forme « avant → après ».
 
 **En ajout seul, garanti par la base.** Deux déclencheurs SQLite refusent tout
 `UPDATE` et tout `DELETE` sur la table : la garantie ne repose pas sur l'absence
 de route, mais sur un refus de SQLite quel que soit le chemin emprunté. Un
 journal réécrivable ne prouverait rien. En contrepartie, le journal ne se purge
-pas — c'est le bon défaut pour une piste d'audit comptable, et le volume reste
+pas : c'est le bon défaut pour une piste d'audit comptable, et le volume reste
 modeste puisque seules les actions sensibles y entrent.
 
 Deux règles sur le contenu : aucun secret n'y figure (mots de passe et
 empreintes sont remplacés par une mention), et le logo d'entreprise en est
-exclu — c'est un data-URI de plusieurs mégaoctets, sans portée comptable.
+exclu : c'est un data-URI de plusieurs mégaoctets, sans portée comptable.
 
 La consultation se fait depuis l'onglet **Journal**, ouvert à l'administration
 et à la comptabilité, avec filtres par action, auteur et période. La pagination
@@ -542,5 +589,5 @@ La suite couvre l'arithmétique monétaire (dont l'égalité entre les calculs
 JavaScript et SQL sur plusieurs milliers de montants), le cycle de vie des
 factures, les encaissements et leur annulation, les notes de crédit, les
 relances automatiques, la conversion des devis, la facturation récurrente, le
-rapprochement bancaire — y compris la répartition d'un dépôt sur plusieurs
-factures — et le cloisonnement des rôles.
+rapprochement bancaire (y compris la répartition d'un dépôt sur plusieurs
+factures) et le cloisonnement des rôles.

@@ -103,7 +103,7 @@ function PaymentModal({ facture, onClose }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ color: 'var(--text-main)', textDecoration: p.annule_le ? 'line-through' : 'none' }}>
                       <strong>{formatMontant(p.montant, facture.devise)}</strong>
-                      <span style={{ color: 'var(--text-muted)' }}> — {p.date_paiement}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>, le {p.date_paiement}</span>
                     </div>
                     {p.note && (
                       <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{p.note}</div>
@@ -112,7 +112,7 @@ function PaymentModal({ facture, onClose }) {
                       <div style={{ fontSize: '0.85rem', color: 'var(--status-warning)' }}>
                         Annulé le {p.annule_le}
                         {p.annule_par && ` par ${p.annule_par}`}
-                        {p.motif_annulation && ` — ${p.motif_annulation}`}
+                        {p.motif_annulation && ` : ${p.motif_annulation}`}
                       </div>
                     )}
                   </div>
