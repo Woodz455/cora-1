@@ -6,9 +6,9 @@ import { useFeedback } from '../FeedbackContext';
 const TAILLE_MAX_LOGO = 2 * 1024 * 1024;
 
 const ROLES = [
-  { valeur: 'employe', libelle: 'Employé — factures, devis, clients, catalogue' },
-  { valeur: 'comptable', libelle: 'Comptable — encaissements, dépenses, rapports, banque' },
-  { valeur: 'admin', libelle: 'Administrateur — accès complet' }
+  { valeur: 'employe', libelle: 'Employé : factures, devis, clients, catalogue' },
+  { valeur: 'comptable', libelle: 'Comptable : encaissements, dépenses, rapports, banque' },
+  { valeur: 'admin', libelle: 'Administrateur : accès complet' }
 ];
 
 // Les fonds étaient écrits en dur : ils ne suivaient pas le thème sombre, où
@@ -479,7 +479,7 @@ function Settings() {
 
           {settings.stripe_cle_illisible && (
             <p style={{ fontSize: '0.85rem', color: 'var(--status-danger)', marginBottom: '15px' }}>
-              La clé enregistrée n'est plus déchiffrable sur cette machine — la base vient sans
+              La clé enregistrée n'est plus déchiffrable sur cette machine : la base vient sans
               doute d'une sauvegarde restaurée ailleurs. Saisissez-la de nouveau.
             </p>
           )}
@@ -564,8 +564,8 @@ function Settings() {
               <ul style={{ margin: 0, paddingLeft: '20px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                 {enSouffrance.map((e) => (
                   <li key={e.id} style={{ marginBottom: '6px' }}>
-                    {e.recu_le} — {formatMontant(e.montant, e.devise)}
-                    {e.numero_facture ? ` — facture ${e.numero_facture}` : ''} — {e.message}
+                    {e.recu_le}, {formatMontant(e.montant, e.devise)}
+                    {e.numero_facture ? `, facture ${e.numero_facture}` : ''} : {e.message}
                   </li>
                 ))}
               </ul>
@@ -631,7 +631,7 @@ function Settings() {
                 <ul style={{ color: 'var(--text-muted)', fontSize: '0.9rem', paddingLeft: '20px' }}>
                   {relancesDues.factures.slice(0, 8).map((f) => (
                     <li key={f.id}>
-                      {f.numero_facture} — {f.client} ({f.retard} jours de retard, palier {f.palier})
+                      {f.numero_facture}, {f.client} ({f.retard} jours de retard, palier {f.palier})
                     </li>
                   ))}
                 </ul>
@@ -668,8 +668,8 @@ function Settings() {
           </h3>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
             Une copie complète de votre comptabilité est enregistrée chaque jour, ainsi qu'à la
-            fermeture de l'application. Choisissez un dossier synchronisé — OneDrive, Dropbox,
-            Google Drive — pour que la copie quitte cet ordinateur : c'est ce qui vous protège
+            fermeture de l'application. Choisissez un dossier synchronisé (OneDrive, Dropbox,
+            Google Drive) pour que la copie quitte cet ordinateur : c'est ce qui vous protège
             d'un disque en panne ou d'un vol.
           </p>
 
@@ -759,7 +759,7 @@ function Settings() {
                     >
                       <span style={{ fontSize: '0.9rem' }}>
                         {new Date(s.date).toLocaleString('fr-CA')}
-                        <span style={{ color: 'var(--text-muted)' }}> — {Math.round(s.taille / 1024)} Ko</span>
+                        <span style={{ color: 'var(--text-muted)' }}>, {Math.round(s.taille / 1024)} Ko</span>
                       </span>
                       <button type="button" className="btn-secondary" onClick={() => restaurer(s)}>
                         Restaurer
@@ -793,7 +793,7 @@ function Settings() {
               </>
             ) : (
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
-                Version d'essai — <strong>{licence.jours_restants} jour(s)</strong> restant(s).
+                Version d'essai : <strong>{licence.jours_restants} jour(s)</strong> restant(s).
               </p>
             )}
           </div>
@@ -947,7 +947,7 @@ function Settings() {
           Le taux s'applique aux déplacements inscrits dans l'écran Dépenses : les premiers
           kilomètres de l'année à un taux, le reste à un taux moindre.{' '}
           <strong>Vérifiez le taux en vigueur auprès de l'Agence du revenu du Canada et de
-          Revenu Québec</strong> — il est révisé chaque année, et Clora n'en propose aucun de
+          Revenu Québec</strong>. Il est révisé chaque année, et Clora n'en propose aucun de
           lui-même pour ne pas vous en faire hériter un périmé.
         </p>
 

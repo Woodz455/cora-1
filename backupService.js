@@ -174,7 +174,7 @@ async function sauvegardeSiNecessaire(db, maintenant = new Date()) {
   try {
     reglages = await lireReglages(db);
   } catch (error) {
-    console.error('Sauvegarde : réglages illisibles —', error.message);
+    console.error('Sauvegarde : réglages illisibles.', error.message);
     return { effectuee: false, raison: 'reglages' };
   }
 

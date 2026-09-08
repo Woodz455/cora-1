@@ -51,7 +51,7 @@ function construireDictionnaire(isEn, nomEntreprise) {
     creditNote: isEn ? 'Credit note' : 'Note de crédit',
     refundDue: isEn ? 'Refund Due' : 'À vous rembourser',
     thanks: societe
-      ? (isEn ? `Thank you for your business — ${societe}.` : `Merci de votre confiance — ${societe}.`)
+      ? (isEn ? `Thank you for your business, ${societe}.` : `Merci de votre confiance, ${societe}.`)
       : (isEn ? 'Thank you for your business.' : 'Merci de votre confiance.'),
     payBefore: isEn ? 'Please pay the balance due by: ' : "Veuillez régler le solde dû avant l'échéance : ",
     quoteValid: isEn ? 'This quote is valid until ' : 'Cette soumission est valide jusqu\'au ',
@@ -73,8 +73,8 @@ function construireDictionnaire(isEn, nomEntreprise) {
       ? 'Secure payment by credit card or bank debit. No account required.'
       : 'Paiement sécurisé par carte ou par débit bancaire. Aucun compte à créer.',
     payOnlineTest: isEn
-      ? 'TEST MODE — this link does not collect real money.'
-      : 'MODE TEST — ce lien n\'encaisse pas d\'argent réel.'
+      ? 'TEST MODE: this link does not collect real money.'
+      : 'MODE TEST : ce lien n\'encaisse pas d\'argent réel.'
   };
 }
 
@@ -231,7 +231,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
       : estDevis ? dict.emailSubjQuote
         : dict.emailSubjFact;
   const sujet = `${objetCourriel} n° ${numero}`
-    + (settings.entreprise_nom ? ` — ${settings.entreprise_nom}` : '');
+    + (settings.entreprise_nom ? ` (${settings.entreprise_nom})` : '');
 
   const texteCourriel = isRelance ? dict.emailBodyRelance
     : estNote ? dict.emailBodyNote

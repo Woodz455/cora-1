@@ -260,8 +260,8 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                     taux_change: e.target.value === 'CAD' ? 1.0 : formData.taux_change
                   })}
                 >
-                  <option value="CAD">CAD — dollars canadiens</option>
-                  <option value="USD">USD — dollars américains</option>
+                  <option value="CAD">CAD (dollars canadiens)</option>
+                  <option value="USD">USD (dollars américains)</option>
                 </select>
               </div>
               {formData.devise !== 'CAD' && (
@@ -309,7 +309,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                         const item = catalogue.find((c) => String(c.id) === e.target.value);
                         if (!item) return;
                         handleLigneChange(index, {
-                          description: item.nom + (item.description ? ` — ${item.description}` : ''),
+                          description: item.nom + (item.description ? ` : ${item.description}` : ''),
                           prix_unitaire: item.prix_unitaire
                         });
                       }}

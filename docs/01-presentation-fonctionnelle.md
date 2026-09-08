@@ -1,4 +1,4 @@
-# Clora — ce que fait l'application
+# Clora : ce que fait l'application
 
 *Document de présentation fonctionnelle. Version 1.5.1, septembre 2026.*
 
@@ -22,7 +22,7 @@ Trois caractéristiques le distinguent :
 **Les données ne quittent pas la machine.** Il n'y a pas de serveur, pas de
 compte à créer, pas d'abonnement mensuel. La comptabilité vit dans un fichier
 sur le disque de l'entreprise. Le seul appel sortant de l'application est la
-vérification quotidienne des mises à jour — et il se coupe dans les paramètres.
+vérification quotidienne des mises à jour, et il se coupe dans les paramètres.
 
 **Il s'achète une fois.** Licence perpétuelle, avec une maintenance annuelle
 facultative qui donne droit aux versions publiées pendant qu'elle court. Le
@@ -59,12 +59,12 @@ quotidiennes.
 
 | Profil | Ce qu'il y trouve |
 | --- | --- |
-| **Métiers de service** — plomberie, électricité, entretien, installation | Devis, factures, relances, suivi des encaissements |
+| **Métiers de service** (plomberie, électricité, entretien, installation) | Devis, factures, relances, suivi des encaissements |
 | **Agences, cabinets-conseils, pigistes** | Facturation au projet ou à l'heure, devis convertibles, catalogue de prestations |
-| **Services professionnels** — comptabilité, droit, traduction, design, formation | Termes de paiement, relances, registres pour la fin d'année |
+| **Services professionnels** (comptabilité, droit, traduction, design, formation) | Termes de paiement, relances, registres pour la fin d'année |
 | **Startup B2B sous contrat** | Facturation récurrente mensuelle ou annuelle, paiement en ligne par carte ou débit préautorisé |
 | **Gestion immobilière** | Un loyer est une facture récurrente |
-| **Grossiste vendant à des entreprises** | Multidevises, termes Net 30/60 — à condition de suivre le stock ailleurs |
+| **Grossiste vendant à des entreprises** | Multidevises, termes Net 30/60, à condition de suivre le stock ailleurs |
 | **PME avec un employé de bureau** | Trois niveaux d'accès : l'employé facture, le comptable encaisse, l'administrateur paramètre |
 | **Comptable indépendant** | Plusieurs dossiers d'entreprise dans une même installation, chacun dans son fichier séparé |
 | **Entreprise soucieuse de confidentialité** | Aucune donnée dans le nuage, aucun tiers hébergeur |
@@ -74,7 +74,7 @@ quotidiennes.
 **Le commerce de détail.** Un détaillant vend à un inconnu, au comptant, au
 comptoir. Chaque vente exigerait ici de créer une fiche client puis une facture :
 à deux cents ventes par jour, c'est inutilisable. Il n'y a par ailleurs ni
-caisse, ni lecteur de codes-barres, ni terminal de paiement — les liens de
+caisse, ni lecteur de codes-barres, ni terminal de paiement : les liens de
 paiement sont conçus pour être envoyés par courriel, non présentés à un client
 debout devant vous.
 
@@ -110,7 +110,7 @@ rôle : un employé n'a pas les écrans financiers.
 
 Aperçu chiffré : chiffre d'affaires, montant encaissé, reste à percevoir,
 montant en retard. Chaque chiffre est cliquable et ouvre la liste des factures
-correspondantes — le montant en retard mène aux factures en retard, pas à la
+correspondantes : le montant en retard mène aux factures en retard, pas à la
 liste complète.
 
 Graphiques d'évolution mensuelle du revenu et répartition par client.
@@ -146,8 +146,8 @@ reprises, et l'échéance découle des conditions de paiement du client.
 ### Clients
 *Accessible à tous*
 
-Répertoire : entreprise, contact, courriel, adresse, **province** — qui décide
-des taxes — **langue** (français ou anglais, qui décide de la langue des
+Répertoire : entreprise, contact, courriel, adresse, **province**, qui décide
+des taxes, **langue** (français ou anglais, qui décide de la langue des
 documents et des relances) et **conditions de paiement**.
 
 Import possible depuis un fichier Excel ou CSV : les colonnes se choisissent à
@@ -165,7 +165,7 @@ clients.
 > Ce n'est pas une gestion de stock : le catalogue enregistre un libellé, une
 > description et un prix. Il ne compte pas les quantités disponibles.
 
-### Abonnements — facturation récurrente
+### Abonnements : facturation récurrente
 *Administrateur et comptable*
 
 Pour un contrat d'entretien, un forfait logiciel, un loyer. Une facture est émise
@@ -176,7 +176,7 @@ automatiquement à chaque échéance, avec les lignes définies une fois pour to
 
 La génération est vérifiée à chaque passage horaire de l'application.
 
-### Banque — rapprochement bancaire
+### Banque : rapprochement bancaire
 *Administrateur et comptable*
 
 Le relevé bancaire s'importe au format CSV. Les colonnes de date, description et
@@ -205,7 +205,7 @@ TVQ, catégorie. Sert au calcul des taxes payées, à déduire de la remise.
 
 **Les déplacements s'y inscrivent en kilomètres**, et non en dollars. On saisit
 la date, le motif, le véhicule ou le mode de transport, et la distance ; le
-montant en découle au taux de l'année, dégressif au-delà d'un seuil — les
+montant en découle au taux de l'année, dégressif au-delà d'un seuil : les
 premiers kilomètres à un taux, le reste à un taux moindre. Un trajet qui
 enjambe le seuil est payé aux deux taux.
 
@@ -218,7 +218,7 @@ refusée plutôt que de produire un montant nul.
 > **Deux réserves à connaître.** C'est la méthode de l'*indemnité* : elle
 > convient à un employé indemnisé ou à un actionnaire qui se verse une
 > allocation de sa société. Un travailleur autonome non incorporé doit
-> proratiser ses coûts réels de véhicule selon son usage d'affaires — le montant
+> proratiser ses coûts réels de véhicule selon son usage d'affaires, et le montant
 > calculé ici n'est alors qu'une estimation. Et aucune taxe récupérable n'est
 > portée sur une indemnité ; un inscrit à la TPS verra avec son comptable s'il
 > peut en réclamer une.
@@ -228,18 +228,18 @@ refusée plutôt que de produire un montant nul.
 
 Quatre productions :
 
-1. **Statistiques financières** sur la période choisie — revenu, encaissé,
+1. **Statistiques financières** sur la période choisie : revenu, encaissé,
    crédité, solde à percevoir.
-2. **Balance âgée** — ce qui vous est dû, ventilé par ancienneté du retard : non
+2. **Balance âgée** : ce qui vous est dû, ventilé par ancienneté du retard : non
    échu, 1 à 30 jours, 31 à 60, 61 à 90, 91 et plus. Par client, puis en total.
    Exportable en CSV.
 3. **Préparation de la remise de taxes**, par trimestre : taxes facturées moins
    taxes payées sur les dépenses.
 4. **Deux registres pour le comptable**, en CSV :
-   - *Registre des ventes* — une ligne par facture, avec chaque taxe nommée et
+   - *Registre des ventes* : une ligne par facture, avec chaque taxe nommée et
      chiffrée, le total, le crédité, l'encaissé, le solde, la devise et
      l'équivalent en dollars canadiens.
-   - *Registre des encaissements* — une ligne par paiement reçu, avec son origine
+   - *Registre des encaissements* : une ligne par paiement reçu, avec son origine
      (saisie manuelle ou rapprochement bancaire).
 
 Les fichiers CSV sont produits pour être ouverts sans manipulation dans un Excel
@@ -294,7 +294,7 @@ suppression. Il faut lui opposer une note de crédit.
 
 **Une note de crédit est un document à part entière.** Elle porte son propre
 numéro (`NC-AAAAMM-NNNN`), sa propre date, et applique **les taux de taxe de la
-facture créditée** — pas ceux du jour. Créditer en janvier une facture de l'an
+facture créditée**, pas ceux du jour. Créditer en janvier une facture de l'an
 dernier applique bien les taux de l'an dernier.
 
 ### Note de crédit ou annulation de paiement ?
@@ -336,7 +336,7 @@ paramètres.*
 
 **L'arrondi.** Chaque taxe est calculée sur le sous-total hors taxes et arrondie
 au cent séparément ; le total est la somme de ces valeurs arrondies. Le
-sous-total, les taxes et le total s'additionnent donc toujours — il n'arrive
+sous-total, les taxes et le total s'additionnent donc toujours : il n'arrive
 jamais qu'une facture affiche des chiffres qui ne tombent pas juste.
 
 **Les devises.** Une facture porte sa devise et le taux de change appliqué à
@@ -375,7 +375,7 @@ Quatre garanties encadrent la justesse des comptes :
 - **Seul l'argent réellement reçu est inscrit.** Un débit préautorisé met
   plusieurs jours ouvrables à se dénouer ; tant que Stripe ne le donne pas pour
   réglé, rien n'est porté aux comptes.
-- **Le mode test se voit** — sur la facture, dans les paramètres, et dans la note
+- **Le mode test se voit** : sur la facture, dans les paramètres, et dans la note
   de l'encaissement.
 
 Le débit préautorisé coûte nettement moins cher que la carte sur les gros
@@ -383,14 +383,14 @@ montants. Il se demande séparément auprès de Stripe.
 
 > Les frais de Stripe sont prélevés sur le versement, pas sur la facture :
 > celle-ci est réglée en totalité. **La dépense correspondante reste à saisir à
-> la main** — elle n'est pas encore reprise automatiquement.
+> la main** : elle n'est pas encore reprise automatiquement.
 
 ---
 
 ## 7. Relancer
 
 Activées dans les paramètres, les relances envoient un rappel dès qu'une facture
-impayée franchit l'un des paliers de retard configurés — 7, 15 et 30 jours par
+impayée franchit l'un des paliers de retard configurés : 7, 15 et 30 jours par
 défaut.
 
 - Un palier ne part **qu'une fois par facture**, et c'est le palier le plus élevé
@@ -414,17 +414,17 @@ L'envoi exige un serveur de courriel configuré dans les paramètres.
 L'application détient l'unique exemplaire des livres. Une copie datée est donc
 produite **automatiquement, activée par défaut**.
 
-- **Quand.** Une par jour, plus une à la fermeture de l'application — un poste
+- **Quand.** Une par jour, plus une à la fermeture de l'application : un poste
   éteint chaque soir n'atteindrait jamais l'échéance autrement.
 - **Où.** Dans le dossier de données, ou tout dossier choisi dans les
-  paramètres. **Viser un dossier synchronisé** — OneDrive, Dropbox, Google
-  Drive — est ce qui fait sortir la copie de la machine, et donc ce qui protège
+  paramètres. **Viser un dossier synchronisé** (OneDrive, Dropbox, Google
+  Drive) est ce qui fait sortir la copie de la machine, et donc ce qui protège
   réellement d'une panne de disque ou d'un vol.
 - **Combien.** Les 30 plus récentes ; au-delà, les plus anciennes sont
   supprimées. Les fichiers étrangers au dossier ne sont jamais touchés.
 
 **Restaurer** est réservé à l'administrateur. La sauvegarde est d'abord
-contrôlée — intégrité et présence du schéma Clora — et un fichier douteux est
+contrôlée (intégrité et présence du schéma Clora) et un fichier douteux est
 refusé sans que rien ne soit modifié. La base remplacée est conservée à côté :
 une restauration sur le mauvais fichier reste réversible.
 
@@ -439,7 +439,7 @@ une restauration sur le mauvais fichier reste réversible.
 | **Administrateur** | Accès complet : paramètres, comptes, suppression de factures, annulation d'encaissements, restauration |
 
 Les règles sont appliquées par le programme lui-même à chaque opération.
-L'interface se contente de ne pas proposer ce qui serait de toute façon refusé —
+L'interface se contente de ne pas proposer ce qui serait de toute façon refusé :
 masquer un bouton n'a jamais protégé quoi que ce soit.
 
 Le rôle est relu à chaque action : retirer un accès à quelqu'un prend effet
@@ -450,7 +450,7 @@ immédiatement, et non à l'expiration de sa session.
 ## 10. Plusieurs entreprises dans une même installation
 
 Un comptable qui suit vingt clients ouvre vingt dossiers. **Chaque dossier a son
-propre fichier de base de données** — ce n'est pas un filtre, c'est une
+propre fichier de base de données**. Ce n'est pas un filtre, c'est une
 séparation physique. Il n'y a donc rien à oublier de filtrer, et aucun risque de
 montrer les factures d'un client à un autre.
 
@@ -478,16 +478,16 @@ Dire ce qu'un logiciel ne fait pas évite les mauvaises surprises après l'achat
 | | |
 | --- | --- |
 | **Paie et feuilles de temps** | Absent |
-| **Point de vente** | Absent — ni caisse, ni lecteur de codes-barres, ni terminal de paiement |
-| **Gestion de stock** | Absent — le catalogue enregistre des prix, pas des quantités |
-| **Grand livre et plan comptable** | Absent — Clora produit les registres, le comptable tient les livres |
+| **Point de vente** | Absent : ni caisse, ni lecteur de codes-barres, ni terminal de paiement |
+| **Gestion de stock** | Absent : le catalogue enregistre des prix, pas des quantités |
+| **Grand livre et plan comptable** | Absent : Clora produit les registres, le comptable tient les livres |
 | **Production des déclarations fiscales** | Clora prépare les chiffres de la remise ; il ne remplit ni ne transmet aucun formulaire |
 | **macOS et Linux** | L'installateur est produit pour Windows uniquement |
 | **Application mobile ou web** | Absent |
 | **Travail simultané à plusieurs postes** | Une installation, un poste |
-| **Synchronisation dans le nuage** | Absent, par construction — c'est un choix, pas un manque |
+| **Synchronisation dans le nuage** | Absent, par construction : c'est un choix, pas un manque |
 | **Frais Stripe repris en dépenses** | Pas encore automatique |
-| **Proration des coûts réels de véhicule** | Absente — le kilométrage applique un taux par kilomètre, méthode de l'indemnité. Un travailleur autonome non incorporé prorate ses coûts réels, calcul que Clora ne fait pas |
+| **Proration des coûts réels de véhicule** | Absente : le kilométrage applique un taux par kilomètre, méthode de l'indemnité. Un travailleur autonome non incorporé prorate ses coûts réels, calcul que Clora ne fait pas |
 
 ---
 

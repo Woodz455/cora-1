@@ -144,7 +144,7 @@ function ImportModal({ modele, titre, onFerme, onTermine }) {
                         value={correspondance[champ.cle] ?? ''}
                         onChange={(e) => associer(champ.cle, e.target.value)}
                       >
-                        <option value="">— non importé —</option>
+                        <option value="">(non importé)</option>
                         {apercu.entetes.map((entete, i) => (
                           <option key={i} value={i}>{entete || `Colonne ${i + 1}`}</option>
                         ))}
@@ -161,7 +161,7 @@ function ImportModal({ modele, titre, onFerme, onTermine }) {
                   <details style={{ marginBottom: '1rem' }}>
                     <summary style={{ cursor: 'pointer', color: 'var(--status-warning)', display: 'flex', alignItems: 'center', gap: '.4rem' }}>
                       <AlertTriangle size={16} />
-                      {apercu.rejets.length} ligne(s) seront ignorées — voir lesquelles
+                      {apercu.rejets.length} ligne(s) seront ignorées, voir lesquelles
                     </summary>
                     {/* Toutes les lignes refusées, pas un échantillon : un import
                         où trente fiches disparaissent sans qu'on sache lesquelles
@@ -169,7 +169,7 @@ function ImportModal({ modele, titre, onFerme, onTermine }) {
                     <ul style={{ maxHeight: '11rem', overflowY: 'auto', fontSize: '.85rem', marginTop: '.5rem' }}>
                       {apercu.rejets.map((r) => (
                         <li key={r.ligne}>
-                          Ligne {r.ligne}{r.valeur ? ` (${r.valeur})` : ''} — {r.motif}
+                          Ligne {r.ligne}{r.valeur ? ` (${r.valeur})` : ''} : {r.motif}
                         </li>
                       ))}
                     </ul>

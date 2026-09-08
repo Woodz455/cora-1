@@ -215,7 +215,7 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                   <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--status-warning)' }}>
                     Note(s) de crédit : − {formatMontant(facture.montant_credite, facture.devise)}
                     {facture.montant_a_rembourser > 0
-                      && ` — ${formatMontant(facture.montant_a_rembourser, facture.devise)} à rembourser au client`}
+                      && `, ${formatMontant(facture.montant_a_rembourser, facture.devise)} à rembourser au client`}
                   </p>
                 )}
               </div>

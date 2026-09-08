@@ -288,7 +288,7 @@ function ExpenseList() {
                 <td className="numeric" style={{ color: 'var(--text-muted)' }}>
                   {expense.kilometres !== null && expense.kilometres !== undefined
                     ? formatKm(expense.kilometres)
-                    : '—'}
+                    : '-'}
                 </td>
                 <td className="numeric">{formatMontant(expense.montant_ht)}</td>
                 <td className="numeric" style={{ color: '#8b5cf6' }}>
@@ -356,7 +356,7 @@ function ExpenseList() {
 
               <div className="form-group">
                 <label htmlFor="depense-description">{estDeplacement ? 'Motif du déplacement *' : 'Description'}</label>
-                <input id="depense-description" type="text" className="form-control" placeholder={estDeplacement ? 'Audition — Montréal' : ''} value={currentExpense.description || ''} onChange={(e) => setCurrentExpense({ ...currentExpense, description: e.target.value })} required={estDeplacement} />
+                <input id="depense-description" type="text" className="form-control" placeholder={estDeplacement ? 'Audition à Montréal' : ''} value={currentExpense.description || ''} onChange={(e) => setCurrentExpense({ ...currentExpense, description: e.target.value })} required={estDeplacement} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>

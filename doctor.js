@@ -85,7 +85,7 @@ async function diagnostiquer(db) {
         [f.id]
       );
       const detail = paiements
-        .map((p) => `       #${p.id} du ${p.date_paiement} : ${argent(p.montant)}${p.note ? ` — ${p.note}` : ''}`)
+        .map((p) => `       #${p.id} du ${p.date_paiement} : ${argent(p.montant)}${p.note ? ` (${p.note})` : ''}`)
         .join('\n');
 
       anomalies.push({
@@ -158,7 +158,7 @@ async function diagnostiquer(db) {
         gravite: 'MOYENNE',
         objet: `Transaction du ${t.date_transaction}`,
         probleme: `Statut « ${t.statut} » alors que ${argent(t.alloue)} sur ${argent(t.montant)} sont imputés`
-          + ` — soit « ${attendu} ».`,
+          + ` soit « ${attendu} ».`,
         action: 'Le statut sera réaligné à la prochaine imputation, ou par « npm run doctor -- --corriger-statuts ».'
       });
     }
@@ -268,7 +268,7 @@ async function annulerSurpaiements(db) {
     }
 
     if (excedent > 0.005) {
-      console.log(`  ${f.numero_facture} : ${argent(excedent)} d'excédent subsistent, saisis à la main — à trancher dans l'application.`);
+      console.log(`  ${f.numero_facture} : ${argent(excedent)} d'excédent subsistent, saisis à la main : à trancher dans l'application.`);
     }
   }
   return annules;

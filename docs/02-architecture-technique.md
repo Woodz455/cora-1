@@ -1,4 +1,4 @@
-# Clora — architecture, sécurité et licence
+# Clora : architecture, sécurité et licence
 
 *Document technique. Version 1.5.1, septembre 2026.*
 
@@ -49,12 +49,12 @@ Clora est une application de bureau Windows qui embarque un serveur web complet.
 `lucide-react`, `papaparse`, `html2pdf.js`.
 
 Cette frugalité est délibérée : chaque dépendance est une surface d'attaque et
-une dette de mise à jour. **Il n'y a notamment aucune bibliothèque Stripe** —
+une dette de mise à jour. **Il n'y a notamment aucune bibliothèque Stripe** :
 l'intégration parle directement à l'API REST par le module `https` de Node.
 
 ### Ce qui se passe au démarrage
 
-1. Electron obtient un verrou d'instance unique — deux processus écrivant dans
+1. Electron obtient un verrou d'instance unique : deux processus écrivant dans
    la même base SQLite se gêneraient.
 2. La fenêtre est créée **cachée**, pour ne pas montrer un rectangle blanc.
 3. Le serveur Express démarre. En production, sur **un port libre attribué par
@@ -141,8 +141,9 @@ a été corrigée.
 
 **Les montants dérivés ne sont pas stockés.** Le solde d'une facture, la part
 déjà imputée d'un dépôt bancaire : ces valeurs se déduisent par requête, elles ne
-sont pas conservées. Un total stocké aurait fini par diverger — annulation d'un
-encaissement, suppression d'une facture — sans que rien ne le signale.
+sont pas conservées. Un total stocké aurait fini par diverger
+(annulation d'un encaissement, suppression d'une facture) sans que rien ne le
+signale.
 
 **Les expressions SQL du calcul sont partagées.** Une seule définition de « net »,
 « payé », « solde », réutilisée par la liste des factures, le tableau de bord, la
@@ -151,7 +152,7 @@ balance âgée et les exports. C'est ce qui garantit que le total de la balance 
 
 ### 3.1 L'indemnité kilométrique, seule exception au figeage
 
-Un déplacement est une dépense dont `kilometres` n'est pas nul — c'est le seul
+Un déplacement est une dépense dont `kilometres` n'est pas nul : c'est le seul
 discriminant, ce qui le fait entrer sans rien changer dans la liste des dépenses,
 le bénéfice net et les rapports, qui somment déjà `montant_ht`.
 
@@ -161,8 +162,8 @@ figer à la saisie ferait dépendre le montant de l'ordre d'entrée, et antidate
 trajet oublié laisserait l'année fausse sans que rien ne le signale.
 
 `kilometrageService.recalculerAnnee` relit donc les trajets de l'année triés par
-date puis par identifiant, cumule les distances, scinde au seuil — un trajet peut
-l'enjamber et se voir payé aux deux taux — et réécrit chaque `montant_ht`. Il est
+date puis par identifiant, cumule les distances, scinde au seuil (un trajet peut
+l'enjamber et se voir payé aux deux taux) et réécrit chaque `montant_ht`. Il est
 appelé à la création, la modification et la suppression d'un déplacement, ainsi
 qu'au changement d'un taux. Une modification de date qui traverse le 1er janvier
 réajuste **les deux années**.
@@ -171,7 +172,7 @@ L'exception se tient parce qu'un déplacement n'est remis à personne : c'est un
 ligne de journal interne, pas une pièce entre les mains d'un client.
 
 Les taux vivent dans `taux_kilometriques`, **une ligne par année** plutôt qu'un
-réglage unique — les autorités fiscales les révisent annuellement, et un réglage
+réglage unique : les autorités fiscales les révisent annuellement, et un réglage
 unique ferait qu'inscrire le taux de l'an prochain réécrirait une année close au
 premier recalcul. Aucun taux n'est semé par défaut, et la saisie d'un déplacement
 est refusée tant que son année n'en a pas.
@@ -188,7 +189,7 @@ Format des notes de crédit : `NC-AAAAMM-NNNN`.
 ### L'arithmétique monétaire
 
 `money.js` arrondit au cent en corrigeant les artefacts de représentation
-binaire — `2.675` est stocké en flottant comme `2.67499999…`, et un arrondi naïf
+binaire : `2.675` est stocké en flottant comme `2.67499999…`, et un arrondi naïf
 donnerait 2,67.
 
 **Le même calcul existe en JavaScript et en SQL**, et un test compare les deux
@@ -202,7 +203,7 @@ sur plusieurs milliers de montants. Une divergence entre les deux ferait qu'un
 **Chaque dossier d'entreprise a son propre fichier de base de données.** Ce n'est
 pas une commodité d'implémentation.
 
-L'alternative — une colonne `entreprise_id` sur les dix-sept tables — aurait
+L'alternative, une colonne `entreprise_id` sur les dix-sept tables, aurait
 imposé de porter le filtre sur les 81 requêtes existantes. **Un seul `WHERE`
 oublié aurait montré les factures d'un client à un autre.** Sur un logiciel vendu
 à des comptables, c'est la faute dont on ne se relève pas.
@@ -210,7 +211,7 @@ oublié aurait montré les factures d'un client à un autre.** Sur un logiciel v
 Un fichier par dossier rend le cloisonnement physique : il n'y a rien à filtrer,
 donc rien à oublier.
 
-Les comptes d'utilisateurs, eux, sont communs et vivent dans `comptes.sqlite` —
+Les comptes d'utilisateurs, eux, sont communs et vivent dans `comptes.sqlite` :
 sans quoi un comptable devrait se reconnecter à chaque changement de client.
 
 La bascule d'un dossier à l'autre se fait en **un seul point** du code, par le
@@ -246,7 +247,7 @@ En-têtes envoyés sur chaque réponse : `X-Content-Type-Options: nosniff`,
   strict`, `secure` en production. Durée : 12 heures par défaut.
 - **Secret de signature** : 512 bits tirés au hasard au premier lancement, écrits
   en `0600` dans le dossier de données. **Il n'existe aucune valeur par défaut en
-  dur** — un secret présent dans le code source permettrait à quiconque lit le
+  dur** : un secret présent dans le code source permettrait à quiconque lit le
   dépôt de forger un jeton administrateur. Un `JWT_SECRET` fourni doit faire au
   moins 32 caractères, sinon le démarrage échoue.
 - **Limitation des tentatives** : 8 essais par tranche de 15 minutes, par couple
@@ -255,14 +256,14 @@ En-têtes envoyés sur chaque réponse : `X-Content-Type-Options: nosniff`,
 
 ### 5.3 Autorisation
 
-Trois rôles — `employe`, `comptable`, `admin` — appliqués **par le serveur sur
+Trois rôles (`employe`, `comptable`, `admin`) appliqués **par le serveur sur
 chaque route**. L'interface se contente de masquer ce qui serait refusé.
 
 **Le rôle est relu à chaque requête** plutôt que porté par le jeton : retirer un
 accès prend effet immédiatement, et non à l'expiration de la session douze heures
 plus tard.
 
-Le cloisonnement des rôles fait l'objet de tests dédiés — c'est le genre de règle
+Le cloisonnement des rôles fait l'objet de tests dédiés : c'est le genre de règle
 qu'une refonte casse sans bruit.
 
 ### 5.4 Limites de charge
@@ -283,7 +284,7 @@ Or la base est recopiée par les sauvegardes automatiques vers un dossier souven
 synchronisé. En clair, ces secrets partiraient dans le nuage à chaque copie, et
 une sauvegarde égarée livrerait la boîte courriel de l'entreprise.
 
-`secretStorage.js` les chiffre par le **coffre du système d'exploitation** —
+`secretStorage.js` les chiffre par le **coffre du système d'exploitation**,
 DPAPI sous Windows, via `safeStorage` d'Electron. La valeur n'est déchiffrable
 que par le même compte utilisateur, sur la même machine. Une sauvegarde emportée
 ailleurs ne contient qu'un bloc inexploitable.
@@ -293,7 +294,7 @@ Deux préfixes disent franchement ce qui a eu lieu :
 | Préfixe | Signification |
 | --- | --- |
 | `coffre:` | Réellement protégé par le coffre du système |
-| `clair:` | Simplement encodé — aucun coffre n'était disponible à l'écriture |
+| `clair:` | Simplement encodé : aucun coffre n'était disponible à l'écriture |
 
 Une base restaurée sur une autre machine ne sait plus déchiffrer : le paiement en
 ligne se désactive et l'écran des paramètres invite à ressaisir la clé, plutôt
@@ -313,15 +314,15 @@ CREATE TRIGGER logs_audit_sans_suppression ...
 ```
 
 La garantie ne repose donc pas sur l'absence d'une route, mais sur un refus de
-SQLite quel que soit le chemin emprunté — y compris un accès direct au fichier
+SQLite quel que soit le chemin emprunté, y compris un accès direct au fichier
 avec un outil tiers. Un journal réécrivable ne prouverait rien.
 
 En contrepartie, le journal ne se purge pas. C'est le bon défaut pour une piste
 d'audit comptable, et le volume reste modeste puisque seules les actions
 sensibles y entrent.
 
-Deux règles sur le contenu : **aucun secret n'y figure** — mots de passe et
-empreintes sont remplacés par une mention — et le logo d'entreprise en est exclu,
+Deux règles sur le contenu : **aucun secret n'y figure** (mots de passe et
+empreintes sont remplacés par une mention) et le logo d'entreprise en est exclu,
 car c'est un fichier de plusieurs mégaoctets sans portée comptable.
 
 Écrire au journal **ne peut pas faire échouer l'action métier** : refuser
@@ -336,7 +337,7 @@ de sécurité.
 | | |
 | --- | --- |
 | **Le binaire n'est pas signé** | Windows affiche un avertissement SmartScreen à l'installation. Aucun certificat de signature de code n'a encore été acheté |
-| **La base n'est pas chiffrée au repos** | Seuls les deux secrets le sont. Quelqu'un qui a accès au disque a accès à la comptabilité — c'est le modèle d'un logiciel de bureau mono-poste |
+| **La base n'est pas chiffrée au repos** | Seuls les deux secrets le sont. Quelqu'un qui a accès au disque a accès à la comptabilité : c'est le modèle d'un logiciel de bureau mono-poste |
 | **La clé de licence est partageable** | Sans serveur, rien n'empêche de la donner à un tiers |
 | **L'essai se réinitialise** | Supprimer `comptes.sqlite` remet le compteur à zéro |
 | **Le paquet est ouvrable** | Une archive `asar` n'est pas un coffre-fort |
@@ -365,7 +366,7 @@ jamais la machine de l'éditeur.
 Conséquences, toutes voulues :
 
 - aucun serveur à bâtir, à payer ni à surveiller ;
-- **aucun appel sortant** — l'argument « vos données ne partent pas » reste vrai,
+- **aucun appel sortant** : l'argument « vos données ne partent pas » reste vrai,
   ce qui compte sur un logiciel comptable ;
 - l'activation fonctionne **hors ligne**, sur un chantier ou dans un sous-sol.
 
@@ -376,7 +377,7 @@ préfixe permet à une chaîne collée par erreur de se reconnaître.
 
 **Chaque version publiée porte sa date de compilation**, écrite dans
 `build-info.json` par le workflow de publication. Si cette date dépasse
-l'échéance de maintenance d'une clé, **cette version-là** refuse de s'activer —
+l'échéance de maintenance d'une clé, **cette version-là** refuse de s'activer,
 mais toute version antérieure continue de fonctionner indéfiniment.
 
 Le client qui cesse de payer garde son logiciel et ses données ; il ne reçoit
@@ -389,13 +390,13 @@ serait jamais refusée.
 
 | État | Signification |
 | --- | --- |
-| `desactive` | Aucune clé publique configurée — le contrôle est inerte |
+| `desactive` | Aucune clé publique configurée : le contrôle est inerte |
 | `essai` | Période d'essai en cours (30 jours) |
 | `activee` | Clé valide, maintenance couvrant cette version |
 | `essai_expire` | Essai terminé, aucune clé saisie |
 | `maintenance_expiree` | Clé valide, mais la maintenance ne couvre pas cette version |
 
-Quand l'installation n'est plus utilisable, l'API répond **402** — et le refus
+Quand l'installation n'est plus utilisable, l'API répond **402**, et le refus
 est placé **avant** l'authentification, car il n'y a pas lieu de se connecter
 sans licence valable. Les routes de licence, elles, restent accessibles sans
 session : exiger d'être connecté pour saisir une clé enfermerait l'utilisateur
@@ -409,7 +410,7 @@ Une seule fois, pour créer la paire :
 node scripts/generer-licence.js --nouvelle-paire
 ```
 
-Écrit `clef-privee-licence.pem` — **jamais versionnée** — et renseigne
+Écrit `clef-privee-licence.pem`, **jamais versionnée**, et renseigne
 `licencePublique.js`, qui l'est.
 
 À chaque vente :
@@ -429,7 +430,7 @@ node scripts/generer-licence.js --titulaire "Plomberie Tremblay" \
 ### État actuel
 
 `CLE_PUBLIQUE` est **vide**. Le contrôle est donc inerte : ni essai, ni
-expiration. C'est délibéré pendant la période de tests utilisateurs — le jour où
+expiration. C'est délibéré pendant la période de tests utilisateurs : le jour où
 la clé entre dans une version publiée, l'essai de trente jours se met à courir
 chez tous ceux qui l'installent.
 
@@ -450,7 +451,7 @@ paiement**, ce qui relèverait d'un tout autre régime réglementaire.
 module `https` de Node, avec :
 
 - l'encodage de formulaire attendu, notation à crochets comprise (`a[b][c]=v`) ;
-- la **version d'API épinglée** (`Stripe-Version: 2024-06-20`) — sans quoi une
+- la **version d'API épinglée** (`Stripe-Version: 2024-06-20`), sans quoi une
   évolution de Stripe changerait le comportement sans qu'aucune ligne de code
   n'ait bougé ;
 - des **clés d'idempotence** sur les créations.
@@ -462,7 +463,7 @@ logiciel installé sur un poste de bureau.
 
 Les moyens de paiement ne sont **pas imposés par paramètre** : Stripe applique
 ceux que l'entreprise a activés dans son tableau de bord. Les imposer ferait
-échouer la création du lien tant que le débit préautorisé n'est pas activé — et
+échouer la création du lien tant que le débit préautorisé n'est pas activé, et
 priverait la facture de tout moyen de paiement pour rien.
 
 ### Ce qui garantit la justesse des comptes
@@ -472,7 +473,7 @@ Un acompte encaissé entre-temps retire l'ancien lien et en crée un juste.
 
 **Un règlement inscrit une seule fois.** L'identifiant de session Stripe porte
 une contrainte d'unicité en base. C'est cette contrainte, et non la prudence du
-code, qui l'empêche — quel que soit le nombre de passages du planificateur.
+code, qui l'empêche, quel que soit le nombre de passages du planificateur.
 
 **Seul l'argent réellement reçu est inscrit.** Le relevé n'inscrit que sur
 `payment_status === 'paid'`. Une session « complétée » en débit préautorisé est
@@ -518,7 +519,7 @@ tourne en mode WAL : dupliquer `database.sqlite` pendant une écriture donnerait
 un fichier amputé de tout ce qui n'a pas encore été reporté depuis le journal.
 
 Une sauvegarde par jour, vérifiée à chaque passage horaire, **plus une à la
-fermeture de l'application** — un poste éteint chaque soir n'atteindrait jamais
+fermeture de l'application** : un poste éteint chaque soir n'atteindrait jamais
 l'échéance autrement. Tous les dossiers ouverts pendant la session y passent, pas
 seulement le dernier consulté.
 
@@ -526,7 +527,7 @@ Rétention : les 30 plus récentes. Les fichiers étrangers au dossier ne sont
 jamais touchés.
 
 **La restauration ne remplace pas la base pendant qu'elle est ouverte.** La
-sauvegarde est d'abord contrôlée — intégrité SQLite, présence du schéma Clora —
+sauvegarde est d'abord contrôlée (intégrité SQLite, présence du schéma Clora)
 puis une demande est enregistrée et appliquée **au redémarrage**, alors
 qu'aucune connexion ni journal ne décrit encore l'ancienne base. Celle-ci est
 conservée à côté sous `database.sqlite.avant-restauration-<horodatage>` : une
@@ -544,8 +545,8 @@ Un passage **toutes les heures**, pour chaque dossier d'entreprise :
 4. sauvegarde si l'échéance quotidienne est atteinte.
 
 Chaque étape est isolée : l'échec de l'une n'empêche pas les suivantes. Les
-opérations sont idempotentes — la date de prochaine génération avance à chaque
-facture émise —, donc une vérification fréquente est sans risque.
+opérations sont idempotentes (la date de prochaine génération avance à chaque
+facture émise), donc une vérification fréquente est sans risque.
 
 ---
 
@@ -613,9 +614,9 @@ produirait un installateur inutilisable.
 
 `.github/workflows/release.yml`, déclenché par une étiquette `v*` :
 
-1. `npm ci` sous Windows — c'est cette étape qui récupère le bon binaire ;
+1. `npm ci` sous Windows : c'est cette étape qui récupère le bon binaire ;
 2. écriture de `build-info.json` : date du jour et version tirée de l'étiquette ;
-3. `npm run build` — compilation de l'interface, puis `electron-builder` ;
+3. `npm run build` : compilation de l'interface, puis `electron-builder` ;
 4. dépôt de l'installateur sur la page des publications, en **deux exemplaires** :
    `Clora-Installateur-<version>.exe` et une copie sous le nom fixe
    `Clora-Installateur.exe`.
@@ -646,7 +647,7 @@ L'application **ne télécharge et n'installe rien**. Elle compare sa version à
 dernière étiquette publiée, une fois par jour au plus, et affiche un bandeau.
 
 C'est délibéré : l'application n'étant pas signée, `electron-updater` exécuterait
-un binaire dont l'origine n'est vérifiée par rien — la vérification de signature
+un binaire dont l'origine n'est vérifiée par rien, la vérification de signature
 est précisément ce qui est désactivé faute de certificat. Sur un logiciel qui
 détient la comptabilité d'une entreprise, ce n'est pas acceptable.
 

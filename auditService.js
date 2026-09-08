@@ -137,7 +137,7 @@ async function journaliser(db, req, evenement) {
       ]
     );
   } catch (error) {
-    console.error(`Journal d'audit : « ${evenement && evenement.action} » non consigné —`, error.message);
+    console.error(`Journal d'audit : « ${evenement && evenement.action} » non consigné.`, error.message);
   }
 }
 

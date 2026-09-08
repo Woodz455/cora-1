@@ -82,7 +82,7 @@ function CreditNoteModal({ facture, onClose, onSuccess }) {
           Note de crédit
         </h3>
         <p style={{ marginTop: 0, color: 'var(--text-muted)' }}>
-          Sur la facture <strong style={{ color: 'var(--text-main)' }}>{facture.numero_facture}</strong> — {facture.client}
+          Sur la facture <strong style={{ color: 'var(--text-main)' }}>{facture.numero_facture}</strong>, {facture.client}
         </p>
 
         {error && <p className="alert alert-error" role="alert">{error}</p>}

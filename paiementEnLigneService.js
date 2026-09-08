@@ -95,8 +95,8 @@ async function configuration(db) {
 
 /** Note portée sur l'encaissement, telle qu'elle s'affichera dans la facture. */
 function noteEncaissement(session, mode) {
-  const marque = mode === 'test' ? ' — MODE TEST, argent fictif' : '';
-  return `Paiement en ligne (Stripe${marque}) — ${session.id}`;
+  const marque = mode === 'test' ? ', MODE TEST, argent fictif' : '';
+  return `Paiement en ligne (Stripe${marque}) : ${session.id}`;
 }
 
 /**
