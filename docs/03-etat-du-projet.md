@@ -1,7 +1,7 @@
 # Clora : état du projet
 
-*Ce qui a été fait, ce qui reste à faire. Arrêté au 5 septembre 2026,
-version 1.5.1.*
+*Ce qui a été fait, ce qui reste à faire. Arrêté au 8 septembre 2026,
+version 1.6.0.*
 
 ---
 
@@ -9,11 +9,11 @@ version 1.5.1.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.5.1, le 5 septembre 2026 |
-| **Publications** | 6 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 40 commits, 12 demandes de fusion, toutes fusionnées |
-| **Tests** | 314, tous au vert, exécutés à chaque fusion |
-| **Durée** | 6 semaines, du 24 juillet au 5 septembre 2026 |
+| **Version publiée** | 1.6.0, le 8 septembre 2026 |
+| **Publications** | 7 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 48 commits, 15 demandes de fusion, toutes fusionnées |
+| **Tests** | 331, tous au vert, exécutés à chaque fusion |
+| **Durée** | 7 semaines, du 24 juillet au 8 septembre 2026 |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca |
 | **Ventes** | Aucune : la phase de tests utilisateurs commence |
 
@@ -99,6 +99,18 @@ a corrigé ce qui, autrement, aurait fini par produire de faux chiffres.
   heure.
 - **Consignation des idées écartées**, avec la raison du refus, pour pouvoir les
   rouvrir sans refaire l'analyse.
+
+### Phase 7 : équiper les testeurs
+*8 septembre · publié en 1.6.0 · demandes de fusion #13, #14, #15*
+
+- **Trois documents** décrivant l'application, son architecture et l'état du
+  projet, remis aussi en Word.
+- **Indemnité kilométrique** au taux à deux paliers réglable par année,
+  demandée par des acteurs qui évaluent Clora. Les montants sont recalculés et
+  non figés, seule exception à la règle du figeage, parce que le montant d'un
+  déplacement dépend du cumul de l'année.
+- **Retrait des tirets cadratins** de tous les textes visibles : interface,
+  courriels de relance, facture imprimée, documents et blocs du site.
 
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
@@ -206,10 +218,10 @@ téléchargements. Seul un certificat EV, plus cher, tend à l'écarter d'emblé
 Par honnêteté, ces points sont éprouvés par des tests automatisés mais n'ont
 jamais été observés sur une machine réelle :
 
-- **Le bandeau de mise à jour, cas positif.** Jusqu'à la publication de la 1.5.1,
-  aucune version plus récente n'existait à annoncer. Les installations en 1.5.0
-  devraient maintenant l'afficher dans les vingt-quatre heures, et **c'est la
-  première occasion de le vérifier.**
+- **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
+  vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
+  annoncer. La 1.6.0 offre une nouvelle occasion de le vérifier, sur toute
+  installation restée en 1.5.x.
 - **Le redémarrage après restauration d'une sauvegarde.**
 
 Ce sont deux choses à regarder pendant les tests utilisateurs.
@@ -282,7 +294,7 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.5.1 par des testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.6.0 par des testeurs et écouter ce qu'ils disent.**
 
 Tout le reste (la clé de licence, le certificat, les améliorations du
 rapprochement bancaire) attend ce retour, et devrait être priorisé par lui.
