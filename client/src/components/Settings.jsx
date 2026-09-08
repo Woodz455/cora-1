@@ -63,6 +63,15 @@ function Settings() {
   const [enSouffrance, setEnSouffrance] = useState([]);
 
   const [licence, setLicence] = useState(null);
+  const [tauxKm, setTauxKm] = useState([]);
+  // Aucune valeur n'est proposée d'office : l'ARC révise ces taux chaque année,
+  // et un chiffre inscrit ici par le logiciel serait pris pour argent comptant
+  // longtemps après avoir cessé d'être exact.
+  const [nouveauTaux, setNouveauTaux] = useState({
+    annee: new Date().getFullYear(), taux_1: '', taux_2: '', seuil_km: 5000
+  });
+  const [savingTaux, setSavingTaux] = useState(false);
+  const [tauxMessage, setTauxMessage] = useState(null);
   const [infoSauvegardes, setInfoSauvegardes] = useState(null);
   const [sauvegardeEnCours, setSauvegardeEnCours] = useState(false);
   const [relancesDues, setRelancesDues] = useState(null);
@@ -95,6 +104,7 @@ function Settings() {
       .then((r) => setEnSouffrance(r.encaissements || []))
       .catch(() => setEnSouffrance([]));
     api.get('/api/licence').then(setLicence).catch(() => setLicence(null));
+    api.get('/api/settings/taux-kilometriques').then(setTauxKm).catch(() => setTauxKm([]));
     api.get('/api/auth/setup-status')
       .then((data) => { if (data.minPasswordLength) setMinLength(data.minPasswordLength); })
       .catch(() => {});
@@ -103,6 +113,39 @@ function Settings() {
   const handleChange = (e) => {
     const { name, value, type } = e.target;
     setSettings((prev) => ({ ...prev, [name]: type === 'number' ? parseFloat(value) : value }));
+  };
+
+  /**
+   * Enregistre les taux d'une année, puis relit la liste.
+   *
+   * Le serveur réajuste les indemnités de l'année dans la foulée : c'est
+   * pourquoi le message le dit, plutôt que de laisser croire que seul un
+   * réglage a changé.
+   */
+  const handleTauxKm = async (e) => {
+    e.preventDefault();
+    setSavingTaux(true);
+    setTauxMessage(null);
+    try {
+      const { message: texte } = await api.put('/api/settings/taux-kilometriques', {
+        annee: Number(nouveauTaux.annee),
+        taux_1: parseFloat(nouveauTaux.taux_1),
+        taux_2: parseFloat(nouveauTaux.taux_2),
+        seuil_km: parseFloat(nouveauTaux.seuil_km)
+      });
+      setTauxKm(await api.get('/api/settings/taux-kilometriques'));
+      setTauxMessage({ type: 'success', texte });
+    } catch (err) {
+      setTauxMessage({ type: 'error', texte: err.message });
+    } finally {
+      setSavingTaux(false);
+    }
+  };
+
+  /** Recharge une année existante dans le formulaire, pour la corriger. */
+  const modifierTaux = (t) => {
+    setNouveauTaux({ annee: t.annee, taux_1: t.taux_1, taux_2: t.taux_2, seuil_km: t.seuil_km });
+    setTauxMessage(null);
   };
 
   const rafraichirSauvegardes = () => (
@@ -895,6 +938,87 @@ function Settings() {
           </button>
         </div>
       </form>
+
+      <h2 style={{ color: 'var(--text-main)', marginTop: '50px', marginBottom: '20px' }}>Indemnité kilométrique</h2>
+      <Message contenu={tauxMessage} />
+
+      <div className="glass-panel" style={{ padding: '20px' }}>
+        <p className="alert alert-info">
+          Le taux s'applique aux déplacements inscrits dans l'écran Dépenses : les premiers
+          kilomètres de l'année à un taux, le reste à un taux moindre.{' '}
+          <strong>Vérifiez le taux en vigueur auprès de l'Agence du revenu du Canada et de
+          Revenu Québec</strong> — il est révisé chaque année, et Clora n'en propose aucun de
+          lui-même pour ne pas vous en faire hériter un périmé.
+        </p>
+
+        {/* La méthode du taux au kilomètre est celle de l'indemnité. Un
+            travailleur autonome non incorporé doit proratiser ses coûts réels :
+            le dire ici évite qu'un montant calculé soit pris pour une déduction
+            que le fisc n'accepterait pas sous cette forme. */}
+        <p className="alert alert-warning">
+          Cette méthode est celle de l'<strong>indemnité</strong> : elle convient à un employé
+          indemnisé ou à un actionnaire qui se verse une allocation de sa société. Un travailleur
+          autonome non incorporé doit plutôt proratiser ses coûts réels de véhicule selon son
+          usage d'affaires ; le montant calculé ici n'est alors qu'une estimation.
+        </p>
+
+        <form onSubmit={handleTauxKm} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px', alignItems: 'end' }}>
+          <div className="form-group">
+            <label htmlFor="km-annee">Année</label>
+            <input id="km-annee" type="number" min="2000" max="2100" step="1" className="form-control" value={nouveauTaux.annee} onChange={(e) => setNouveauTaux({ ...nouveauTaux, annee: e.target.value })} required />
+          </div>
+          <div className="form-group">
+            <label htmlFor="km-taux-1">Taux jusqu'au seuil ($/km)</label>
+            <input id="km-taux-1" type="number" step="0.001" min="0.001" max="10" className="form-control" placeholder="0.70" value={nouveauTaux.taux_1} onChange={(e) => setNouveauTaux({ ...nouveauTaux, taux_1: e.target.value })} required />
+          </div>
+          <div className="form-group">
+            <label htmlFor="km-taux-2">Taux au-delà ($/km)</label>
+            <input id="km-taux-2" type="number" step="0.001" min="0.001" max="10" className="form-control" placeholder="0.64" value={nouveauTaux.taux_2} onChange={(e) => setNouveauTaux({ ...nouveauTaux, taux_2: e.target.value })} required />
+          </div>
+          <div className="form-group">
+            <label htmlFor="km-seuil">Seuil (km)</label>
+            <input id="km-seuil" type="number" step="1" min="1" className="form-control" value={nouveauTaux.seuil_km} onChange={(e) => setNouveauTaux({ ...nouveauTaux, seuil_km: e.target.value })} required />
+          </div>
+          <div className="form-group">
+            <button type="submit" className="btn-primary" disabled={savingTaux} style={{ width: '100%' }}>
+              {savingTaux ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+          </div>
+        </form>
+
+        {tauxKm.length > 0 && (
+          <div className="table-scroll" style={{ marginTop: '20px' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Année</th>
+                  <th className="numeric">Jusqu'au seuil</th>
+                  <th className="numeric">Au-delà</th>
+                  <th className="numeric">Seuil</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tauxKm.map((t) => (
+                  <tr key={t.annee}>
+                    <td style={{ fontWeight: '500' }}>{t.annee}</td>
+                    <td className="numeric">{formatMontant(t.taux_1)} / km</td>
+                    <td className="numeric">{formatMontant(t.taux_2)} / km</td>
+                    <td className="numeric">{t.seuil_km.toLocaleString('fr-CA')} km</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button type="button" className="btn-icon" onClick={() => modifierTaux(t)} aria-label={`Modifier les taux de ${t.annee}`}>✏️</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '10px' }}>
+              Modifier un taux réajuste aussitôt les indemnités de l'année concernée, et le
+              changement est consigné au journal d'audit. Les autres années ne bougent pas.
+            </p>
+          </div>
+        )}
+      </div>
 
       <h2 style={{ color: 'var(--text-main)', marginTop: '50px', marginBottom: '20px' }}>Mes identifiants</h2>
       <Message contenu={secMessage} />

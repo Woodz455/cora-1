@@ -127,6 +127,18 @@ async function createTables(db) {
       categorie TEXT
     );
 
+    -- Indemnité kilométrique : un taux par année, à deux paliers.
+    --
+    -- Par année, et non un réglage unique : l'ARC révise ces taux chaque année.
+    -- Un réglage unique ferait qu'inscrire le taux de l'an prochain réécrirait
+    -- les montants de l'année close au premier recalcul.
+    CREATE TABLE IF NOT EXISTS taux_kilometriques (
+      annee INTEGER PRIMARY KEY,
+      taux_1 REAL NOT NULL,
+      taux_2 REAL NOT NULL,
+      seuil_km REAL NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
@@ -364,6 +376,14 @@ async function runMigrations(db) {
   // Stripe tant que l'entreprise ne l'a pas demandé.
   await addColumn(db, 'settings', 'stripe_cle_chiffree', 'TEXT');
   await addColumn(db, 'settings', 'stripe_actif', 'INTEGER DEFAULT 0');
+
+  // Indemnité kilométrique. Une dépense dont `kilometres` n'est pas nul est un
+  // déplacement : c'est le seul discriminant, et il évite d'avoir à réserver une
+  // catégorie que l'utilisateur pourrait renommer. Loger le déplacement dans
+  // `depenses` le fait entrer sans rien changer dans la liste des dépenses, le
+  // bénéfice net et les rapports, qui somment déjà `montant_ht`.
+  await addColumn(db, 'depenses', 'kilometres', 'REAL');
+  await addColumn(db, 'depenses', 'vehicule', 'TEXT');
 
   await figerMontants(db);
 }

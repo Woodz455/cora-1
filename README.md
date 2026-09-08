@@ -205,6 +205,7 @@ validators.js      Validation des données entrantes
 rateLimit.js       Limitation des tentatives de connexion
 scheduler.js       Passage horaire : factures récurrentes et relances dues
 licenceService.js  Vérification Ed25519 des clés, essai, maintenance
+kilometrageService.js  Indemnité kilométrique : paliers et recalcul de l'année
 companyStore.js    Registre des dossiers d'entreprise et comptes partagés
 bankService.js     Rapprochement bancaire et imputation des dépôts
 *Service.js        Logique métier par domaine
@@ -354,6 +355,52 @@ puis une autre, et ainsi de suite.
   redevient imputable pour ce montant.
 - Une facture en devise étrangère est refusée : un dépôt en dollars canadiens
   imputé tel quel sur un solde en dollars américains fausserait les deux.
+
+## Indemnité kilométrique
+
+Un déplacement s'inscrit dans l'écran Dépenses : date, motif, véhicule ou mode
+de transport, et distance. **Le montant n'est pas saisi** — il découle des
+kilomètres et du taux de l'année, dégressif au-delà d'un seuil : les premiers
+kilomètres à un taux, le reste à un taux moindre. Un trajet qui enjambe le seuil
+est payé aux deux taux.
+
+Les taux se règlent dans Paramètres, **une ligne par année**. Ce n'est pas un
+réglage unique : l'ARC les révise chaque année, et inscrire ceux de l'an
+prochain réécrirait les montants d'une année close au premier recalcul.
+
+**Aucun taux n'est proposé par défaut.** Coder en dur un chiffre que le fisc
+révise le rendrait faux en silence ; tant qu'une année n'est pas réglée, la
+saisie d'un déplacement est refusée plutôt que de produire un montant nul.
+
+### Les montants sont recalculés, pas figés
+
+C'est la seule exception à la règle des montants figés, et elle est délibérée.
+
+Le montant d'un déplacement dépend du **cumul de l'année** — c'est lui qui décide
+de quel côté du seuil le trajet tombe. Le figer à la saisie ferait dépendre le
+montant de l'ordre d'entrée : antidater un trajet oublié laisserait l'année
+fausse. Toute l'année est donc réajustée à chaque ajout, modification ou
+suppression, et au changement d'un taux.
+
+L'exception se tient parce qu'un déplacement n'est remis à personne. C'est une
+ligne de journal interne, pas une pièce entre les mains d'un client : la
+recalculer ne trahit aucune promesse.
+
+Un changement de taux est **consigné au journal d'audit**, au même titre qu'un
+changement de taux de taxe : il réécrit les montants déductibles d'une année
+entière.
+
+### Deux réserves
+
+**C'est la méthode de l'indemnité**, pas celle de la déduction. Elle convient à
+un employé indemnisé ou à un actionnaire qui se verse une allocation de sa
+société. Un travailleur autonome non incorporé doit proratiser ses coûts réels de
+véhicule selon son usage d'affaires ; le montant calculé ici n'est alors qu'une
+estimation. L'interface le dit à l'écran des paramètres.
+
+**Aucune taxe récupérable n'est portée** sur une indemnité : `tps` et `tvq`
+restent à zéro. Un inscrit à la TPS peut avoir droit à un crédit sur une
+allocation versée — c'est au comptable de le reprendre.
 
 ## Notes de crédit
 

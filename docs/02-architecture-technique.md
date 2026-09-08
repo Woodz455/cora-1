@@ -83,12 +83,13 @@ rateLimit.js       Limitation des tentatives de connexion
 authMiddleware.js  Vérification du jeton et contraintes de rôle
 scheduler.js       Passage horaire : abonnements, relances, Stripe, sauvegardes
 licenceService.js  Vérification Ed25519 des clés, essai, maintenance
+kilometrageService.js  Indemnité kilométrique : paliers et recalcul de l'année
 secretStorage.js   Chiffrement des secrets au repos
 companyStore.js    Registre des dossiers d'entreprise et comptes partagés
-*Service.js        Logique métier par domaine (14 services)
+*Service.js        Logique métier par domaine (15 services)
 routes/            20 modules de points d'entrée HTTP
 client/src/        Interface React (33 composants et crochets)
-tests/             21 fichiers, 314 tests
+tests/             22 fichiers, 331 tests
 ```
 
 Le découpage est strict : **`server.js` ne fait que câbler**. Il ne contient
@@ -119,11 +120,11 @@ L'ordre est significatif et chaque position est justifiée :
 
 ## 3. Le modèle de données
 
-**Dix-neuf tables** dans la base d'une entreprise : `clients`, `factures`,
+**Vingt tables** dans la base d'une entreprise : `clients`, `factures`,
 `lignes_facture`, `paiements`, `catalogue`, `settings`, `devis`, `lignes_devis`,
-`depenses`, `users`, `transactions_bancaires`, `notes_credit`,
-`lignes_note_credit`, `relances`, `document_sequences`, `abonnements`,
-`liens_paiement`, `encaissements_stripe`, `logs_audit`.
+`depenses`, `taux_kilometriques`, `users`, `transactions_bancaires`,
+`notes_credit`, `lignes_note_credit`, `relances`, `document_sequences`,
+`abonnements`, `liens_paiement`, `encaissements_stripe`, `logs_audit`.
 
 Plus une base séparée, `comptes.sqlite` : le registre des dossiers d'entreprise
 et les comptes d'utilisateurs.
@@ -136,6 +137,8 @@ recalculés depuis les lignes à la lecture. Une pièce comptable remise à un c
 ne doit pas changer de montant parce qu'un taux a bougé ou qu'une règle d'arrondi
 a été corrigée.
 
+*Une seule exception, décrite au §3.1 : l'indemnité kilométrique.*
+
 **Les montants dérivés ne sont pas stockés.** Le solde d'une facture, la part
 déjà imputée d'un dépôt bancaire : ces valeurs se déduisent par requête, elles ne
 sont pas conservées. Un total stocké aurait fini par diverger — annulation d'un
@@ -145,6 +148,33 @@ encaissement, suppression d'une facture — sans que rien ne le signale.
 « payé », « solde », réutilisée par la liste des factures, le tableau de bord, la
 balance âgée et les exports. C'est ce qui garantit que le total de la balance âgée
 égale toujours le « reste à percevoir » de la vue d'ensemble.
+
+### 3.1 L'indemnité kilométrique, seule exception au figeage
+
+Un déplacement est une dépense dont `kilometres` n'est pas nul — c'est le seul
+discriminant, ce qui le fait entrer sans rien changer dans la liste des dépenses,
+le bénéfice net et les rapports, qui somment déjà `montant_ht`.
+
+Son montant est **recalculé, non figé**, et c'est délibéré. Il dépend du cumul de
+l'année : c'est ce cumul qui décide de quel côté du seuil le trajet tombe. Le
+figer à la saisie ferait dépendre le montant de l'ordre d'entrée, et antidater un
+trajet oublié laisserait l'année fausse sans que rien ne le signale.
+
+`kilometrageService.recalculerAnnee` relit donc les trajets de l'année triés par
+date puis par identifiant, cumule les distances, scinde au seuil — un trajet peut
+l'enjamber et se voir payé aux deux taux — et réécrit chaque `montant_ht`. Il est
+appelé à la création, la modification et la suppression d'un déplacement, ainsi
+qu'au changement d'un taux. Une modification de date qui traverse le 1er janvier
+réajuste **les deux années**.
+
+L'exception se tient parce qu'un déplacement n'est remis à personne : c'est une
+ligne de journal interne, pas une pièce entre les mains d'un client.
+
+Les taux vivent dans `taux_kilometriques`, **une ligne par année** plutôt qu'un
+réglage unique — les autorités fiscales les révisent annuellement, et un réglage
+unique ferait qu'inscrire le taux de l'an prochain réécrirait une année close au
+premier recalcul. Aucun taux n'est semé par défaut, et la saisie d'un déplacement
+est refusée tant que son année n'en a pas.
 
 ### La numérotation
 
@@ -521,12 +551,13 @@ facture émise —, donc une vérification fréquente est sans risque.
 
 ## 10. Tests et intégration continue
 
-**314 tests**, exécutés par `node --test`. Répartition :
+**331 tests**, exécutés par `node --test`. Répartition :
 
 | Domaine | Tests |
 | --- | --- |
 | Paiement en ligne Stripe | 31 |
 | Sauvegardes et restauration | 24 |
+| Indemnité kilométrique | 17 |
 | Import de tableur | 19 |
 | Rapprochement bancaire | 19 |
 | Cycle de vie des factures | 18 |
@@ -647,6 +678,7 @@ Trois corrections peuvent être demandées explicitement :
 | --- | --- |
 | **Certificat de signature de code** | Non acheté. L'avertissement SmartScreen subsiste. Le problème du jeton matériel doit être réglé avant l'achat : un certificat moderne exige une clé sur matériel certifié, qu'un exécuteur GitHub ne peut pas porter |
 | **Frais Stripe en dépenses** | Pas repris automatiquement |
+| **Kilométrage : méthode unique** | Seule l'indemnité au kilomètre est calculée. La proration des coûts réels, qu'attend l'ARC d'un travailleur autonome non incorporé, n'est pas offerte. Aucune taxe récupérable n'est portée sur une indemnité |
 | **Rapprochement bancaire** | La suggestion se réduit à une égalité de montant au cent près. Ni fenêtre de dates, ni tolérance, ni classement des candidats |
 | **Volume du rapprochement** | Plafond de 5 000 lignes ; le relevé transite en JSON sous une limite de corps de 1 Mo |
 | **Retraits bancaires** | Ignorés : frais et sorties sont hors périmètre |

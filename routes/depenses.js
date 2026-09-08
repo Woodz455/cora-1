@@ -4,7 +4,9 @@
 
 const express = require('express');
 
-const { getExpenses, createExpense, updateExpense, deleteExpense } = require('../expenseService.js');
+const {
+  getExpenses, getVehicules, createExpense, updateExpense, deleteExpense
+} = require('../expenseService.js');
 const { adminOrAccountant } = require('../authMiddleware.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { parseId } = require('../validators.js');
@@ -21,6 +23,12 @@ module.exports = function depenseRoutes(getDb) {
 
   router.get('/', asyncRoute(async (req, res) => {
     res.json(await getExpenses(getDb()));
+  }));
+
+  // Véhicules déjà employés, proposés en complétion : un acteur qui n'a qu'une
+  // voiture ne doit pas la retaper à chaque trajet.
+  router.get('/vehicules', asyncRoute(async (req, res) => {
+    res.json(await getVehicules(getDb()));
   }));
 
   router.post('/', asyncRoute(async (req, res) => {

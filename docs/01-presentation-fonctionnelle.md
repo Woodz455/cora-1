@@ -203,6 +203,26 @@ d'une facture, au cent près.
 Charges et achats : fournisseur, description, date, montant hors taxes, TPS,
 TVQ, catégorie. Sert au calcul des taxes payées, à déduire de la remise.
 
+**Les déplacements s'y inscrivent en kilomètres**, et non en dollars. On saisit
+la date, le motif, le véhicule ou le mode de transport, et la distance ; le
+montant en découle au taux de l'année, dégressif au-delà d'un seuil — les
+premiers kilomètres à un taux, le reste à un taux moindre. Un trajet qui
+enjambe le seuil est payé aux deux taux.
+
+Les taux se règlent dans les paramètres, **une ligne par année**, et rien n'est
+proposé par défaut : les autorités fiscales les révisent chaque année, et un
+chiffre inscrit d'office par le logiciel finirait par être faux sans que
+personne ne s'en aperçoive. Tant qu'une année n'est pas réglée, la saisie est
+refusée plutôt que de produire un montant nul.
+
+> **Deux réserves à connaître.** C'est la méthode de l'*indemnité* : elle
+> convient à un employé indemnisé ou à un actionnaire qui se verse une
+> allocation de sa société. Un travailleur autonome non incorporé doit
+> proratiser ses coûts réels de véhicule selon son usage d'affaires — le montant
+> calculé ici n'est alors qu'une estimation. Et aucune taxe récupérable n'est
+> portée sur une indemnité ; un inscrit à la TPS verra avec son comptable s'il
+> peut en réclamer une.
+
 ### Rapports
 *Administrateur et comptable*
 
@@ -467,6 +487,7 @@ Dire ce qu'un logiciel ne fait pas évite les mauvaises surprises après l'achat
 | **Travail simultané à plusieurs postes** | Une installation, un poste |
 | **Synchronisation dans le nuage** | Absent, par construction — c'est un choix, pas un manque |
 | **Frais Stripe repris en dépenses** | Pas encore automatique |
+| **Proration des coûts réels de véhicule** | Absente — le kilométrage applique un taux par kilomètre, méthode de l'indemnité. Un travailleur autonome non incorporé prorate ses coûts réels, calcul que Clora ne fait pas |
 
 ---
 

@@ -12,6 +12,7 @@ const { parsePaliers: analyserPaliers } = require('../relanceService.js');
 const { chiffrer, dechiffrer, estProtege, coffreDisponible } = require('../secretStorage.js');
 const { envoyerCourrielTest } = require('../emailService.js');
 const stripe = require('../stripeService.js');
+const kilometrage = require('../kilometrageService.js');
 
 /** Taille maximale du logo, encodé en data-URI. */
 const MAX_LOGO_CHARS = 3 * 1024 * 1024;
@@ -60,6 +61,21 @@ function parseTaux(valeur, libelle) {
   const n = Number(valeur);
   if (!Number.isFinite(n) || n < 0 || n > 1) {
     throw httpError(400, `${libelle} doit être une fraction entre 0 et 1 (0.05 pour 5 %).`);
+  }
+  return n;
+}
+
+/**
+ * Valide un taux kilométrique, exprimé en dollars par kilomètre.
+ *
+ * Le plafond de dix dollars n'a rien de fiscal : il arrête une virgule mal
+ * placée — 70 au lieu de 0,70 — avant qu'elle ne gonfle une année entière d'un
+ * facteur cent.
+ */
+function parseTauxKm(valeur, libelle) {
+  const n = Number(valeur);
+  if (!Number.isFinite(n) || n <= 0 || n > 10) {
+    throw httpError(400, `${libelle} doit être un montant en dollars par kilomètre (0.70 pour 70 ¢).`);
   }
   return n;
 }
@@ -337,6 +353,59 @@ module.exports = function settingsRoutes(getDb) {
         : `Connexion établie avec Stripe${compte.nom ? ` (${compte.nom})` : ''}.`,
       ...compte
     });
+  }));
+
+  /**
+   * Taux kilométriques, une ligne par année.
+   *
+   * La lecture est ouverte à tous les rôles : l'écran des dépenses en a besoin
+   * pour savoir si l'année est réglée, et le comptable y saisit les
+   * déplacements sans avoir accès aux paramètres.
+   */
+  router.get('/taux-kilometriques', anyRole(), asyncRoute(async (req, res) => {
+    res.json(await kilometrage.listerTaux(getDb()));
+  }));
+
+  /**
+   * Enregistre les taux d'une année, puis réajuste ses montants.
+   *
+   * Réservé à l'administrateur, et consigné : changer un taux réécrit les
+   * indemnités de toute l'année, exactement comme un changement de taux de taxe
+   * fausserait les factures suivantes.
+   */
+  router.put('/taux-kilometriques', adminOnly(), asyncRoute(async (req, res) => {
+    const db = getDb();
+    const body = req.body || {};
+
+    const annee = Number(body.annee);
+    if (!Number.isInteger(annee) || annee < 2000 || annee > 2100) {
+      throw httpError(400, 'L\'année doit être un nombre entre 2000 et 2100.');
+    }
+
+    const taux1 = parseTauxKm(body.taux_1, 'Le taux du premier palier');
+    const taux2 = parseTauxKm(body.taux_2, 'Le taux au-delà du seuil');
+
+    const seuil = Number(body.seuil_km);
+    if (!Number.isFinite(seuil) || seuil <= 0 || seuil > 1000000) {
+      throw httpError(400, 'Le seuil doit être un nombre de kilomètres supérieur à zéro.');
+    }
+
+    const avant = await kilometrage.tauxDeLAnnee(db, annee);
+    const apres = await kilometrage.definirTaux(db, {
+      annee, taux_1: taux1, taux_2: taux2, seuil_km: seuil
+    });
+
+    const changements = ecart(avant || {}, apres, ['taux_1', 'taux_2', 'seuil_km']);
+    if (changements) {
+      await journaliser(db, req, {
+        action: ACTIONS.PARAMETRES_MODIFICATION,
+        entite: 'taux_kilometriques',
+        entite_id: annee,
+        details: { annee, changements }
+      });
+    }
+
+    res.json({ message: `Taux kilométriques de ${annee} enregistrés.`, taux: apres });
   }));
 
   return router;
