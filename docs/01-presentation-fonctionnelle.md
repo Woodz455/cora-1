@@ -1,6 +1,6 @@
 # Clora : ce que fait l'application
 
-*Document de présentation fonctionnelle. Version 1.5.1, septembre 2026.*
+*Document de présentation fonctionnelle. Version 1.6.0, septembre 2026.*
 
 Ce document décrit ce que Clora fait, du point de vue de la personne qui s'en
 sert. Il ne suppose aucune connaissance technique. Pour l'architecture, la
