@@ -226,21 +226,32 @@ refusée plutôt que de produire un montant nul.
 ### Rapports
 *Administrateur et comptable*
 
-Quatre productions :
+Cinq productions :
 
-1. **Statistiques financières** sur la période choisie : revenu, encaissé,
-   crédité, solde à percevoir.
-2. **Balance âgée** : ce qui vous est dû, ventilé par ancienneté du retard : non
+1. **Compte rendu de la période**, en PDF : un sommaire de gestion d'un mois,
+   d'un trimestre ou d'une année, à remettre à son comptable ou à son banquier.
+   Facturé, encaissé, dépenses, bénéfice, évolution mensuelle, ce qui est dû,
+   principaux clients, dépenses par catégorie et taxes, précédés de points
+   d'attention : retards de paiement, dépenses supérieures aux encaissements,
+   dépendance à un seul client, délai d'encaissement. Chaque chiffre est pris
+   sur sa propre date : les factures à l'émission, l'argent au paiement, les
+   dépenses à la leur. C'est un sommaire de gestion, pas des états financiers :
+   Clora ne produit ni bilan ni état des résultats.
+2. **Statistiques financières** : revenu, encaissé, crédité, solde à percevoir.
+3. **Balance âgée** : ce qui vous est dû, ventilé par ancienneté du retard : non
    échu, 1 à 30 jours, 31 à 60, 61 à 90, 91 et plus. Par client, puis en total.
    Exportable en CSV.
-3. **Préparation de la remise de taxes**, par trimestre : taxes facturées moins
+4. **Préparation de la remise de taxes**, par trimestre : taxes facturées moins
    taxes payées sur les dépenses.
-4. **Deux registres pour le comptable**, en CSV :
+5. **Deux registres pour le comptable**, en CSV :
    - *Registre des ventes* : une ligne par facture, avec chaque taxe nommée et
      chiffrée, le total, le crédité, l'encaissé, le solde, la devise et
      l'équivalent en dollars canadiens.
    - *Registre des encaissements* : une ligne par paiement reçu, avec son origine
      (saisie manuelle ou rapprochement bancaire).
+
+Une seule période, choisie en tête de l'écran, gouverne le compte rendu, les
+registres et le rapport de taxes.
 
 Les fichiers CSV sont produits pour être ouverts sans manipulation dans un Excel
 francophone : marque d'encodage UTF-8, séparateur point-virgule, virgule

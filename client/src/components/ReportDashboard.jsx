@@ -1,7 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import InfoTooltip from './InfoTooltip';
 import { api, formatMontant } from '../api';
+import { libellePeriode } from '../periodes';
+
+// Le document n'est chargé qu'à la demande : la plupart des visites de l'écran
+// Rapports n'en produisent pas.
+const RapportSommaire = lazy(() => import('./RapportSommaire'));
 
 const COULEURS_STATUT = {
   'Payée': '#10b981',
@@ -39,6 +44,7 @@ function ReportDashboard() {
   const [annee, setAnnee] = useState(String(anneeCourante));
   const [mois, setMois] = useState('');
   const [trimestre, setTrimestre] = useState('');
+  const [sommaireOuvert, setSommaireOuvert] = useState(false);
 
   useEffect(() => {
     let annule = false;
@@ -85,7 +91,7 @@ function ReportDashboard() {
   // sur les achats sont récupérables et ne constituent pas une charge.
   const beneficeNet = stats.total_encaisse - stats.total_depenses_ht;
 
-  /** Les registres suivent la période choisie pour le rapport de taxes. */
+  /** Les registres suivent la période choisie en tête de page. */
   const lienExport = (registre) => {
     const params = new URLSearchParams();
     if (annee) params.set('annee', annee);
@@ -93,6 +99,8 @@ function ReportDashboard() {
     else if (trimestre) params.set('trimestre', trimestre);
     return `/api/rapports/export/${registre}?${params.toString()}`;
   };
+
+  const periode = { annee, mois, trimestre };
 
   return (
     <div>
@@ -102,6 +110,61 @@ function ReportDashboard() {
           🇨🇦 Tous les montants sont consolidés en dollars canadiens
         </span>
       </div>
+
+      {/* Une seule période pour toute la page : le compte rendu, les registres
+          et le rapport de taxes portent sur les mêmes bornes, et se recoupent. */}
+      <div className="glass-panel" style={{ padding: '20px', marginTop: '25px' }}>
+        <div className="toolbar">
+          <div>
+            <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
+              📄 Compte rendu de la période
+              <InfoTooltip text="Un sommaire de gestion en PDF : facturé, encaissé, dépenses, bénéfice, créances, clients et taxes de la période. À remettre à votre comptable ou à votre banquier." />
+            </h3>
+            <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+              Choisissez un mois, un trimestre ou l'année entière. La période retenue s'applique
+              aussi aux registres et au rapport de taxes ci-dessous.
+            </p>
+          </div>
+          <div className="toolbar-group">
+            <select className="search-input" style={{ minWidth: '120px' }} value={annee} onChange={(e) => setAnnee(e.target.value)} aria-label="Année">
+              {anneesDisponibles.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+            {/* Trimestre et mois s'excluent : choisir l'un remet l'autre à
+                zéro, plutôt que de laisser l'écran décrire une période
+                contradictoire que le serveur refuserait. */}
+            <select
+              className="search-input" style={{ minWidth: '150px' }} value={trimestre}
+              onChange={(e) => { setTrimestre(e.target.value); if (e.target.value) setMois(''); }}
+              aria-label="Trimestre"
+            >
+              <option value="">Aucun trimestre</option>
+              <option value="1">T1 : janv. à mars</option>
+              <option value="2">T2 : avr. à juin</option>
+              <option value="3">T3 : juill. à sept.</option>
+              <option value="4">T4 : oct. à déc.</option>
+            </select>
+            <select
+              className="search-input" style={{ minWidth: '160px' }} value={mois}
+              onChange={(e) => { setMois(e.target.value); if (e.target.value) setTrimestre(''); }}
+              aria-label="Mois"
+            >
+              <option value="">Toute l'année</option>
+              {MOIS.map((nom, i) => (
+                <option key={nom} value={String(i + 1).padStart(2, '0')}>{nom}</option>
+              ))}
+            </select>
+            <button type="button" className="btn-primary" onClick={() => setSommaireOuvert(true)}>
+              Produire le compte rendu
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {sommaireOuvert && (
+        <Suspense fallback={null}>
+          <RapportSommaire periode={periode} onClose={() => setSommaireOuvert(false)} />
+        </Suspense>
+      )}
 
       {balance && balance.clients.length > 0 && (
         <div className="glass-panel" style={{ padding: '25px', marginTop: '30px' }}>
@@ -174,7 +237,7 @@ function ReportDashboard() {
             <h3 style={{ margin: 0, color: 'var(--text-main)' }}>📤 Registres pour votre comptable</h3>
             <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
               Fichiers CSV directement lisibles dans Excel, à transmettre au logiciel comptable
-              (Acomba, Sage, QuickBooks) pour la fin d'année.
+              (Acomba, Sage, QuickBooks) pour la fin d'année. Période : {libellePeriode(periode)}.
             </p>
           </div>
           <div className="toolbar-group">
@@ -288,35 +351,8 @@ function ReportDashboard() {
             📊 Rapport de taxes
             <InfoTooltip text="CTI / RTI : crédit ou remboursement de la taxe sur les intrants. Vous récupérez les taxes payées sur vos achats." />
           </h3>
-          <div className="toolbar-group">
-            <select className="search-input" style={{ minWidth: '120px' }} value={annee} onChange={(e) => setAnnee(e.target.value)} aria-label="Année">
-              {anneesDisponibles.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
-            {/* Trimestre et mois s'excluent : choisir l'un remet l'autre à
-                zéro, plutôt que de laisser l'écran décrire une période
-                contradictoire que le serveur refuserait. */}
-            <select
-              className="search-input" style={{ minWidth: '150px' }} value={trimestre}
-              onChange={(e) => { setTrimestre(e.target.value); if (e.target.value) setMois(''); }}
-              aria-label="Trimestre"
-            >
-              <option value="">Aucun trimestre</option>
-              <option value="1">T1 : janv. à mars</option>
-              <option value="2">T2 : avr. à juin</option>
-              <option value="3">T3 : juill. à sept.</option>
-              <option value="4">T4 : oct. à déc.</option>
-            </select>
-            <select
-              className="search-input" style={{ minWidth: '160px' }} value={mois}
-              onChange={(e) => { setMois(e.target.value); if (e.target.value) setTrimestre(''); }}
-              aria-label="Mois"
-            >
-              <option value="">Toute l'année</option>
-              {MOIS.map((nom, i) => (
-                <option key={nom} value={String(i + 1).padStart(2, '0')}>{nom}</option>
-              ))}
-            </select>
-          </div>
+          {/* La période se choisit en tête de page, pour toute la page. */}
+          <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{libellePeriode(periode)}</span>
         </div>
 
         {taxStats ? (

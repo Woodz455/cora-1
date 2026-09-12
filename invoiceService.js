@@ -1002,6 +1002,280 @@ async function getTaxReport(db, annee, mois, trimestre) {
   };
 }
 
+/**
+ * Bornes calendaires d'une période, pour l'en-tête d'un document.
+ *
+ * @param {{annee: string, mois?: string, trimestre?: string}} periode
+ * @returns {{debut: string, fin: string, mois: string[]}} premier et dernier
+ *   jour au format AAAA-MM-JJ, et la liste des mois couverts au format AAAA-MM
+ */
+function bornesPeriode({ annee, mois, trimestre }) {
+  const a = Number(annee);
+  let premier = 1;
+  let dernier = 12;
+  if (mois) {
+    premier = Number(mois);
+    dernier = premier;
+  } else if (trimestre) {
+    premier = (Number(trimestre) - 1) * 3 + 1;
+    dernier = premier + 2;
+  }
+
+  const mm = (m) => String(m).padStart(2, '0');
+  // Le jour zéro du mois suivant est le dernier jour du mois ; en UTC, pour
+  // qu'un fuseau ne fasse pas glisser la borne d'un jour.
+  const finDuMois = new Date(Date.UTC(a, dernier, 0)).getUTCDate();
+
+  const liste = [];
+  for (let m = premier; m <= dernier; m++) liste.push(`${a}-${mm(m)}`);
+
+  return { debut: `${a}-${mm(premier)}-01`, fin: `${a}-${mm(dernier)}-${mm(finDuMois)}`, mois: liste };
+}
+
+/** Nombre de lignes de la balance âgée reprises dans le compte rendu. */
+const CLIENTS_BALANCE_SOMMAIRE = 8;
+
+/**
+ * Compte rendu de gestion d'une période : un mois, un trimestre ou une année.
+ *
+ * Réunit en un seul objet ce que les écrans montrent séparément, borné à la
+ * période, pour en faire un document que l'on remet à son comptable ou à son
+ * banquier. Chaque famille de chiffres est prise sur sa propre date : les
+ * factures sur leur émission, les encaissements sur la date du paiement, les
+ * dépenses sur la leur. Un sommaire qui daterait l'encaissé de l'émission
+ * ferait croire à de l'argent rentré qui ne l'est pas encore.
+ *
+ * Les créances font exception : la balance âgée est un état au jour du
+ * rapport, pas une période. Ce qui est dû ne se découpe pas par mois.
+ *
+ * Les montants sont en dollars canadiens, au taux figé sur chaque document.
+ *
+ * @param {import('sqlite').Database} db
+ * @param {{annee: string, mois?: string, trimestre?: string}} periode
+ * @param {string} [aujourdhui] date de référence AAAA-MM-JJ, pour les tests
+ */
+async function getSommaire(db, periode, aujourdhui = new Date().toISOString().split('T')[0]) {
+  if (!periode.annee) {
+    throw Object.assign(
+      new Error('Le compte rendu porte sur une année, un trimestre ou un mois : indiquez l\'année.'),
+      { status: 400 }
+    );
+  }
+
+  const bornes = bornesPeriode(periode);
+  const NOTE_MONTANT = 'ROUND(COALESCE(n.montant_total, 0) * COALESCE(n.taux_change, 1.0), 2)';
+
+  /** Clause WHERE complète : condition de base et bornes de la période. */
+  const filtre = (colonne, base) => {
+    const { conditions, params } = clausesPeriode(colonne, periode);
+    return { where: [base, ...conditions].join(' AND '), params };
+  };
+  const factures = filtre('f.date_emission', `f.statut != '${STATUTS.ANNULEE}'`);
+  const notes = filtre('n.date_emission', '1 = 1');
+  const paiements = filtre('p.date_paiement', `f.statut != '${STATUTS.ANNULEE}' AND p.${PAIEMENT_ACTIF}`);
+  const depenses = filtre('date_depense', '1 = 1');
+
+  const [facturation, credits, encaissements, charges, parCategorie, principaux] = await Promise.all([
+    db.get(`
+      SELECT COUNT(*) AS nb_factures,
+             COUNT(DISTINCT f.client_id) AS nb_clients,
+             COALESCE(SUM(ROUND(${TOTAL} * ${TAUX}, 2)), 0) AS total_facture
+      FROM factures f
+      WHERE ${factures.where}
+    `, factures.params),
+
+    db.get(`
+      SELECT COUNT(*) AS nb_notes, COALESCE(SUM(${NOTE_MONTANT}), 0) AS total_credite
+      FROM notes_credit n
+      WHERE ${notes.where}
+    `, notes.params),
+
+    // Le délai d'encaissement se mesure de l'émission au paiement, en jours
+    // entiers : c'est le chiffre qui dit si les clients paient dans les temps.
+    db.get(`
+      SELECT COUNT(*) AS nb_paiements,
+             COALESCE(SUM(ROUND(p.montant * ${TAUX}, 2)), 0) AS total_encaisse,
+             AVG(julianday(p.date_paiement) - julianday(f.date_emission)) AS delai_moyen
+      FROM paiements p
+      JOIN factures f ON f.id = p.facture_id
+      WHERE ${paiements.where}
+    `, paiements.params),
+
+    db.get(`
+      SELECT COUNT(*) AS nb_depenses,
+             COALESCE(SUM(montant_ht), 0) AS total_ht,
+             COALESCE(SUM(tps + tvq), 0) AS taxes_recuperables,
+             COALESCE(SUM(montant_ht + tps + tvq), 0) AS total_ttc,
+             COALESCE(SUM(kilometres), 0) AS kilometres,
+             COALESCE(SUM(CASE WHEN kilometres IS NOT NULL THEN montant_ht ELSE 0 END), 0)
+               AS indemnite_kilometrique
+      FROM depenses
+      WHERE ${depenses.where}
+    `, depenses.params),
+
+    db.all(`
+      SELECT COALESCE(NULLIF(TRIM(categorie), ''), 'Sans catégorie') AS categorie,
+             COUNT(*) AS nombre,
+             ROUND(SUM(montant_ht), 2) AS montant_ht
+      FROM depenses
+      WHERE ${depenses.where}
+      GROUP BY categorie
+      HAVING montant_ht > 0
+      ORDER BY montant_ht DESC
+    `, depenses.params),
+
+    // Les notes de crédit émises sur la période sont retranchées au client
+    // qu'elles concernent : un client largement crédité ne doit pas figurer en
+    // tête du classement sur la foi de factures reprises.
+    db.all(`
+      SELECT c.id AS client_id, c.nom_entreprise AS client,
+             ROUND(SUM(x.montant), 2) AS facture, SUM(x.nb) AS nb_factures
+      FROM (
+        SELECT f.client_id, ROUND(${TOTAL} * ${TAUX}, 2) AS montant, 1 AS nb
+        FROM factures f
+        WHERE ${factures.where}
+        UNION ALL
+        SELECT f.client_id, -${NOTE_MONTANT} AS montant, 0 AS nb
+        FROM notes_credit n
+        JOIN factures f ON f.id = n.facture_id
+        WHERE ${notes.where}
+      ) x
+      JOIN clients c ON c.id = x.client_id
+      GROUP BY c.id
+      HAVING facture > 0
+      ORDER BY facture DESC
+      LIMIT 5
+    `, [...factures.params, ...notes.params])
+  ]);
+
+  // Évolution mensuelle : chaque série est agrégée sur sa propre date, puis
+  // les trois sont alignées sur les mois de la période, mois vides compris.
+  // Un tableau qui sauterait un mois sans activité se lirait de travers.
+  const parMoisDe = async (sql, params) => {
+    const lignes = await db.all(sql, params);
+    return new Map(lignes.map((l) => [l.mois, l.montant]));
+  };
+  const [factureParMois, creditParMois, encaisseParMois, depensesParMois] = await Promise.all([
+    parMoisDe(`
+      SELECT substr(f.date_emission, 1, 7) AS mois,
+             COALESCE(SUM(ROUND(${TOTAL} * ${TAUX}, 2)), 0) AS montant
+      FROM factures f WHERE ${factures.where} GROUP BY mois
+    `, factures.params),
+    parMoisDe(`
+      SELECT substr(n.date_emission, 1, 7) AS mois, COALESCE(SUM(${NOTE_MONTANT}), 0) AS montant
+      FROM notes_credit n WHERE ${notes.where} GROUP BY mois
+    `, notes.params),
+    parMoisDe(`
+      SELECT substr(p.date_paiement, 1, 7) AS mois,
+             COALESCE(SUM(ROUND(p.montant * ${TAUX}, 2)), 0) AS montant
+      FROM paiements p JOIN factures f ON f.id = p.facture_id
+      WHERE ${paiements.where} GROUP BY mois
+    `, paiements.params),
+    parMoisDe(`
+      SELECT substr(date_depense, 1, 7) AS mois, COALESCE(SUM(montant_ht), 0) AS montant
+      FROM depenses WHERE ${depenses.where} GROUP BY mois
+    `, depenses.params)
+  ]);
+  const parMois = bornes.mois.map((mois) => ({
+    mois,
+    facture: roundCents((factureParMois.get(mois) || 0) - (creditParMois.get(mois) || 0)),
+    encaisse: roundCents(encaisseParMois.get(mois) || 0),
+    depenses_ht: roundCents(depensesParMois.get(mois) || 0)
+  }));
+
+  const [taxes, balance, retard, settings] = await Promise.all([
+    getTaxReport(db, periode.annee, periode.mois, periode.trimestre),
+    getBalanceAgee(db, aujourdhui),
+    db.get(`
+      ${CTE_TOTAUX}
+      SELECT COUNT(*) AS nb_factures
+      FROM factures f
+      ${JOINTURES_FINANCIERES}
+      WHERE f.statut != '${STATUTS.ANNULEE}' AND ${SOLDE} > 0 AND f.date_echeance < ?
+    `, [aujourdhui]),
+    db.get(`
+      SELECT entreprise_nom, entreprise_adresse, entreprise_email, entreprise_logo,
+             taxe_1_nom, taxe_1_numero, taxe_2_nom, taxe_2_numero
+      FROM settings LIMIT 1
+    `)
+  ]);
+
+  const factureNet = roundCents(facturation.total_facture - credits.total_credite);
+  const totalEncaisse = roundCents(encaissements.total_encaisse);
+  const totalHt = roundCents(charges.total_ht);
+  // Même définition que l'écran Rapports : l'encaissé moins les dépenses hors
+  // taxes, les taxes payées sur les achats étant récupérables. Deux
+  // « bénéfices » calculés différemment dans la même application sèmeraient
+  // le doute sur les deux.
+  const beneficeNet = roundCents(totalEncaisse - totalHt);
+  const premier = principaux[0];
+
+  return {
+    periode: {
+      annee: String(periode.annee),
+      mois: periode.mois || null,
+      trimestre: periode.trimestre || null,
+      debut: bornes.debut,
+      fin: bornes.fin
+    },
+    date_reference: aujourdhui,
+    entreprise: settings || {},
+    facturation: {
+      nb_factures: facturation.nb_factures,
+      nb_clients: facturation.nb_clients,
+      total_facture: roundCents(facturation.total_facture),
+      nb_notes: credits.nb_notes,
+      total_credite: roundCents(credits.total_credite),
+      facture_net: factureNet
+    },
+    encaissements: {
+      nb_paiements: encaissements.nb_paiements,
+      total_encaisse: totalEncaisse,
+      delai_moyen_jours: encaissements.delai_moyen === null
+        ? null : Math.round(encaissements.delai_moyen)
+    },
+    depenses: {
+      nb_depenses: charges.nb_depenses,
+      total_ht: totalHt,
+      taxes_recuperables: roundCents(charges.taxes_recuperables),
+      total_ttc: roundCents(charges.total_ttc),
+      kilometres: charges.kilometres,
+      indemnite_kilometrique: roundCents(charges.indemnite_kilometrique),
+      par_categorie: parCategorie
+    },
+    resultat: {
+      benefice_net: beneficeNet,
+      // En part de l'encaissé, arrondie au dixième ; sans rentrée, il n'y a
+      // pas de marge à calculer et le document le dit plutôt que d'écrire 0 %.
+      marge: totalEncaisse > 0 ? Math.round((beneficeNet / totalEncaisse) * 1000) / 10 : null
+    },
+    par_mois: parMois,
+    clients: {
+      principaux,
+      // Part du premier client dans le facturé net : le chiffre qui dit si
+      // l'entreprise tient à un seul donneur d'ouvrage.
+      part_premier_client: premier && factureNet > 0
+        ? Math.round((premier.facture / factureNet) * 1000) / 10 : null
+    },
+    creances: {
+      nb_factures_en_retard: retard.nb_factures,
+      en_retard: roundCents(balance.totaux.total - balance.totaux.non_echu),
+      balance: {
+        tranches: balance.tranches,
+        totaux: balance.totaux,
+        clients: balance.clients.slice(0, CLIENTS_BALANCE_SOMMAIRE),
+        nb_clients: balance.clients.length
+      }
+    },
+    taxes: {
+      taxes_facturees: taxes.taxes_facturees,
+      taxes_payees: taxes.taxes_payees,
+      taxes_nettes: taxes.taxes_nettes,
+      parRegime: taxes.parRegime
+    }
+  };
+}
+
 module.exports = {
   getFacturesAvecSoldes,
   getSoldeFacture,
@@ -1018,6 +1292,8 @@ module.exports = {
   getRegistreVentes,
   getRegistreEncaissements,
   getBalanceAgee,
+  getSommaire,
+  bornesPeriode,
   TRANCHES_AGE,
   clausesPeriode,
   moisDuTrimestre,

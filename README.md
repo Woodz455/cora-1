@@ -548,6 +548,41 @@ BOM UTF-8 (sans quoi Excel affiche « BÃ©langer »), séparateur point-virgule
 décimale sur les montants. L'échappement suit la RFC 4180 : un client nommé
 « Ateliers Bélanger; Cie » ressort intact.
 
+## Compte rendu de la période
+
+Écran Rapports : un sommaire de gestion d'un mois, d'un trimestre ou d'une
+année, à imprimer ou à enregistrer en PDF pour le remettre à son comptable ou à
+son banquier. Route `GET /api/rapports/sommaire?annee=&mois=` (ou `trimestre=`),
+réservée à l'administration et à la comptabilité ; le calcul est `getSommaire`
+dans `invoiceService.js`, le document `client/src/components/RapportSommaire.jsx`.
+
+Il réunit le facturé (net des notes de crédit), l'encaissé, les dépenses hors
+taxes, le bénéfice net et la marge, l'évolution mensuelle, ce qui est dû au
+jour du rapport, les principaux clients et la part du premier, les dépenses par
+catégorie, le kilométrage, et les taxes facturées, payées et nettes. En tête,
+des points d'attention déduits des chiffres : retards de paiement, dépenses
+supérieures aux encaissements, dépendance à un seul client, délai moyen
+d'encaissement. Des constats, pas des conseils.
+
+**Chaque famille de chiffres est bornée sur sa propre date** : les factures sur
+leur émission, les encaissements sur la date du paiement, les dépenses sur la
+leur, les notes de crédit sur la leur (la convention du rapport de taxes). Un
+sommaire qui daterait l'encaissé de l'émission ferait croire à de l'argent
+rentré qui ne l'est pas encore. Les créances font exception : la balance âgée
+est un état au jour du rapport, pas une période.
+
+Le bénéfice net garde la définition de l'écran Rapports, l'encaissé moins les
+dépenses hors taxes : deux « bénéfices » calculés différemment dans la même
+application sèmeraient le doute sur les deux. Le PDF est produit par
+`html2pdf.js` comme la facture, en format lettre ; c'est une image, non un
+texte sélectionnable, et le bouton Imprimer, qui passe par le navigateur,
+donne un PDF texte. Le document se présente comme un sommaire de gestion et
+non comme des états financiers : Clora n'a ni grand livre ni plan comptable, et
+ne peut produire ni bilan ni état des résultats.
+
+Une seule période gouverne l'écran Rapports : le compte rendu, les registres et
+le rapport de taxes portent sur les mêmes bornes et se recoupent.
+
 ## Journal d'audit
 
 Les actions sensibles sont consignées dans `logs_audit` : annulation d'un

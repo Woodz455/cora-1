@@ -12,7 +12,7 @@ version 1.6.0.*
 | **Version publiée** | 1.6.0, le 8 septembre 2026 |
 | **Publications** | 7 versions livrées depuis le 24 juillet 2026 |
 | **Développement** | 48 commits, 15 demandes de fusion, toutes fusionnées |
-| **Tests** | 331, tous au vert, exécutés à chaque fusion |
+| **Tests** | 347, tous au vert, exécutés à chaque fusion |
 | **Durée** | 7 semaines, du 24 juillet au 8 septembre 2026 |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca |
 | **Ventes** | Aucune : la phase de tests utilisateurs commence |
@@ -112,6 +112,17 @@ a corrigé ce qui, autrement, aurait fini par produire de faux chiffres.
 - **Retrait des tirets cadratins** de tous les textes visibles : interface,
   courriels de relance, facture imprimée, documents et blocs du site.
 
+### Phase 8 : premiers retours des testeurs
+*12 septembre · sur la branche de travail, à publier*
+
+- **Compte rendu de la période** en PDF, demandé par les testeurs pour lire la
+  santé de leur entreprise : facturé, encaissé, dépenses, bénéfice, créances,
+  clients, taxes et points d'attention, sur un mois, un trimestre ou une année.
+  Chaque famille de chiffres est bornée sur sa propre date, et le document se
+  présente comme un sommaire de gestion, non comme des états financiers.
+- **Une seule période pour tout l'écran Rapports** : le compte rendu, les
+  registres et le rapport de taxes portent sur les mêmes bornes.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
@@ -185,6 +196,7 @@ téléchargements. Seul un certificat EV, plus cher, tend à l'écarter d'emblé
 | **Rapprochement bancaire : fenêtre de dates** | Environ une journée pour les trois | ± 3 jours entre l'échéance et le dépôt, au lieu d'aucune considération temporelle |
 | **Rapprochement : tolérance de montant** | | Pour absorber des frais retenus ou une conversion, là où seul le montant exact est reconnu |
 | **Rapprochement : classement des candidats** | | Plusieurs propositions ordonnées, au lieu d'une correspondance binaire |
+| **Profil du dossier à la création** | Petit | Demandé par les testeurs : que les fonctions s'accordent au profil (travailleur autonome, startup, PME). Recommandation : des valeurs de départ et un écran d'accueil par profil, sans masquer d'écran, un écran caché se lisant comme une absence. En attente de décision |
 
 > **Réserve sur une quatrième idée** souvent proposée : la détection des
 > inversions de chiffres n'a presque aucune valeur ici. Elle attrape les
@@ -302,4 +314,4 @@ rapprochement bancaire) attend ce retour, et devrait être priorisé par lui.
 ---
 
 *Document maintenu par Safehill Technologies. Dernière mise à jour :
-5 septembre 2026.*
+12 septembre 2026.*
