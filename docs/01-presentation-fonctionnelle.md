@@ -115,6 +115,16 @@ liste complète.
 
 Graphiques d'évolution mensuelle du revenu et répartition par client.
 
+**Pour commencer.** Tant qu'il reste quelque chose à régler, l'administrateur
+voit en tête du tableau une liste de premiers pas, dans l'ordre que le profil du
+dossier suggère : coordonnées de l'entreprise, premier client, première
+facture, puis ce qui tient au profil (le taux kilométrique pour un travailleur
+autonome, les comptes de l'équipe et le relevé bancaire pour une PME, les
+abonnements et le paiement en ligne pour une startup), et pour tous un dossier
+de sauvegarde synchronisé. Chaque étape mène à l'écran où elle s'accomplit et
+se coche d'elle-même d'après le contenu du dossier ; la liste disparaît quand
+tout est fait, ou d'un clic.
+
 ### Factures
 *Accessible à tous*
 
@@ -467,6 +477,14 @@ montrer les factures d'un client à un autre.
 
 Les comptes d'utilisateurs, eux, sont communs : on ne se reconnecte pas en
 changeant de dossier.
+
+**Le profil du dossier.** À la création, on dit ce que l'entreprise est :
+travailleur autonome, startup en démarrage ou PME établie. Ce choix règle des
+valeurs de départ (les conditions de paiement proposées aux nouveaux clients :
+payable sur réception pour un autonome, trente jours pour les autres) et l'ordre
+des premiers pas sur le tableau de bord. **Il ne retire aucune fonction** : un
+autonome qui embauche trouve les comptes d'utilisateurs là où ils sont, sans
+rien débloquer. Le profil se change à tout moment dans Paramètres.
 
 ---
 

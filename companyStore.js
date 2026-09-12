@@ -33,6 +33,7 @@ const DOSSIERS_DIRNAME = 'entreprises';
 
 /** Rôles reconnus, repris de `authMiddleware` pour éviter deux vérités. */
 const { ROLES } = require('./authMiddleware.js');
+const { profilDe } = require('./profils.js');
 
 /** Connexions ouvertes, indexées par chemin de fichier. */
 const connexions = new Map();
@@ -211,8 +212,12 @@ function versNomDeDossier(nom) {
  *
  * Le suffixe numérique évite qu'une seconde « Plomberie Tremblay » écrase la
  * première — deux clients peuvent porter le même nom.
+ *
+ * Le profil, s'il est donné, pose les valeurs de départ qui vont avec : les
+ * conditions de paiement proposées aux nouveaux clients. Rien d'autre n'est
+ * décidé à sa place.
  */
-async function creerEntreprise(comptesDb, { nom, userId }) {
+async function creerEntreprise(comptesDb, { nom, userId, profil = null }) {
   const racine = path.join(getDataDir(), DOSSIERS_DIRNAME);
   fs.mkdirSync(racine, { recursive: true });
 
@@ -227,7 +232,22 @@ async function creerEntreprise(comptesDb, { nom, userId }) {
 
   const chemin = path.join(dossier, DB_FILENAME);
   const db = await initDb(chemin);
-  await db.run('INSERT INTO settings (entreprise_nom) VALUES (?)', [nom]);
+  const reglages = profilDe(profil);
+  const valeurs = [nom, reglages ? reglages.valeur : null, reglages ? reglages.conditions_defaut : null];
+
+  // L'initialisation de la base sème déjà une ligne de paramètres. Y ajouter
+  // la nôtre laissait deux lignes, et toute lecture (`LIMIT 1`) tombait sur la
+  // première, au nom vide : le dossier s'appelait « Votre entreprise » sur ses
+  // factures jusqu'à ce qu'on retape son nom dans Paramètres.
+  const existante = await db.get('SELECT id FROM settings ORDER BY id LIMIT 1');
+  if (existante) {
+    await db.run(
+      'UPDATE settings SET entreprise_nom = ?, profil = ?, conditions_defaut = ? WHERE id = ?',
+      [...valeurs, existante.id]
+    );
+  } else {
+    await db.run('INSERT INTO settings (entreprise_nom, profil, conditions_defaut) VALUES (?, ?, ?)', valeurs);
+  }
   connexions.set(chemin, db);
 
   const resultat = await comptesDb.run(

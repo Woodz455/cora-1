@@ -38,6 +38,7 @@ const relanceRoutes = require('./routes/relances.js');
 const sauvegardeRoutes = require('./routes/sauvegardes.js');
 const auditRoutes = require('./routes/audit.js');
 const entrepriseRoutes = require('./routes/entreprises.js');
+const demarrageRoutes = require('./routes/demarrage.js');
 const licenceRoutes = require('./routes/licence.js');
 const importRoutes = require('./routes/import.js');
 const paiementEnLigneRoutes = require('./routes/paiementsEnLigne.js');
@@ -195,6 +196,7 @@ function createApp(db, options = {}) {
   app.use('/api/entreprises', entrepriseRoutes(getComptesDb));
 
   app.use('/api/users', userRoutes(getDb, getComptesDb));
+  app.use('/api/demarrage', demarrageRoutes(getDb, getComptesDb));
   app.use('/api/clients', clientRoutes(getDb));
   app.use('/api/factures', factureRoutes(getDb));
   app.use('/api/devis', devisRoutes(getDb));

@@ -122,6 +122,16 @@ a corrigé ce qui, autrement, aurait fini par produire de faux chiffres.
   présente comme un sommaire de gestion, non comme des états financiers.
 - **Une seule période pour tout l'écran Rapports** : le compte rendu, les
   registres et le rapport de taxes portent sur les mêmes bornes.
+- **Profil du dossier** choisi à la création (travailleur autonome, startup,
+  PME), demandé par les testeurs pour que l'application s'accorde à leur
+  situation. Le profil règle des valeurs de départ (les conditions de paiement
+  proposées aux nouveaux clients) et l'ordre des **premiers pas**, une liste sur
+  le tableau de bord qui se coche d'elle-même d'après le contenu du dossier.
+  Aucun écran n'est masqué : un écran caché se lit comme une absence, et le
+  profil se change à tout moment dans Paramètres.
+- **Défaut corrigé au passage** : un dossier neuf recevait deux lignes de
+  paramètres, et son nom se perdait dans la seconde. Ses factures disaient
+  « Votre entreprise » jusqu'à ce qu'on retape le nom dans Paramètres.
 
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
@@ -196,7 +206,6 @@ téléchargements. Seul un certificat EV, plus cher, tend à l'écarter d'emblé
 | **Rapprochement bancaire : fenêtre de dates** | Environ une journée pour les trois | ± 3 jours entre l'échéance et le dépôt, au lieu d'aucune considération temporelle |
 | **Rapprochement : tolérance de montant** | | Pour absorber des frais retenus ou une conversion, là où seul le montant exact est reconnu |
 | **Rapprochement : classement des candidats** | | Plusieurs propositions ordonnées, au lieu d'une correspondance binaire |
-| **Profil du dossier à la création** | Petit | Demandé par les testeurs : que les fonctions s'accordent au profil (travailleur autonome, startup, PME). Recommandation : des valeurs de départ et un écran d'accueil par profil, sans masquer d'écran, un écran caché se lisant comme une absence. En attente de décision |
 
 > **Réserve sur une quatrième idée** souvent proposée : la détection des
 > inversions de chiffres n'a presque aucune valeur ici. Elle attrape les

@@ -193,6 +193,43 @@ honnêtes.
 Le serveur applique ces règles sur chaque route ; l'interface se contente de ne
 pas proposer ce qui serait refusé.
 
+## Profil du dossier et premiers pas
+
+À la création d'un dossier (première configuration ou « Nouveau dossier »), on
+choisit un profil : **travailleur autonome**, **startup en démarrage** ou **PME
+établie**. Défini dans `profils.js`, dupliqué pour l'interface dans
+`client/src/profils.js` (un test vérifie l'alignement), stocké dans
+`settings.profil`, modifiable dans Paramètres.
+
+**Le profil règle, il ne retire pas.** Aucun écran n'est masqué selon le
+profil : un écran caché se lit comme une absence (« Clora ne fait pas de
+facturation récurrente »), et le travailleur autonome qui embauche, ou l'acteur
+qui décroche un contrat récurrent, doit trouver les rôles et les abonnements là
+où ils sont. Le cloisonnement reste celui des rôles, seul et éprouvé.
+
+Ce que le profil règle :
+
+- **Les conditions de paiement proposées aux nouveaux clients**
+  (`settings.conditions_defaut`) : payable sur réception pour un autonome, Net
+  30 pour les deux autres. Une fiche créée sans terme reçoit celui du dossier ;
+  un terme explicite l'emporte toujours, et chaque fiche garde le sien.
+- **L'ordre des premiers pas** (`GET /api/demarrage`, administration seulement) :
+  une liste sur le tableau de bord, cochée d'elle-même d'après le contenu du
+  dossier (adresse renseignée, premier client, première facture, taux
+  kilométrique de l'année, second accès au dossier, abonnement, clé Stripe,
+  relevé bancaire, dossier de sauvegarde). Chaque étape mène à son écran, et
+  pour les paramètres à sa section (`ancre`). Elle disparaît quand tout est
+  fait, ou d'un clic (`POST /api/demarrage/masquer`) ; changer de profil la
+  rouvre. Un dossier antérieur au choix de profil reçoit l'essentiel, sans
+  présumer du métier.
+
+Au passage, un défaut de création corrigé : l'initialisation d'une base sème
+déjà une ligne de paramètres, et `creerEntreprise` en insérait une seconde.
+Toute lecture (`LIMIT 1`) tombait sur la première, au nom vide : le dossier
+s'appelait « Votre entreprise » sur ses factures jusqu'à ce qu'on retape son
+nom. La ligne semée est désormais mise à jour, et un test vérifie qu'il n'en
+existe qu'une.
+
 ## Organisation du code
 
 ```

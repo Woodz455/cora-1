@@ -2,11 +2,101 @@ import { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { api, formatMontant } from '../api';
 
+/**
+ * Les premiers pas du dossier, dans l'ordre que son profil suggère.
+ *
+ * Une liste qui se coche d'elle-même d'après ce qui est déjà dans le dossier,
+ * et non un assistant qui retiendrait l'utilisateur : chaque étape mène à
+ * l'écran où elle s'accomplit, et rien n'empêche de faire autre chose d'abord.
+ * Elle disparaît quand tout est fait, ou d'un clic.
+ */
+function PremiersPas({ demarrage, onMasquer, naviguer }) {
+  const faites = demarrage.etapes.filter((e) => e.fait).length;
+  const total = demarrage.etapes.length;
+
+  return (
+    <div className="glass-card" style={{ padding: '30px', marginBottom: '40px', borderLeft: '4px solid var(--safehill-blue)' }}>
+      <div className="toolbar" style={{ marginBottom: '15px' }}>
+        <div>
+          <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.2rem' }}>Pour commencer</h3>
+          <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+            {demarrage.profil ? `${demarrage.profil.libelle} : ` : ''}
+            {faites} étape{faites > 1 ? 's' : ''} sur {total}. Chaque étape se coche d'elle-même.
+          </p>
+        </div>
+        <button type="button" className="btn-secondary" onClick={onMasquer}>Masquer</button>
+      </div>
+      <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        {demarrage.etapes.map((etape, index) => (
+          <li key={etape.cle}>
+            <button
+              type="button"
+              onClick={() => naviguer(etape.vue, etape.ancre ? { ancre: etape.ancre } : null)}
+              aria-label={`${etape.titre}${etape.fait ? ', fait' : ''}`}
+              style={{
+                width: '100%', textAlign: 'left', padding: '12px 16px', font: 'inherit',
+                background: etape.fait ? 'transparent' : 'var(--hover-subtle)',
+                border: '1px solid var(--glass-border)', borderRadius: '10px',
+                color: etape.fait ? 'var(--text-muted)' : 'var(--text-main)', cursor: 'pointer',
+                marginBottom: '8px', display: 'flex', gap: '14px', alignItems: 'flex-start'
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  flexShrink: 0, width: '26px', height: '26px', borderRadius: '50%', fontSize: '0.85rem',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600,
+                  background: etape.fait ? 'var(--status-paid-bg)' : 'var(--glass-bg)',
+                  color: etape.fait ? 'var(--status-paid)' : 'var(--text-main)',
+                  border: etape.fait ? 'none' : '1px solid var(--glass-border)'
+                }}
+              >
+                {etape.fait ? '✓' : index + 1}
+              </span>
+              <span style={{ flex: 1 }}>
+                <span style={{ display: 'block', fontWeight: etape.fait ? 500 : 600, textDecoration: etape.fait ? 'line-through' : 'none' }}>
+                  {etape.titre}
+                </span>
+                {!etape.fait && (
+                  <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    {etape.detail}
+                  </span>
+                )}
+              </span>
+              {!etape.fait && <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}>→</span>}
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 function Dashboard({ naviguer }) {
   const [stats, setStats] = useState(null);
   const [aFaire, setAFaire] = useState({ factures: [], devis: [], depots: [] });
+  const [demarrage, setDemarrage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Réservé à l'administration : un 403 signifie simplement qu'il n'y a rien à
+  // montrer, les étapes menant presque toutes aux paramètres.
+  useEffect(() => {
+    let annule = false;
+    api.get('/api/demarrage')
+      .then((data) => { if (!annule) setDemarrage(data); })
+      .catch(() => {});
+    return () => { annule = true; };
+  }, []);
+
+  const masquerPremiersPas = async () => {
+    try {
+      await api.post('/api/demarrage/masquer', {});
+      setDemarrage((prev) => (prev ? { ...prev, masque: true } : prev));
+    } catch {
+      // La liste reviendra au prochain passage : rien de grave.
+    }
+  };
 
   useEffect(() => {
     let annule = false;
@@ -89,6 +179,8 @@ function Dashboard({ naviguer }) {
     }
   ];
 
+  const premiersPasVisibles = demarrage && !demarrage.masque && demarrage.etapes.some((e) => !e.fait);
+
   return (
     <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
@@ -97,6 +189,10 @@ function Dashboard({ naviguer }) {
           + Nouvelle facture
         </button>
       </div>
+
+      {premiersPasVisibles && (
+        <PremiersPas demarrage={demarrage} onMasquer={masquerPremiersPas} naviguer={naviguer} />
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '40px' }}>
         {cartes.map((carte) => (
           <button

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { api, formatMontant } from '../api';
+import { api, formatMontant, CONDITIONS } from '../api';
 import { useUser } from '../UserContext';
 import { useFeedback } from '../FeedbackContext';
+import { PROFILS } from '../profils';
 
 const TAILLE_MAX_LOGO = 2 * 1024 * 1024;
 
@@ -34,7 +35,7 @@ function Message({ contenu }) {
   );
 }
 
-function Settings() {
+function Settings({ ancre }) {
   const utilisateurCourant = useUser();
   const { notifier, confirmer } = useFeedback();
 
@@ -109,6 +110,14 @@ function Settings() {
       .then((data) => { if (data.minPasswordLength) setMinLength(data.minPasswordLength); })
       .catch(() => {});
   }, []);
+
+  // Ouverte depuis les premiers pas du tableau de bord : la page défile jusqu'à
+  // la section visée, plutôt que de laisser chercher parmi une douzaine.
+  useEffect(() => {
+    if (loading || !ancre) return;
+    const cible = document.getElementById(ancre);
+    if (cible) cible.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [ancre, loading]);
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -403,7 +412,7 @@ function Settings() {
         </div>
 
         <div>
-          <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>Informations générales</h3>
+          <h3 id="section-entreprise" style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>Informations générales</h3>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
             Ce nom identifie votre entreprise sur les documents et comme expéditeur de vos courriels.
           </p>
@@ -419,6 +428,27 @@ function Settings() {
             <label htmlFor="entreprise_adresse">Adresse complète</label>
             <textarea id="entreprise_adresse" className="form-control" name="entreprise_adresse" value={settings.entreprise_adresse || ''} onChange={handleChange} rows="3"></textarea>
           </div>
+          <div className="form-group">
+            <label htmlFor="profil">Profil du dossier</label>
+            <select id="profil" className="form-control" name="profil" value={settings.profil || ''} onChange={handleChange}>
+              {/* Un dossier antérieur au choix de profil n'en a pas ; la mention
+                  disparaît dès qu'un profil est retenu. */}
+              {!settings.profil && <option value="">Non précisé</option>}
+              {PROFILS.map((p) => <option key={p.valeur} value={p.valeur}>{p.libelle}</option>)}
+            </select>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
+              Le profil règle l'ordre des premiers pas sur le tableau de bord. Il ne retire aucune fonction.
+            </p>
+          </div>
+          <div className="form-group">
+            <label htmlFor="conditions_defaut">Conditions de paiement proposées aux nouveaux clients</label>
+            <select id="conditions_defaut" className="form-control" name="conditions_defaut" value={settings.conditions_defaut || 'net30'} onChange={handleChange}>
+              {CONDITIONS.map((c) => <option key={c.valeur} value={c.valeur}>{c.libelle}</option>)}
+            </select>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
+              Proposées à la création d'une fiche client ; chaque fiche garde son propre terme.
+            </p>
+          </div>
         </div>
 
         <div>
@@ -433,7 +463,7 @@ function Settings() {
         </div>
 
         <div>
-          <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
+          <h3 id="section-stripe" style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
             Paiement en ligne (Stripe)
           </h3>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
@@ -663,7 +693,7 @@ function Settings() {
         </div>
 
         <div>
-          <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
+          <h3 id="section-sauvegardes" style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
             Sauvegardes
           </h3>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
@@ -939,7 +969,7 @@ function Settings() {
         </div>
       </form>
 
-      <h2 style={{ color: 'var(--text-main)', marginTop: '50px', marginBottom: '20px' }}>Indemnité kilométrique</h2>
+      <h2 id="section-kilometrage" style={{ color: 'var(--text-main)', marginTop: '50px', marginBottom: '20px' }}>Indemnité kilométrique</h2>
       <Message contenu={tauxMessage} />
 
       <div className="glass-panel" style={{ padding: '20px' }}>
@@ -1043,7 +1073,7 @@ function Settings() {
         </div>
       </form>
 
-      <h2 style={{ color: 'var(--text-main)', marginTop: '50px', marginBottom: '20px' }}>Gestion des utilisateurs</h2>
+      <h2 id="section-comptes" style={{ color: 'var(--text-main)', marginTop: '50px', marginBottom: '20px' }}>Gestion des utilisateurs</h2>
       <Message contenu={usersMessage} />
 
       <div className="glass-panel" style={{ padding: '20px' }}>

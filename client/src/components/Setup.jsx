@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import ChoixProfil from './ChoixProfil';
 
 function Setup({ onSetupComplete }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  // Le premier dossier se nommait « Mon entreprise » et se renommait ensuite
+  // dans Paramètres, sans que rien ne le dise. Il se nomme ici, et prend le
+  // profil qui règle ses valeurs de départ.
+  const [entreprise, setEntreprise] = useState('');
+  const [profil, setProfil] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   // La longueur minimale est dictée par le serveur, pour que les deux ne
@@ -29,10 +35,14 @@ function Setup({ onSetupComplete }) {
       setError(`Le mot de passe doit contenir au moins ${minLength} caractères.`);
       return;
     }
+    if (!profil) {
+      setError('Choisissez le profil qui décrit le mieux votre entreprise.');
+      return;
+    }
 
     setLoading(true);
     try {
-      await api.post('/api/auth/setup', { username, password });
+      await api.post('/api/auth/setup', { username, password, entreprise, profil });
       const session = await api.get('/api/auth/check');
       // La configuration crée aussi le premier dossier : le transmettre évite
       // de faire choisir entre une seule possibilité juste après l'inscription.
@@ -50,7 +60,7 @@ function Setup({ onSetupComplete }) {
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--app-bg)' }}>
-      <div className="glass-panel" style={{ width: '450px', padding: '40px', textAlign: 'center' }}>
+      <div className="glass-panel" style={{ width: '520px', maxWidth: '100%', maxHeight: '100vh', overflowY: 'auto', padding: '40px', textAlign: 'center' }}>
         {/* Le tout premier écran qu'un client voit ne portait aucun logo,
             contrairement à l'écran de connexion des fois suivantes. */}
         <img
@@ -61,12 +71,30 @@ function Setup({ onSetupComplete }) {
         />
         <h1 style={{ color: 'var(--text-main)', marginBottom: '10px', fontSize: '1.6rem' }}>Bienvenue sur Clora</h1>
         <p style={{ color: 'var(--text-muted)', marginBottom: '30px', fontSize: '0.9rem' }}>
-          Première utilisation : créez le compte administrateur qui protégera vos données.
+          Première utilisation : nommez votre entreprise et créez le compte administrateur
+          qui protégera vos données.
         </p>
 
         {error && <p className="alert alert-error" role="alert">{error}</p>}
 
         <form onSubmit={handleSubmit}>
+          <div className="form-group" style={{ textAlign: 'left' }}>
+            <label htmlFor="setup-entreprise">Nom de l'entreprise</label>
+            <input
+              id="setup-entreprise"
+              type="text"
+              className="form-control"
+              autoComplete="organization"
+              value={entreprise}
+              onChange={(e) => setEntreprise(e.target.value)}
+              required
+              maxLength={200}
+              autoFocus
+            />
+          </div>
+          <div className="form-group" style={{ textAlign: 'left' }}>
+            <ChoixProfil valeur={profil} onChange={setProfil} />
+          </div>
           <div className="form-group" style={{ textAlign: 'left' }}>
             <label htmlFor="setup-username">Nom d'utilisateur</label>
             <input
@@ -78,7 +106,6 @@ function Setup({ onSetupComplete }) {
               onChange={(e) => setUsername(e.target.value)}
               required
               minLength={3}
-              autoFocus
             />
           </div>
           <div className="form-group" style={{ textAlign: 'left' }}>

@@ -385,6 +385,16 @@ async function runMigrations(db) {
   await addColumn(db, 'depenses', 'kilometres', 'REAL');
   await addColumn(db, 'depenses', 'vehicule', 'TEXT');
 
+  // Profil du dossier (travailleur autonome, startup, PME), choisi à la création.
+  // Il règle des valeurs de départ et l'ordre des premiers pas ; il ne retire
+  // aucun écran. Les dossiers antérieurs restent sans profil : l'application ne
+  // devine pas le métier de quelqu'un qui l'utilise depuis des mois.
+  await addColumn(db, 'settings', 'profil', 'TEXT');
+  // Conditions de paiement proposées à chaque nouveau client.
+  await addColumn(db, 'settings', 'conditions_defaut', 'TEXT');
+  // La liste des premiers pas, une fois masquée par l'administrateur.
+  await addColumn(db, 'settings', 'demarrage_masque', 'INTEGER DEFAULT 0');
+
   await figerMontants(db);
 }
 

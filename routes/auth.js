@@ -13,6 +13,7 @@ const { loginRateLimit, recordFailure, recordSuccess } = require('../rateLimit.j
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { sanitizeText } = require('../validators.js');
 const { listerPourUtilisateur, creerEntreprise } = require('../companyStore.js');
+const { parseProfil } = require('../profils.js');
 
 /**
  * Longueur minimale d'un mot de passe.
@@ -88,6 +89,9 @@ module.exports = function authRoutes(getDb) {
     }
 
     const username = validateCredentials(req.body.username, req.body.password);
+    // Validé avant d'écrire quoi que ce soit : un profil inconnu ne doit pas
+    // laisser derrière lui un compte créé sans dossier.
+    const profil = parseProfil(req.body.profil);
     const hash = await bcrypt.hash(req.body.password, 12);
 
     const result = await db.run(
@@ -104,7 +108,7 @@ module.exports = function authRoutes(getDb) {
     let ouvert;
     if (existants.length === 0) {
       const nom = sanitizeText(req.body.entreprise, 200) || 'Mon entreprise';
-      ouvert = await creerEntreprise(db, { nom, userId: result.lastID });
+      ouvert = await creerEntreprise(db, { nom, userId: result.lastID, profil });
     } else {
       for (const dossier of existants) {
         await db.run(

@@ -13,6 +13,20 @@ const { chiffrer, dechiffrer, estProtege, coffreDisponible } = require('../secre
 const { envoyerCourrielTest } = require('../emailService.js');
 const stripe = require('../stripeService.js');
 const kilometrage = require('../kilometrageService.js');
+const { parseProfil } = require('../profils.js');
+const { CONDITIONS } = require('../paymentTerms.js');
+
+/**
+ * Conditions de paiement proposées aux nouveaux clients. Absent : inchangé ;
+ * un terme inconnu est refusé plutôt que ramené en silence à Net 30.
+ */
+function parseConditionsDefaut(valeur) {
+  if (valeur === undefined || valeur === null || valeur === '') return null;
+  if (!CONDITIONS.some((c) => c.valeur === valeur)) {
+    throw httpError(400, `Conditions de paiement inconnues : ${valeur}.`);
+  }
+  return valeur;
+}
 
 /** Taille maximale du logo, encodé en data-URI. */
 const MAX_LOGO_CHARS = 3 * 1024 * 1024;
@@ -149,7 +163,7 @@ const CHAMPS_SUIVIS = [
   'taxe_2_nom', 'taxe_2_taux', 'taxe_2_numero',
   'payment_instructions', 'relances_actives', 'relances_paliers',
   'sauvegarde_active', 'sauvegarde_dossier', 'sauvegarde_retention',
-  'verifier_maj',
+  'verifier_maj', 'profil', 'conditions_defaut',
   // Le serveur et le compte d'envoi sont suivis ; le mot de passe ne l'est
   // évidemment pas, et son absence de cette liste est la seule chose qui
   // l'empêche d'être recopié dans un journal conçu pour être inaltérable.
@@ -209,7 +223,9 @@ module.exports = function settingsRoutes(getDb) {
       smtp_host: sanitizeText(body.smtp_host, 200),
       smtp_port: parsePort(body.smtp_port),
       smtp_user: sanitizeText(body.smtp_user, 200),
-      stripe_actif: parseInterrupteur(body.stripe_actif)
+      stripe_actif: parseInterrupteur(body.stripe_actif),
+      profil: parseProfil(body.profil),
+      conditions_defaut: parseConditionsDefaut(body.conditions_defaut)
     };
 
     if (!valeurs.entreprise_nom) {
@@ -256,6 +272,11 @@ module.exports = function settingsRoutes(getDb) {
     const cleDejaLa = Boolean(avant && avant.stripe_cle_chiffree);
     if (valeurs.stripe_actif === 1 && !cleStripe && !cleDejaLa) {
       throw httpError(400, 'Renseignez votre clé Stripe avant d\'activer le paiement en ligne.');
+    }
+    // Changer de profil rouvre la liste des premiers pas : qui choisit un autre
+    // profil veut voir le chemin qui va avec, même s'il avait masqué l'ancien.
+    if (valeurs.profil && (!avant || avant.profil !== valeurs.profil)) {
+      valeurs.demarrage_masque = 0;
     }
     // Un champ absent de la requête garde sa valeur : ne pas filtrer reviendrait
     // à effacer un réglage que le formulaire n'a simplement pas envoyé.
