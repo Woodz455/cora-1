@@ -1,7 +1,7 @@
 # Clora : état du projet
 
-*Ce qui a été fait, ce qui reste à faire. Arrêté au 8 septembre 2026,
-version 1.6.0.*
+*Ce qui a été fait, ce qui reste à faire. Arrêté au 12 septembre 2026,
+version 1.7.0.*
 
 ---
 
@@ -9,13 +9,13 @@ version 1.6.0.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.6.0, le 8 septembre 2026 |
-| **Publications** | 7 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 48 commits, 15 demandes de fusion, toutes fusionnées |
-| **Tests** | 347, tous au vert, exécutés à chaque fusion |
-| **Durée** | 7 semaines, du 24 juillet au 8 septembre 2026 |
+| **Version publiée** | 1.7.0, le 12 septembre 2026 |
+| **Publications** | 8 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 41 commits, 16 demandes de fusion, toutes fusionnées |
+| **Tests** | 360, tous au vert, exécutés à chaque fusion |
+| **Durée** | 7 semaines, du 24 juillet au 12 septembre 2026 |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca |
-| **Ventes** | Aucune : la phase de tests utilisateurs commence |
+| **Ventes** | Aucune : les tests utilisateurs sont en cours |
 
 **L'application est complète et livrable.** Ce qui manque avant de vendre n'est
 pas du code : c'est un certificat, une clé, et le retour des testeurs.
@@ -113,7 +113,7 @@ a corrigé ce qui, autrement, aurait fini par produire de faux chiffres.
   courriels de relance, facture imprimée, documents et blocs du site.
 
 ### Phase 8 : premiers retours des testeurs
-*12 septembre · sur la branche de travail, à publier*
+*12 septembre · publié en 1.7.0 · demande de fusion #16*
 
 - **Compte rendu de la période** en PDF, demandé par les testeurs pour lire la
   santé de leur entreprise : facturé, encaissé, dépenses, bénéfice, créances,
@@ -241,8 +241,8 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.6.0 offre une nouvelle occasion de le vérifier, sur toute
-  installation restée en 1.5.x.
+  annoncer. La 1.7.0 en offre l'occasion sur toute installation restée en
+  1.6.0, cette fois chez des testeurs qui l'ont réellement installée.
 - **Le redémarrage après restauration d'une sauvegarde.**
 
 Ce sont deux choses à regarder pendant les tests utilisateurs.
@@ -315,10 +315,12 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.6.0 par des testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.7.0 par les testeurs et écouter ce qu'ils disent.**
 
-Tout le reste (la clé de licence, le certificat, les améliorations du
-rapprochement bancaire) attend ce retour, et devrait être priorisé par lui.
+Les deux premières demandes remontées par eux sont livrées : le compte rendu de
+la période et le profil du dossier. Le reste (la clé de licence, le certificat,
+les améliorations du rapprochement bancaire) attend la suite de ce retour, et
+devrait être priorisé par lui.
 
 ---
 
