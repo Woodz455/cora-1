@@ -27,10 +27,21 @@ module.exports = function clientRoutes(getDb) {
   }));
 
   router.post('/', asyncRoute(async (req, res) => {
-    const { error, client } = validateClient(req.body);
+    const db = getDb();
+    const body = { ...req.body };
+
+    // Une fiche créée sans terme reçoit celui du dossier, réglé par son profil
+    // à la création : un travailleur autonome se fait payer à la réception, une
+    // PME à trente jours. Un terme donné explicitement l'emporte toujours.
+    if (!body.conditions_paiement) {
+      const reglages = await db.get('SELECT conditions_defaut FROM settings LIMIT 1');
+      if (reglages && reglages.conditions_defaut) body.conditions_paiement = reglages.conditions_defaut;
+    }
+
+    const { error, client } = validateClient(body);
     if (error) throw httpError(400, error);
 
-    const cree = await createClient(getDb(), client);
+    const cree = await createClient(db, client);
     res.status(201).json({ message: 'Client créé avec succès.', client: cree });
   }));
 

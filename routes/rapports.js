@@ -6,7 +6,7 @@ const express = require('express');
 
 const {
   getReportStats, getDashboardStats, getTaxReport,
-  getRegistreVentes, getRegistreEncaissements, getBalanceAgee
+  getRegistreVentes, getRegistreEncaissements, getBalanceAgee, getSommaire
 } = require('../invoiceService.js');
 const { anyRole, adminOrAccountant } = require('../authMiddleware.js');
 const { verifierMiseAJour } = require('../updateService.js');
@@ -93,6 +93,19 @@ module.exports = function rapportRoutes(getDb) {
   router.get('/rapports/taxes', adminOrAccountant(), asyncRoute(async (req, res) => {
     const { annee, mois, trimestre } = validerPeriode(req.query);
     res.json(await getTaxReport(getDb(), annee, mois, trimestre));
+  }));
+
+  /**
+   * Compte rendu de gestion d'un mois, d'un trimestre ou d'une année : la
+   * matière du document PDF que l'on remet à son comptable ou à son banquier.
+   * L'année est obligatoire, un sommaire portant toujours sur une période.
+   */
+  router.get('/rapports/sommaire', adminOrAccountant(), asyncRoute(async (req, res) => {
+    const periode = validerPeriode(req.query);
+    if (!periode.annee) {
+      throw httpError(400, 'Le compte rendu porte sur une année, un trimestre ou un mois : indiquez l\'année.');
+    }
+    res.json(await getSommaire(getDb(), periode));
   }));
 
   /**

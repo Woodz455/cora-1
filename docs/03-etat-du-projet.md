@@ -12,7 +12,7 @@ version 1.6.0.*
 | **Version publiée** | 1.6.0, le 8 septembre 2026 |
 | **Publications** | 7 versions livrées depuis le 24 juillet 2026 |
 | **Développement** | 48 commits, 15 demandes de fusion, toutes fusionnées |
-| **Tests** | 331, tous au vert, exécutés à chaque fusion |
+| **Tests** | 347, tous au vert, exécutés à chaque fusion |
 | **Durée** | 7 semaines, du 24 juillet au 8 septembre 2026 |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca |
 | **Ventes** | Aucune : la phase de tests utilisateurs commence |
@@ -111,6 +111,27 @@ a corrigé ce qui, autrement, aurait fini par produire de faux chiffres.
   déplacement dépend du cumul de l'année.
 - **Retrait des tirets cadratins** de tous les textes visibles : interface,
   courriels de relance, facture imprimée, documents et blocs du site.
+
+### Phase 8 : premiers retours des testeurs
+*12 septembre · sur la branche de travail, à publier*
+
+- **Compte rendu de la période** en PDF, demandé par les testeurs pour lire la
+  santé de leur entreprise : facturé, encaissé, dépenses, bénéfice, créances,
+  clients, taxes et points d'attention, sur un mois, un trimestre ou une année.
+  Chaque famille de chiffres est bornée sur sa propre date, et le document se
+  présente comme un sommaire de gestion, non comme des états financiers.
+- **Une seule période pour tout l'écran Rapports** : le compte rendu, les
+  registres et le rapport de taxes portent sur les mêmes bornes.
+- **Profil du dossier** choisi à la création (travailleur autonome, startup,
+  PME), demandé par les testeurs pour que l'application s'accorde à leur
+  situation. Le profil règle des valeurs de départ (les conditions de paiement
+  proposées aux nouveaux clients) et l'ordre des **premiers pas**, une liste sur
+  le tableau de bord qui se coche d'elle-même d'après le contenu du dossier.
+  Aucun écran n'est masqué : un écran caché se lit comme une absence, et le
+  profil se change à tout moment dans Paramètres.
+- **Défaut corrigé au passage** : un dossier neuf recevait deux lignes de
+  paramètres, et son nom se perdait dans la seconde. Ses factures disaient
+  « Votre entreprise » jusqu'à ce qu'on retape le nom dans Paramètres.
 
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
@@ -302,4 +323,4 @@ rapprochement bancaire) attend ce retour, et devrait être priorisé par lui.
 ---
 
 *Document maintenu par Safehill Technologies. Dernière mise à jour :
-5 septembre 2026.*
+12 septembre 2026.*

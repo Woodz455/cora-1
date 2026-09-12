@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api, CONDITIONS } from '../api';
 import { useModale } from '../useModale';
 
@@ -36,6 +36,22 @@ function ClientModal({ onClose, onSuccess, clientToEdit }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Le terme proposé à une fiche neuve est celui du dossier, réglé par son
+  // profil : un travailleur autonome se fait payer à la réception, et n'a pas à
+  // corriger Net 30 à chaque nouveau client.
+  useEffect(() => {
+    if (clientToEdit) return undefined;
+    let annule = false;
+    api.get('/api/settings')
+      .then((reglages) => {
+        if (!annule && reglages && reglages.conditions_defaut) {
+          setFormData((prev) => ({ ...prev, conditions_paiement: reglages.conditions_defaut }));
+        }
+      })
+      .catch(() => {});
+    return () => { annule = true; };
+  }, [clientToEdit]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

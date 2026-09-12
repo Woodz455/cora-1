@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Building2, Plus, ArrowRight } from 'lucide-react';
 import { api } from '../api';
+import ChoixProfil from './ChoixProfil';
 
 /**
  * Choix du dossier d'entreprise.
@@ -14,6 +15,7 @@ function ChoixEntreprise({ entreprises, onOuvert, onAnnuler }) {
   const [enCours, setEnCours] = useState(null);
   const [creation, setCreation] = useState(false);
   const [nouveau, setNouveau] = useState('');
+  const [profil, setProfil] = useState('');
   const [erreur, setErreur] = useState(null);
 
   const ouvrir = async (entreprise) => {
@@ -31,8 +33,12 @@ function ChoixEntreprise({ entreprises, onOuvert, onAnnuler }) {
   const creer = async (e) => {
     e.preventDefault();
     setErreur(null);
+    if (!profil) {
+      setErreur('Choisissez le profil qui décrit le mieux cette entreprise.');
+      return;
+    }
     try {
-      const r = await api.post('/api/entreprises', { nom: nouveau });
+      const r = await api.post('/api/entreprises', { nom: nouveau, profil });
       onOuvert(r.entreprise);
     } catch (err) {
       setErreur(err.message);
@@ -92,12 +98,16 @@ function ChoixEntreprise({ entreprises, onOuvert, onAnnuler }) {
         </ul>
 
         {creation ? (
-          <form onSubmit={creer} style={{ display: 'flex', gap: '.5rem' }}>
+          <form onSubmit={creer} style={{ display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
             <input
               className="form-control" autoFocus placeholder="Nom de l'entreprise"
+              aria-label="Nom de l'entreprise" maxLength={200}
               value={nouveau} onChange={(ev) => setNouveau(ev.target.value)}
             />
-            <button type="submit" className="btn-primary" disabled={!nouveau.trim()}>Créer</button>
+            <ChoixProfil valeur={profil} onChange={setProfil} />
+            <button type="submit" className="btn-primary" disabled={!nouveau.trim()} style={{ alignSelf: 'flex-start' }}>
+              Créer le dossier
+            </button>
           </form>
         ) : (
           <button

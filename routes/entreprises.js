@@ -10,6 +10,7 @@ const express = require('express');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { sanitizeText } = require('../validators.js');
 const { listerPourUtilisateur, creerEntreprise } = require('../companyStore.js');
+const { parseProfil } = require('../profils.js');
 const { emettreSession } = require('./auth.js');
 
 module.exports = function entrepriseRoutes(getComptesDb) {
@@ -60,8 +61,9 @@ module.exports = function entrepriseRoutes(getComptesDb) {
   router.post('/', asyncRoute(async (req, res) => {
     const nom = sanitizeText(req.body && req.body.nom, 200);
     if (!nom) throw httpError(400, "Le nom de l'entreprise est requis.");
+    const profil = parseProfil(req.body && req.body.profil);
 
-    const cree = await creerEntreprise(getComptesDb(), { nom, userId: req.user.sub });
+    const cree = await creerEntreprise(getComptesDb(), { nom, userId: req.user.sub, profil });
 
     emettreSession(res, { id: req.user.sub, username: req.user.username, entreprise: cree.id });
     res.status(201).json({ entreprise: { id: cree.id, nom: cree.nom, role: 'admin' } });

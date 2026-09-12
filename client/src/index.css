@@ -754,3 +754,9 @@ textarea:focus-visible {
     display: none !important;
   }
 }
+
+/* Sections des paramètres visées depuis les premiers pas : le titre s'arrête
+   sous le bord de la fenêtre au lieu de s'y coller. */
+[id^="section-"] {
+  scroll-margin-top: 24px;
+}
