@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import InfoTooltip from './InfoTooltip';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
@@ -296,8 +297,8 @@ function ExpenseList() {
                 </td>
                 <td className="numeric" style={{ fontWeight: 'bold' }}>{formatMontant(expense.montant_ttc)}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <button type="button" className="btn-icon" onClick={() => openModal(expense)} aria-label="Modifier la dépense" style={{ marginRight: '5px' }}>✏️</button>
-                  <button type="button" className="btn-danger" onClick={() => handleDelete(expense)} aria-label="Supprimer la dépense">🗑️</button>
+                  <button type="button" className="btn-icon" onClick={() => openModal(expense)} aria-label="Modifier la dépense" style={{ marginRight: '5px' }}><Pencil size={16} aria-hidden="true" /></button>
+                  <button type="button" className="btn-danger" onClick={() => handleDelete(expense)} aria-label="Supprimer la dépense"><Trash2 size={16} aria-hidden="true" /></button>
                 </td>
               </tr>
             ))}

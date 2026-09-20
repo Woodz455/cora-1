@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Printer, Bell, Pencil, Ban, Trash2, FileMinus } from 'lucide-react';
 import PaymentModal from './PaymentModal';
 import InvoiceModal from './InvoiceModal';
 import InvoicePrintTemplate from './InvoicePrintTemplate';
@@ -233,7 +234,7 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                 </div>
 
                 <button type="button" className="btn-icon" onClick={() => { setPrintingFactureId(facture.id); setIsRelance(false); }}>
-                  🖨️ PDF
+                  <Printer size={16} aria-hidden="true" /> PDF
                 </button>
 
                 {!isAnnulee && facture.solde_restant > 0 && (
@@ -245,13 +246,14 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                       ? `Déjà relancé ${facture.relances_envoyees} fois (dernière : ${facture.date_derniere_relance})`
                       : 'Envoyer un rappel de paiement'}
                   >
-                    🔔 Relancer {facture.relances_envoyees > 0 && `(${facture.relances_envoyees})`}
+                    <Bell size={16} aria-hidden="true" />
+                    Relancer {facture.relances_envoyees > 0 && `(${facture.relances_envoyees})`}
                   </button>
                 )}
 
                 {!isAnnulee && facture.statut === 'En attente' && (
                   <button type="button" className="btn-icon" onClick={() => setFactureIdToEdit(facture.id)}>
-                    ✏️ Modifier
+                    <Pencil size={16} aria-hidden="true" /> Modifier
                   </button>
                 )}
 
@@ -260,13 +262,13 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                     le refus n'arrivait qu'après le clic. */}
                 {gereTresorerie && !isAnnulee && facture.montant_paye === 0 && (
                   <button type="button" className="btn-danger" onClick={() => handleCancelFacture(facture)}>
-                    🚫 Annuler
+                    <Ban size={16} aria-hidden="true" /> Annuler
                   </button>
                 )}
 
                 {estAdmin && facture.montant_paye === 0 && (
                   <button type="button" className="btn-danger" onClick={() => handleDeleteFacture(facture)} title="Supprimer définitivement">
-                    🗑️ Supprimer
+                    <Trash2 size={16} aria-hidden="true" /> Supprimer
                   </button>
                 )}
 
@@ -277,7 +279,8 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                     onClick={() => setFactureACrediter(facture)}
                     title="Corriger cette facture par une note de crédit"
                   >
-                    ↩️ Note de crédit
+                    {/* Une pièce qui retranche. */}
+                    <FileMinus size={16} aria-hidden="true" /> Note de crédit
                   </button>
                 )}
 
@@ -291,7 +294,7 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                     onClick={() => ouvrirNotesCredit(facture)}
                     title="Imprimer ou envoyer la note de crédit"
                   >
-                    🖨️ PDF de la note
+                    <Printer size={16} aria-hidden="true" /> PDF de la note
                   </button>
                 )}
 

@@ -153,6 +153,25 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 20px 40px -10px rgba(15, 23, 42, 0.15);
 }
 
+/* Un bouton de Clora est une rangée avec un écart.
+   L'alignement d'une icône dans un bouton était jusqu'ici écrit à la main,
+   bouton par bouton, dans le JSX. Déclaré une fois ici, il dispense la vingtaine
+   de boutons de l'application de le répéter, et une icône `lucide` y prend
+   d'elle-même la couleur du bouton, qu'elle suit au survol.
+   `justify-content` est nécessaire : en disposition flex, `text-align` ne centre
+   plus le contenu, et trois boutons de l'application sont en pleine largeur
+   (connexion, création du dossier, taux de taxes). */
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-warning,
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+}
+
 /* Boutons avec micro-animations */
 .btn-primary {
   background: var(--gradient-brand);
@@ -437,17 +456,24 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+/* `display: flex` parce que la marque est désormais un chevron dessiné : posé
+   dans une boîte en ligne, un SVG s'assoit sur la ligne de base et traîne
+   l'espace du jambage sous lui. */
 .th-tri-fleche {
-  font-size: 0.7rem;
+  display: flex;
   opacity: 0.35;
 }
 
 /* Tant que la colonne n'est pas triée, la flèche est sortie du flux et logée
    dans la marge intérieure de l'en-tête : présente au survol pour signaler la
    possibilité, sans rien coûter à la largeur du tableau. */
+/* Le décalage était réglé pour un glyphe de texte, plus étroit que le chevron
+   de douze pixels qui l'a remplacé : la marque chevauchait la fin du libellé.
+   Seize pixels rendent au libellé l'espace qu'il avait, et le débord reste
+   logé dans la marge intérieure des en-têtes voisins. */
 .th-tri-fleche[data-neutre] {
   position: absolute;
-  right: -10px;
+  right: -16px;
   opacity: 0;
   transition: opacity 0.15s ease;
 }

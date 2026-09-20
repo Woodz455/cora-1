@@ -95,46 +95,54 @@ test('le contour des conteneurs est un gris visible, non du blanc', () => {
 });
 
 /**
- * Les émojis de l'écran Rapports.
+ * Les émojis de l'interface.
  *
- * Cet écran en portait six, le plus de toute l'application : cinq sur ses titres
- * de panneau et un drapeau sur le bandeau des montants. Deux raisons de les
- * avoir retirés, en plus de l'avis du propriétaire.
+ * Il y en avait trente-quatre, dans quatorze fichiers. Deux raisons de les
+ * avoir remplacés par des icônes dessinées, en plus de l'avis du propriétaire.
  *
- * La première : ailleurs, l'application utilise `lucide-react`, un jeu d'icônes
- * dessiné, dans la navigation et sur les boutons, et **aucun titre de panneau ne
- * porte d'icône**. Ces cinq titres étaient les seuls illustrés.
+ * La première : un émoji est rendu par la police du système, donc son trait, sa
+ * couleur et son épaisseur échappent au produit. Le bouton « Supprimer » avait
+ * un texte rouge et une corbeille grise, parce qu'un émoji ignore la couleur de
+ * son bouton ; une icône `lucide`, tracée en `currentColor`, la prend et la suit
+ * au survol. Le drapeau `🇨🇦` de l'écran Rapports ne s'affichait même pas sous
+ * Windows, qui ne compose pas les paires d'indicateurs régionaux et montrait
+ * deux lettres encadrées.
  *
- * La seconde : un émoji est rendu par la police du système, donc son trait, sa
- * couleur et son épaisseur échappent au produit. Le drapeau `🇨🇦` ne s'affichait
- * même pas sous Windows, qui ne compose pas les paires d'indicateurs régionaux
- * et montrait deux lettres encadrées.
+ * La seconde : aucun titre de panneau de l'application n'a jamais porté d'icône.
+ * Les cinq titres illustrés de l'écran Rapports étaient les seuls, et c'est ce
+ * qui ne s'alignait pas avec le reste.
  *
  * `\p{Regional_Indicator}` est nécessaire en plus de `\p{Extended_Pictographic}` :
  * au sens d'Unicode un drapeau n'est pas un pictogramme, et c'est justement
  * celui qui ne s'affichait pas.
  *
- * Douze autres fichiers en contiennent encore, presque tous sur des boutons
- * d'action. Ils ne sont pas couverts ici : ce test décrit l'écran Rapports, pas
- * une règle déjà tenue partout.
+ * Le relevé porte sur **tout `client/src`, sans exception**, y compris les deux
+ * gabarits d'impression : le document garde ses conventions, mais les émojis
+ * qu'ils portaient étaient sur leurs boutons à l'écran, pas dans la page
+ * imprimée.
  */
-test("l'écran Rapports ne porte aucun émoji", () => {
+test("l'interface ne porte aucun émoji", () => {
   const PICTOGRAMME = /[\p{Extended_Pictographic}\p{Regional_Indicator}]/u;
+  const SOURCE = path.join(__dirname, '..', 'client', 'src');
   const fautives = [];
 
-  // Le second fichier est le gabarit du compte rendu. Le document imprimé garde
-  // ses conventions, mais ses deux boutons « Télécharger le PDF » et
-  // « Imprimer » sont des commandes à l'écran, ouvertes depuis cet écran.
-  for (const fichier of ['ReportDashboard.jsx', 'RapportSommaire.jsx']) {
-    const lignes = fs.readFileSync(path.join(COMPOSANTS, fichier), 'utf8').split('\n');
-    lignes.forEach((ligne, i) => {
-      const trouves = [...ligne].filter((c) => PICTOGRAMME.test(c));
-      if (trouves.length) fautives.push(`${fichier}:${i + 1} → ${trouves.join(' ')}`);
-    });
-  }
+  const parcourir = (dossier) => {
+    for (const entree of fs.readdirSync(dossier, { withFileTypes: true })) {
+      const chemin = path.join(dossier, entree.name);
+      if (entree.isDirectory()) { parcourir(chemin); continue; }
+      if (!/\.(jsx|js|css|html)$/.test(entree.name)) continue;
+      fs.readFileSync(chemin, 'utf8').split('\n').forEach((ligne, i) => {
+        const trouves = [...ligne].filter((c) => PICTOGRAMME.test(c));
+        if (trouves.length) {
+          fautives.push(`${path.relative(SOURCE, chemin)}:${i + 1} → ${trouves.join(' ')}`);
+        }
+      });
+    }
+  };
+  parcourir(SOURCE);
 
   assert.deepEqual(fautives, [],
-    "Des émojis sont revenus sur l'écran Rapports. Les icônes de l'application "
-    + 'sont dessinées (`lucide-react`, `size={16}` sur les boutons), et ses titres '
-    + `de panneau n'en portent pas.\n    ${fautives.join('\n    ')}`);
+    "Des émojis sont revenus dans l'interface. Les icônes de Clora sont "
+    + 'dessinées : `lucide-react`, `size={16}` sur un bouton, `size={20}` dans la '
+    + `navigation.\n    ${fautives.join('\n    ')}`);
 });

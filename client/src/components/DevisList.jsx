@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Printer, Pencil, Ban, Receipt } from 'lucide-react';
 import InvoiceModal from './InvoiceModal';
 import InvoicePrintTemplate from './InvoicePrintTemplate';
 import { api, formatMontant } from '../api';
@@ -131,19 +132,26 @@ function DevisList() {
                   </p>
                 </div>
 
-                <button type="button" className="btn-icon" onClick={() => setPrintingDevisId(devis.id)}>🖨️ PDF</button>
+                <button type="button" className="btn-icon" onClick={() => setPrintingDevisId(devis.id)}>
+                  <Printer size={16} aria-hidden="true" /> PDF
+                </button>
 
                 {!estTermine && (
-                  <button type="button" className="btn-icon" onClick={() => setDevisIdToEdit(devis.id)}>✏️ Modifier</button>
+                  <button type="button" className="btn-icon" onClick={() => setDevisIdToEdit(devis.id)}>
+                    <Pencil size={16} aria-hidden="true" /> Modifier
+                  </button>
                 )}
 
                 {!estTermine && (
-                  <button type="button" className="btn-danger" onClick={() => handleCancelDevis(devis)}>🚫 Refuser</button>
+                  <button type="button" className="btn-danger" onClick={() => handleCancelDevis(devis)}>
+                    <Ban size={16} aria-hidden="true" /> Refuser
+                  </button>
                 )}
 
+                {/* L'icône de la vue Factures, qui dit ce que le devis devient. */}
                 {!estTermine && peutConvertir && (
                   <button type="button" className="btn-primary" onClick={() => handleConvert(devis)} style={{ width: '190px' }}>
-                    ✨ Convertir en facture
+                    <Receipt size={16} aria-hidden="true" /> Convertir en facture
                   </button>
                 )}
               </div>

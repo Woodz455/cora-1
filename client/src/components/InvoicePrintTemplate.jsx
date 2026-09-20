@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { Mail, Printer } from 'lucide-react';
 import EmailModal from './EmailModal';
 import { api, formatMontant } from '../api';
 import { useModale } from '../useModale';
@@ -251,9 +252,11 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
       <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginBottom: '20px', position: 'sticky', top: '10px', zIndex: 10000, flexWrap: 'wrap' }}>
         <button type="button" className="btn-secondary" onClick={() => onClose(false)} style={{ background: 'white' }}>Fermer</button>
         <button type="button" className="btn-secondary" onClick={() => setIsEmailModalOpen(true)} style={{ background: 'white', color: '#0e4a9e', borderColor: '#0e4a9e' }}>
-          ✉️ Envoyer par courriel
+          <Mail size={16} aria-hidden="true" /> Envoyer par courriel
         </button>
-        <button type="button" className="btn-primary" onClick={() => window.print()}>🖨️ Imprimer / sauvegarder en PDF</button>
+        <button type="button" className="btn-primary" onClick={() => window.print()}>
+          <Printer size={16} aria-hidden="true" /> Imprimer / sauvegarder en PDF
+        </button>
       </div>
 
       {message && (

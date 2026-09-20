@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import ImportModal from './ImportModal';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
@@ -133,8 +134,8 @@ function CatalogueList() {
                 <td style={{ color: 'var(--text-muted)' }}>{item.description}</td>
                 <td className="numeric">{formatMontant(item.prix_unitaire)}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <button type="button" className="btn-icon" onClick={() => openModal(item)} aria-label={`Modifier ${item.nom}`} style={{ marginRight: '5px' }}>✏️</button>
-                  <button type="button" className="btn-danger" onClick={() => handleDelete(item)} aria-label={`Supprimer ${item.nom}`}>🗑️</button>
+                  <button type="button" className="btn-icon" onClick={() => openModal(item)} aria-label={`Modifier ${item.nom}`} style={{ marginRight: '5px' }}><Pencil size={16} aria-hidden="true" /></button>
+                  <button type="button" className="btn-danger" onClick={() => handleDelete(item)} aria-label={`Supprimer ${item.nom}`}><Trash2 size={16} aria-hidden="true" /></button>
                 </td>
               </tr>
             ))}

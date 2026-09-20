@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Pencil } from 'lucide-react';
 import { api, formatMontant, CONDITIONS } from '../api';
 import { useUser } from '../UserContext';
 import { useFeedback } from '../FeedbackContext';
@@ -1036,7 +1037,7 @@ function Settings({ ancre }) {
                     <td className="numeric">{formatMontant(t.taux_2)} / km</td>
                     <td className="numeric">{t.seuil_km.toLocaleString('fr-CA')} km</td>
                     <td style={{ textAlign: 'right' }}>
-                      <button type="button" className="btn-icon" onClick={() => modifierTaux(t)} aria-label={`Modifier les taux de ${t.annee}`}>✏️</button>
+                      <button type="button" className="btn-icon" onClick={() => modifierTaux(t)} aria-label={`Modifier les taux de ${t.annee}`}><Pencil size={16} aria-hidden="true" /></button>
                     </td>
                   </tr>
                 ))}

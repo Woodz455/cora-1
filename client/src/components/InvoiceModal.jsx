@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { X } from 'lucide-react';
 import { api, formatMontant, calculerEcheance, CONDITIONS } from '../api';
 import { useModale } from '../useModale';
 
@@ -355,7 +356,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                   aria-label={`Supprimer la ligne ${index + 1}`}
                   style={{ padding: '12px' }}
                 >
-                  ✖
+                  <X size={16} aria-hidden="true" />
                 </button>
               </div>
             ))}
