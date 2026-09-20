@@ -1,7 +1,7 @@
 # Clora : état du projet
 
 *Ce qui a été fait, ce qui reste à faire. Arrêté au 20 septembre 2026,
-version 1.7.3.*
+version 1.7.4.*
 
 ---
 
@@ -9,10 +9,10 @@ version 1.7.3.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.7.3, le 20 septembre 2026 |
-| **Publications** | 11 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 54 commits, 22 demandes de fusion, toutes fusionnées |
-| **Tests** | 368, tous au vert, exécutés à chaque fusion |
+| **Version publiée** | 1.7.4, le 20 septembre 2026 |
+| **Publications** | 12 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 57 commits, 22 demandes de fusion, toutes fusionnées |
+| **Tests** | 369, tous au vert, exécutés à chaque fusion |
 | **Durée** | 8 semaines, du 24 juillet au 20 septembre 2026 |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca |
 | **Ventes** | Aucune : les tests utilisateurs sont en cours |
@@ -234,6 +234,42 @@ connu. Rien de nouveau, rien hors de l'interface, aucune reprise de données.
   nettoyage ponctuel, et la vingt-cinquième valeur reviendrait au prochain
   écran.
 
+### Phase 12 : les deux derniers défauts d'accessibilité
+*20 septembre · publié en 1.7.4*
+
+Deux défauts relevés pendant le travail sur le design, signalés à chaque version
+sans être corrigés. Rien de nouveau, rien hors de l'interface, aucune reprise de
+données.
+
+- **L'anneau de focus était sous son seuil.** C'est la seule marque qu'un
+  utilisateur au clavier ait de l'endroit où il se trouve, et il exige 3:1
+  contre ce qui l'entoure. Les trois règles de la feuille étaient fautives, en
+  miroir : la règle globale, qui couvre tout élément interactif de
+  l'application, posait le turquoise, à **2,14:1** sur un panneau clair ; les
+  deux autres posaient le bleu, à **1,93:1** sur un panneau sombre.
+- **Les deux couleurs de marque se partagent exactement les deux thèmes.** Le
+  bleu mesure 8,20:1 sur un panneau clair, le turquoise 7,40:1 sur un panneau
+  sombre, et chacun échoue dans l'autre thème. Un jeton par thème les emploie là
+  où elles portent, ce qui corrige les trois règles d'un coup sans rien perdre
+  de l'identité.
+- **`ImportModal` annonçait ce qu'elle n'était pas.** Elle déclarait
+  `role="dialog"` et `aria-modal` sans employer le crochet `useModale` : le
+  focus n'y restait pas, Échap ne la fermait pas, et il ne revenait pas à son
+  point de départ. Annoncer une fenêtre modale sans se comporter comme telle est
+  pire que de ne rien annoncer, un lecteur d'écran disant à l'utilisateur qu'il y
+  est enfermé alors qu'il ne l'est pas. C'était la seule des fenêtres de
+  l'application dans ce cas.
+- **Un neuvième test d'apparence** refuse le retour des deux : une règle de focus
+  qui nommerait une couleur hors du jeton, et une fenêtre qui annoncerait
+  `aria-modal` sans le crochet.
+
+Une observation faite en vérifiant, qui n'est pas corrigée ici : **le focus ne
+se déplace pas dans une fenêtre à son ouverture**, dans aucune fenêtre de
+l'application. Le piège fonctionne, la première tabulation entre bien et Échap
+rend le focus à son point de départ ; le coût se limite donc à une frappe de
+plus. C'est un comportement du crochet, commun à toutes les fenêtres, et non un
+défaut de celle-ci.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
@@ -342,8 +378,8 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.7.3 en offre l'occasion sur toute installation restée en
-  1.7.2.
+  annoncer. La 1.7.4 en offre l'occasion sur toute installation restée en
+  1.7.3.
 - **Le redémarrage après restauration d'une sauvegarde.**
 
 Ce sont deux choses à regarder pendant les tests utilisateurs.
@@ -416,16 +452,20 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.7.3 par les testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.7.4 par les testeurs et écouter ce qu'ils disent.**
 
 Leurs trois premières demandes sont livrées : le compte rendu de la période, le
 profil du dossier, et le sérieux du design. Le reste (la clé de licence, le
 certificat, les améliorations du rapprochement bancaire) attend la suite de ce
 retour, et devrait être priorisé par lui.
 
-**Les deux chantiers de finition relevés en corrigeant le design sont faits** :
-les polices embarquées en 1.7.2, l'échelle d'espacement en 1.7.3. Il n'en reste
-aucun d'identifié. Ce qui viendra ensuite devrait venir des testeurs.
+**Tout ce qui avait été relevé en corrigeant le design est fait** : les polices
+embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la
+dernière fenêtre non conforme en 1.7.4. Il ne reste aucun défaut identifié.
+
+Ce qui viendra ensuite devrait donc venir des testeurs. La liste de ce qu'une
+relecture pouvait trouver est épuisée ; celle de ce que l'usage révélera ne
+commence qu'avec eux.
 
 ---
 

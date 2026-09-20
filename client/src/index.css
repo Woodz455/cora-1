@@ -47,6 +47,13 @@
      8,20:1, mais tombe à 1,93:1 sur le fond sombre, sous le seuil de 3:1 d'un
      objet graphique : elle y était pratiquement invisible. */
   --icone-aide: var(--safehill-blue);
+  /* L'anneau de focus, la seule marque qu'un utilisateur au clavier ait de
+     l'endroit où il se trouve. Il exige 3:1 contre ce qui l'entoure, et les
+     deux couleurs de marque se partagent exactement les deux thèmes : le bleu
+     mesure 8,20:1 sur un panneau clair et 1,93:1 sur un panneau sombre, le
+     turquoise 2,14:1 sur le clair et 7,40:1 sur le sombre. Chacun porte donc
+     dans son thème, et aucun des deux n'y arrive dans l'autre. */
+  --anneau-focus: var(--safehill-blue);
   --gradient-brand: linear-gradient(135deg, #0e4a9e, #00c4b4);
   
   /* Glassmorphism premium (Light Aurora) */
@@ -117,6 +124,9 @@
   /* Le bleu éclairci que le thème emploie déjà, pour l'icône des bulles
      d'aide : 6,40:1, contre 1,93:1 pour le bleu de marque. */
   --icone-aide: #60a5fa;
+
+  /* Le turquoise porte ici, là où le bleu de marque tombe à 1,93:1. */
+  --anneau-focus: var(--safehill-teal);
 
   /* Teintes éclaircies pour rester lisibles sur fond sombre. Seul le bleu en
      avait besoin : mesuré à 3,98:1 sur le fond des panneaux, sous le seuil AA.
@@ -312,7 +322,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--safehill-teal);
+  outline: 2px solid var(--anneau-focus);
   outline-offset: 2px;
 }
 
@@ -484,7 +494,7 @@ textarea:focus-visible {
 }
 
 .th-tri:focus-visible {
-  outline: 2px solid var(--safehill-blue);
+  outline: 2px solid var(--anneau-focus);
   outline-offset: 2px;
 }
 
@@ -627,7 +637,7 @@ textarea:focus-visible {
 }
 
 .notification-fermer:focus-visible {
-  outline: 2px solid var(--safehill-blue);
+  outline: 2px solid var(--anneau-focus);
   outline-offset: 1px;
 }
 

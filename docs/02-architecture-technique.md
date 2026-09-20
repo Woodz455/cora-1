@@ -1,6 +1,6 @@
 # Clora : architecture, sécurité et licence
 
-*Document technique. Version 1.7.3, septembre 2026.*
+*Document technique. Version 1.7.4, septembre 2026.*
 
 Ce document décrit comment Clora est construit, ce qui protège les données, et
 comment fonctionne le modèle de licence. Pour la description fonctionnelle, voir
@@ -91,7 +91,7 @@ companyStore.js    Registre des dossiers d'entreprise et comptes partagés
 *Service.js        Logique métier par domaine (17 services)
 routes/            21 modules de points d'entrée HTTP
 client/src/        Interface React (31 composants, 11 crochets et modules)
-tests/             25 fichiers, 368 tests
+tests/             25 fichiers, 369 tests
 ```
 
 Le découpage est strict : **`server.js` ne fait que câbler**. Il ne contient
@@ -554,7 +554,7 @@ facture émise), donc une vérification fréquente est sans risque.
 
 ## 10. Tests et intégration continue
 
-**368 tests**, exécutés par `node --test`. Répartition :
+**369 tests**, exécutés par `node --test`. Répartition :
 
 | Domaine | Tests |
 | --- | --- |
@@ -581,7 +581,7 @@ facture émise), donc une vérification fréquente est sans risque.
 | Balance âgée | 9 |
 | Multi-entreprise | 8 |
 | Abonnements | 8 |
-| Apparence de l'interface | 8 |
+| Apparence de l'interface | 9 |
 | Arithmétique monétaire | 7 |
 
 Deux partis pris méritent d'être signalés :
@@ -709,7 +709,7 @@ Trois corrections peuvent être demandées explicitement :
 | **Volume du rapprochement** | Plafond de 5 000 lignes ; le relevé transite en JSON sous une limite de corps de 1 Mo |
 | **Retraits bancaires** | Ignorés : frais et sorties sont hors périmètre |
 | **Windows seul** | Aucune cible macOS ou Linux |
-| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.7.3 en offre l'occasion sur toute installation restée en 1.7.2 |
+| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.7.4 en offre l'occasion sur toute installation restée en 1.7.3 |
 | **Redémarrage après restauration** | `app.relaunch()` non vérifié sur un vrai Windows |
 
 ---
