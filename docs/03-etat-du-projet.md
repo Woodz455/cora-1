@@ -11,7 +11,7 @@ version 1.7.4.*
 | --- | --- |
 | **Version publiée** | 1.7.4, le 20 septembre 2026 |
 | **Publications** | 12 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 57 commits, 22 demandes de fusion, toutes fusionnées |
+| **Développement** | 57 commits, 23 demandes de fusion, toutes fusionnées |
 | **Tests** | 369, tous au vert, exécutés à chaque fusion |
 | **Durée** | 8 semaines, du 24 juillet au 20 septembre 2026 |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca |
@@ -235,7 +235,7 @@ connu. Rien de nouveau, rien hors de l'interface, aucune reprise de données.
   écran.
 
 ### Phase 12 : les deux derniers défauts d'accessibilité
-*20 septembre · publié en 1.7.4*
+*20 septembre · publié en 1.7.4 · demande de fusion #23*
 
 Deux défauts relevés pendant le travail sur le design, signalés à chaque version
 sans être corrigés. Rien de nouveau, rien hors de l'interface, aucune reprise de
