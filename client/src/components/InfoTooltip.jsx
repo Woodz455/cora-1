@@ -97,7 +97,7 @@ function InfoTooltip({ text }) {
   }, [ancre]);
 
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '5px' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '4px' }}>
       <button
         ref={declencheurRef}
         type="button"

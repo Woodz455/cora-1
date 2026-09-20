@@ -333,11 +333,11 @@ function App() {
       </div>
 
       <div style={{ display: 'flex', height: '100vh', backgroundColor: 'transparent', color: 'var(--text-main)' }}>
-        <aside className="glass-panel" style={{ width: '260px', margin: '20px', padding: '30px 20px', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
+        <aside className="glass-panel" style={{ width: '260px', margin: '20px', padding: '32px 20px', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
           {/* Le logotype écrit déjà « CLORA » : le doubler d'un titre textuel
               affichait le nom deux fois, et l'écraser dans une vignette carrée
               le rendait illisible. Il s'affiche donc à sa proportion propre. */}
-          <div style={{ marginBottom: '40px', padding: '0 10px' }}>
+          <div style={{ marginBottom: '40px', padding: '0 8px' }}>
             <h1 style={{ margin: 0, fontSize: 0, lineHeight: 0 }}>
               {/* Le logotype est en bleu marine : sur le panneau sombre il
                   disparaîtrait. Une variante éclaircie prend le relais. */}
@@ -356,7 +356,7 @@ function App() {
               saisir une facture chez le mauvais client se répare mal, et
               l'ambiguïté sur « chez qui suis-je » est le premier risque. Le
               bouton n'apparaît que s'il y a réellement ailleurs où aller. */}
-          <div style={{ marginBottom: '28px', padding: '0 10px' }}>
+          <div style={{ marginBottom: '24px', padding: '0 8px' }}>
             <p style={{ margin: 0, fontSize: '.7rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               Dossier
             </p>
@@ -381,7 +381,7 @@ function App() {
 
           {/* Des <button> et non des <div> : la navigation était inatteignable
               au clavier et invisible pour un lecteur d'écran. */}
-          <nav aria-label="Navigation principale" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <nav aria-label="Navigation principale" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {vuesVisibles.map((vue) => {
               const Icone = vue.icone;
               return (
@@ -398,7 +398,7 @@ function App() {
             })}
           </nav>
 
-          <div style={{ marginTop: 'auto', padding: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ marginTop: 'auto', padding: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <button
               type="button"
               onClick={() => setIsDarkMode(!isDarkMode)}
@@ -423,10 +423,10 @@ function App() {
         <main style={{ flex: 1, padding: '20px 40px 20px 20px', overflowY: 'auto' }}>
           <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px' }}>
             <div>
-              <h2 style={{ fontSize: '2.2rem', fontWeight: '700', color: 'var(--text-main)', marginBottom: '5px' }}>{vueActive.titre}</h2>
+              <h2 style={{ fontSize: '2.2rem', fontWeight: '700', color: 'var(--text-main)', marginBottom: '4px' }}>{vueActive.titre}</h2>
               <p style={{ color: 'var(--text-muted)', margin: 0 }}>{vueActive.sousTitre}</p>
             </div>
-            <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '10px 20px', borderRadius: '30px', fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
+            <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '8px 20px', borderRadius: '30px', fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
               <span aria-hidden="true" style={{ width: '8px', height: '8px', borderRadius: '50%', background: COULEUR_ROLE[user.role] || '#94a3b8' }}></span>
               {`${user.username} (${user.role})`}
             </div>
@@ -436,7 +436,7 @@ function App() {
             <div
               className="alert alert-info"
               role="status"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '15px' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}
             >
               <span>
                 Clora {majDisponible.derniere} est disponible. Vous utilisez la {majDisponible.courante}.

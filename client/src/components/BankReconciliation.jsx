@@ -194,7 +194,7 @@ export default function BankReconciliation() {
           montant sont détectées automatiquement. Seuls les dépôts sont retenus, et les lignes déjà
           importées sont ignorées.
         </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '8px' }}>
           <label className="btn-primary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             <Upload size={18} aria-hidden="true" />
             Sélectionner un fichier CSV
@@ -205,7 +205,7 @@ export default function BankReconciliation() {
       </div>
 
       <div className="glass-panel" style={{ padding: '20px' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '10px' }}>Dépôts à imputer</h3>
+        <h3 style={{ marginTop: 0, marginBottom: '8px' }}>Dépôts à imputer</h3>
         <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>
           Un dépôt peut régler plusieurs factures : liez-le autant de fois que nécessaire.
           La colonne « Part » permet d'imputer un montant précis ; laissée vide, elle affecte
@@ -301,7 +301,7 @@ export default function BankReconciliation() {
                           type="button"
                           onClick={() => handleRapprocher(t.id)}
                           className="btn-primary"
-                          style={{ padding: '6px 12px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          style={{ padding: '4px 12px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '4px' }}
                           title="Lier à la facture"
                         >
                           <CheckCircle size={16} aria-hidden="true" /> Lier

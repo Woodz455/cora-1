@@ -16,11 +16,11 @@ function PremiersPas({ demarrage, onMasquer, naviguer }) {
   const total = demarrage.etapes.length;
 
   return (
-    <div className="glass-card" style={{ padding: '30px', marginBottom: '40px' }}>
-      <div className="toolbar" style={{ marginBottom: '15px' }}>
+    <div className="glass-card" style={{ padding: '32px', marginBottom: '40px' }}>
+      <div className="toolbar" style={{ marginBottom: '16px' }}>
         <div>
           <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.2rem' }}>Pour commencer</h3>
-          <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+          <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
             {demarrage.profil ? `${demarrage.profil.libelle} : ` : ''}
             {faites} étape{faites > 1 ? 's' : ''} sur {total}. Chaque étape se coche d'elle-même.
           </p>
@@ -39,7 +39,7 @@ function PremiersPas({ demarrage, onMasquer, naviguer }) {
                 background: etape.fait ? 'transparent' : 'var(--hover-subtle)',
                 border: '1px solid var(--glass-border)', borderRadius: '10px',
                 color: etape.fait ? 'var(--text-muted)' : 'var(--text-main)', cursor: 'pointer',
-                marginBottom: '8px', display: 'flex', gap: '14px', alignItems: 'flex-start'
+                marginBottom: '8px', display: 'flex', gap: '12px', alignItems: 'flex-start'
               }}
             >
               <span
@@ -214,7 +214,7 @@ function Dashboard({ naviguer }) {
             onClick={() => naviguer(carte.vue, carte.parametres)}
             title={carte.aide}
             style={{
-              padding: '25px', textAlign: 'left',
+              padding: '24px', textAlign: 'left',
               cursor: 'pointer', font: 'inherit', width: '100%'
             }}
           >
@@ -222,7 +222,7 @@ function Dashboard({ naviguer }) {
                 qui ne la distingue pas. Le triangle porte le mot, que la
                 couleur ne peut pas dire. */}
             <p style={{
-              margin: '0 0 10px 0', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 'bold',
+              margin: '0 0 8px 0', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 'bold',
               color: carte.alerte ? 'var(--status-danger)' : 'var(--text-muted)',
               display: 'flex', alignItems: 'center', gap: '.4rem'
             }}>
@@ -242,7 +242,7 @@ function Dashboard({ naviguer }) {
       {/* Ce qu'il reste à faire aujourd'hui. L'application est organisée par
           objet — Factures, Devis, Clients — et rien ne disait par quoi
           commencer. */}
-      <div className="glass-card" style={{ padding: '30px', marginBottom: '40px' }}>
+      <div className="glass-card" style={{ padding: '32px', marginBottom: '40px' }}>
         <h3 style={{ margin: '0 0 20px 0', color: 'var(--text-main)', fontSize: '1.2rem' }}>À faire</h3>
         {taches.length === 0 ? (
           <p className="empty-state">Rien ne demande votre attention pour l'instant.</p>
@@ -254,10 +254,10 @@ function Dashboard({ naviguer }) {
                   type="button"
                   onClick={() => naviguer(tache.vue, tache.parametres)}
                   style={{
-                    width: '100%', textAlign: 'left', padding: '14px 16px', font: 'inherit',
+                    width: '100%', textAlign: 'left', padding: '12px 16px', font: 'inherit',
                     background: 'var(--hover-subtle)', border: '1px solid var(--glass-border)',
                     borderRadius: '10px', color: 'var(--text-main)', cursor: 'pointer',
-                    marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                    marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                   }}
                 >
                   <span>{tache.libelle(tache.nombre)}</span>
@@ -269,7 +269,7 @@ function Dashboard({ naviguer }) {
         )}
       </div>
 
-      <div className="glass-card" style={{ padding: '30px' }}>
+      <div className="glass-card" style={{ padding: '32px' }}>
         {/* Les revenus sont regroupés par mois d'encaissement et non d'émission :
             c'est la trésorerie réellement entrée sur la période. */}
         <h3 style={{ margin: '0 0 20px 0', color: 'var(--text-main)', fontSize: '1.2rem' }}>Encaissements par mois</h3>

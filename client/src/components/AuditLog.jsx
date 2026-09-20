@@ -104,7 +104,7 @@ function AuditLog() {
   const filtreActif = Object.values(filtres).some(Boolean);
 
   return (
-    <div className="glass-panel" style={{ padding: '25px' }}>
+    <div className="glass-panel" style={{ padding: '24px' }}>
       <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>
         Chaque action sensible est consignée ici : annulation d'un encaissement, suppression
         d'une facture, changement d'un taux de taxe, modification d'un compte. Le journal ne

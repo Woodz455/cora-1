@@ -112,7 +112,7 @@ function DevisList() {
               }}
             >
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
                   <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '600', textDecoration: devis.statut === 'Refusé' ? 'line-through' : 'none' }}>
                     {devis.numero_devis}
                   </h3>
@@ -126,7 +126,7 @@ function DevisList() {
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <div className="numeric">
-                  <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total estimé</p>
+                  <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total estimé</p>
                   <p style={{ margin: 0, fontWeight: '700', fontSize: '1.2rem', color: 'var(--text-main)' }}>
                     {formatMontant(devis.montant_total, devis.devise)}
                   </p>

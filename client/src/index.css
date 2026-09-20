@@ -14,6 +14,24 @@
   --font-display: 'Outfit Variable', 'Outfit', 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
 }
 
+/* L'échelle d'espacement : 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64 pixels.
+   Toute marge, tout remplissage et tout écart de l'application s'y tiennent,
+   dans la feuille comme dans le JSX, et un test le vérifie.
+
+   Il n'y en avait pas : cinq cents déclarations employaient vingt-quatre
+   valeurs, réparties presque exactement moitié-moitié entre une grille de
+   quatre pixels et une grille de cinq. Deux cent soixante et onze ont été
+   rangées sur la marche la plus proche ; à égalité, la plus petite, parce
+   qu'un changement mécanique de cette ampleur ne doit jamais agrandir une mise
+   en page : un conteneur qui tenait tout juste peut déborder ou passer à la
+   ligne, alors que le resserrer ne casse rien.
+
+   Les valeurs restent écrites en pixels plutôt qu'en jetons : « 16px » se lit
+   mieux dans un style en ligne que « var(--espace-16) », et c'est le test qui
+   fait tenir la règle, non l'indirection.
+
+   Une seule exception, marquée dans le code : la flèche de la bulle d'aide, où
+   le décalage négatif n'est pas de l'espacement mais la moitié de sa largeur. */
 :root {
   /* Fond clair perle */
   --app-bg: #f8fafc; 
@@ -191,7 +209,7 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--gradient-brand);
   color: #ffffff;
   border: none;
-  padding: 10px 20px;
+  padding: 8px 20px;
   border-radius: 8px;
   font-family: var(--font-display);
   font-weight: 600;
@@ -222,7 +240,7 @@ h1, h2, h3, h4, h5, h6 {
   background: transparent;
   color: var(--text-main);
   border: 1px solid var(--glass-border);
-  padding: 10px 20px;
+  padding: 8px 20px;
   border-radius: 8px;
   font-family: var(--font-display);
   font-weight: 500;
@@ -300,7 +318,7 @@ textarea:focus-visible {
 
 /* Badges de statut */
 .status-badge {
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: 20px;
   font-size: 0.85rem;
   font-weight: 600;
@@ -325,9 +343,9 @@ textarea:focus-visible {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  padding: 12px 15px;
+  padding: 12px 16px;
   border-radius: 10px;
   border: 1px solid transparent;
   background: transparent;
@@ -357,7 +375,7 @@ textarea:focus-visible {
    MESSAGES ET ÉTATS
    ========================================= */
 .alert {
-  padding: 14px 16px;
+  padding: 12px 16px;
   border-radius: 8px;
   margin-bottom: 20px;
   border: 1px solid transparent;
@@ -415,7 +433,7 @@ textarea:focus-visible {
 
 .search-input {
   min-width: 240px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border: 1px solid var(--input-border);
   border-radius: 8px;
   background: var(--input-bg);
@@ -430,7 +448,7 @@ textarea:focus-visible {
 }
 
 .data-table th {
-  padding: 12px 10px;
+  padding: 12px 8px;
   text-align: left;
   color: var(--text-muted);
   font-weight: 600;
@@ -440,7 +458,7 @@ textarea:focus-visible {
 }
 
 .data-table td {
-  padding: 12px 10px;
+  padding: 12px 8px;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-main);
 }
@@ -451,7 +469,7 @@ textarea:focus-visible {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   padding: 0;
   border: none;
   background: none;
@@ -544,7 +562,7 @@ textarea:focus-visible {
   z-index: 2000;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   max-width: min(420px, calc(100vw - 48px));
   /* Le conteneur reste en place quand il est vide : il ne doit pas intercepter
      les clics sur le contenu qu'il recouvre. */
@@ -558,8 +576,8 @@ textarea:focus-visible {
 .notification {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: 8px;
+  padding: 12px 16px;
   border-radius: 10px;
   /* Fond opaque, et non translucide comme les panneaux : le message passe
      par-dessus du texte, qu'il doit masquer pour rester lisible. */
@@ -615,12 +633,12 @@ textarea:focus-visible {
 
 /* Formulaires */
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 16px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   font-weight: 500;
   color: var(--text-muted);
   font-size: 0.95rem;
@@ -665,7 +683,7 @@ textarea:focus-visible {
 .modal-content {
   width: 100%;
   max-width: 450px;
-  padding: 30px;
+  padding: 32px;
   transform: scale(0.95);
   animation: scaleUp 0.2s forwards ease-out;
 }

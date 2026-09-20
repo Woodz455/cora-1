@@ -249,7 +249,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
   return (
     <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={`Aperçu ${numero}`}
       style={{ zIndex: 9999, padding: '20px', overflowY: 'auto', display: 'block' }}>
-      <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginBottom: '20px', position: 'sticky', top: '10px', zIndex: 10000, flexWrap: 'wrap' }}>
+      <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '20px', position: 'sticky', top: '10px', zIndex: 10000, flexWrap: 'wrap' }}>
         <button type="button" className="btn-secondary" onClick={() => onClose(false)} style={{ background: 'white' }}>Fermer</button>
         <button type="button" className="btn-secondary" onClick={() => setIsEmailModalOpen(true)} style={{ background: 'white', color: '#0e4a9e', borderColor: '#0e4a9e' }}>
           <Mail size={16} aria-hidden="true" /> Envoyer par courriel
@@ -281,7 +281,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
         className="print-only"
         style={{ background: 'white', color: 'black', maxWidth: '800px', margin: '0 auto', padding: '40px', boxShadow: '0 0 20px rgba(0,0,0,0.1)', borderRadius: '8px' }}
       >
-        <div style={{ marginBottom: '30px' }}>
+        <div style={{ marginBottom: '32px' }}>
           {settings.entreprise_logo && (
             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
               <img
@@ -294,26 +294,26 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
 
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #f1f5f9', paddingBottom: '20px', gap: '20px' }}>
             <div>
-              <p style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#0e4a9e', fontWeight: 'bold' }}>
+              <p style={{ margin: '0 0 4px 0', fontSize: '1.1rem', color: '#0e4a9e', fontWeight: 'bold' }}>
                 {settings.entreprise_nom || 'Votre entreprise'}
               </p>
               {settings.entreprise_email && (
-                <p style={{ margin: '0 0 5px 0', fontSize: '0.95rem', color: '#475569' }}>
+                <p style={{ margin: '0 0 4px 0', fontSize: '0.95rem', color: '#475569' }}>
                   {isEn ? 'Email' : 'Courriel'} : {settings.entreprise_email}
                 </p>
               )}
               {settings.entreprise_adresse && (
-                <p style={{ margin: '0 0 5px 0', fontSize: '0.95rem', color: '#475569', whiteSpace: 'pre-line' }}>
+                <p style={{ margin: '0 0 4px 0', fontSize: '0.95rem', color: '#475569', whiteSpace: 'pre-line' }}>
                   {settings.entreprise_adresse}
                 </p>
               )}
             </div>
             <div style={{ textAlign: 'right' }}>
-              <h2 style={{ margin: '0 0 10px 0', fontSize: '2rem', color: estNote ? '#b45309' : '#0f172a' }}>
+              <h2 style={{ margin: '0 0 8px 0', fontSize: '2rem', color: estNote ? '#b45309' : '#0f172a' }}>
                 {estNote ? dict.note : estDevis ? dict.quote : dict.invoice}
               </h2>
-              <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>N° {numero}</p>
-              <p style={{ margin: '0 0 5px 0', fontSize: '0.9rem', color: '#475569' }}>
+              <p style={{ margin: '0 0 4px 0', fontWeight: 'bold' }}>N° {numero}</p>
+              <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem', color: '#475569' }}>
                 {dict.dateEmission} : {details.date_emission}
               </p>
               {/* Une note de crédit ne s'échoit pas : elle renvoie à la facture
@@ -335,21 +335,21 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
           <p style={{ margin: '0 0 8px 0', textTransform: 'uppercase', fontSize: '0.85rem', color: '#94a3b8', fontWeight: 'bold' }}>
             {estNote ? dict.creditedTo : dict.billedTo}
           </p>
-          <h3 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', color: '#0f172a' }}>{client.nom_entreprise}</h3>
-          {client.nom_contact && <p style={{ margin: '0 0 5px 0', color: '#475569' }}>{dict.attn} {client.nom_contact}</p>}
-          {client.email && <p style={{ margin: '0 0 5px 0', color: '#475569' }}>{client.email}</p>}
+          <h3 style={{ margin: '0 0 4px 0', fontSize: '1.2rem', color: '#0f172a' }}>{client.nom_entreprise}</h3>
+          {client.nom_contact && <p style={{ margin: '0 0 4px 0', color: '#475569' }}>{dict.attn} {client.nom_contact}</p>}
+          {client.email && <p style={{ margin: '0 0 4px 0', color: '#475569' }}>{client.email}</p>}
           {client.adresse && <p style={{ margin: 0, color: '#475569', whiteSpace: 'pre-line' }}>{client.adresse}</p>}
         </div>
 
         {estNote && details.motif && (
-          <div style={{ marginBottom: '30px', padding: '15px 20px', background: '#fffbeb', borderRadius: '8px', borderLeft: '4px solid #b45309' }}>
+          <div style={{ marginBottom: '32px', padding: '16px 20px', background: '#fffbeb', borderRadius: '8px', borderLeft: '4px solid #b45309' }}>
             <p style={{ margin: 0, color: '#0f172a', whiteSpace: 'pre-line', fontSize: '0.95rem' }}>
               <strong>{dict.noteMotif} : </strong>{details.motif}
             </p>
           </div>
         )}
 
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '32px' }}>
           <thead>
             <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
               <th style={{ padding: '12px', textAlign: 'left', color: '#475569', fontWeight: '600' }}>{dict.service}</th>
@@ -361,10 +361,10 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
           <tbody>
             {details.lignes.map((ligne) => (
               <tr key={ligne.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '15px 12px', color: '#0f172a' }}>{ligne.description}</td>
-                <td style={{ padding: '15px 12px', textAlign: 'center', color: '#475569' }}>{ligne.quantite}</td>
-                <td style={{ padding: '15px 12px', textAlign: 'right', color: '#475569' }}>{montant(ligne.prix_unitaire)}</td>
-                <td style={{ padding: '15px 12px', textAlign: 'right', fontWeight: '500', color: '#0f172a' }}>
+                <td style={{ padding: '16px 12px', color: '#0f172a' }}>{ligne.description}</td>
+                <td style={{ padding: '16px 12px', textAlign: 'center', color: '#475569' }}>{ligne.quantite}</td>
+                <td style={{ padding: '16px 12px', textAlign: 'right', color: '#475569' }}>{montant(ligne.prix_unitaire)}</td>
+                <td style={{ padding: '16px 12px', textAlign: 'right', fontWeight: '500', color: '#0f172a' }}>
                   {montant(ligne.quantite * ligne.prix_unitaire)}
                 </td>
               </tr>
@@ -415,7 +415,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
                   <span>{dict.alreadyPaid}</span>
                   <span>- {montant(details.montant_paye)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderTop: '2px solid #e2e8f0', marginTop: '5px', fontWeight: 'bold', fontSize: '1.2rem', color: '#0f172a' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderTop: '2px solid #e2e8f0', marginTop: '4px', fontWeight: 'bold', fontSize: '1.2rem', color: '#0f172a' }}>
                   <span>{details.montant_a_rembourser > 0 ? dict.refundDue : dict.balanceDue}</span>
                   <span>
                     {montant(details.montant_a_rembourser > 0 ? details.montant_a_rembourser : details.solde_restant)}
@@ -431,10 +431,10 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
             aucun lien ne survit, et la facture peut être remise sur papier. */}
         {lienPaiement && (
           <div style={{ marginTop: '40px', padding: '20px', background: '#ecfdf5', borderRadius: '8px', borderLeft: '4px solid #0f766e' }}>
-            <p style={{ margin: '0 0 6px 0', color: '#0f172a', fontWeight: 'bold', fontSize: '1rem' }}>
+            <p style={{ margin: '0 0 4px 0', color: '#0f172a', fontWeight: 'bold', fontSize: '1rem' }}>
               {dict.payOnline}
             </p>
-            <p style={{ margin: '0 0 10px 0', color: '#475569', fontSize: '0.9rem' }}>
+            <p style={{ margin: '0 0 8px 0', color: '#475569', fontSize: '0.9rem' }}>
               {dict.payOnlineHint}
             </p>
             <p style={{ margin: 0, color: '#0f766e', fontSize: '0.9rem', wordBreak: 'break-all' }}>
@@ -444,7 +444,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
                 que cela se voie — sur le document lui-même, pas seulement
                 dans les réglages. */}
             {lienPaiement.mode === 'test' && (
-              <p style={{ margin: '10px 0 0 0', color: '#b45309', fontWeight: 'bold', fontSize: '0.85rem' }}>
+              <p style={{ margin: '8px 0 0 0', color: '#b45309', fontWeight: 'bold', fontSize: '0.85rem' }}>
                 {dict.payOnlineTest}
               </p>
             )}
@@ -461,20 +461,20 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
           </div>
         )}
 
-        <div style={{ marginTop: '60px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
-          <p style={{ margin: '0 0 5px 0' }}>{dict.thanks}</p>
-          {estNote && <p style={{ margin: '0 0 5px 0' }}>{dict.noteFooter} n° {details.numero_facture}.</p>}
-          {!estDevis && !estNote && <p style={{ margin: '0 0 5px 0' }}>{dict.payBefore}{details.date_echeance}.</p>}
-          {estDevis && <p style={{ margin: '0 0 5px 0' }}>{dict.quoteValid}{details.date_validite}.</p>}
+        <div style={{ marginTop: '64px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
+          <p style={{ margin: '0 0 4px 0' }}>{dict.thanks}</p>
+          {estNote && <p style={{ margin: '0 0 4px 0' }}>{dict.noteFooter} n° {details.numero_facture}.</p>}
+          {!estDevis && !estNote && <p style={{ margin: '0 0 4px 0' }}>{dict.payBefore}{details.date_echeance}.</p>}
+          {estDevis && <p style={{ margin: '0 0 4px 0' }}>{dict.quoteValid}{details.date_validite}.</p>}
           {details.devise && details.devise !== 'CAD' && (
-            <p style={{ margin: '5px 0', fontStyle: 'italic', fontSize: '0.8rem' }}>
+            <p style={{ margin: '4px 0', fontStyle: 'italic', fontSize: '0.8rem' }}>
               {isEn
                 ? `* Amounts are in ${details.devise} (accounting rate: 1 ${details.devise} = ${details.taux_change} CAD).`
                 : `* Les montants sont exprimés en ${details.devise} (taux comptable appliqué : 1 ${details.devise} = ${details.taux_change} CAD).`}
             </p>
           )}
           {(settings.taxe_1_numero || settings.taxe_2_numero) && (
-            <p style={{ margin: '10px 0 0 0', fontSize: '0.75rem' }}>
+            <p style={{ margin: '8px 0 0 0', fontSize: '0.75rem' }}>
               {[
                 settings.taxe_1_numero && `${settings.taxe_1_nom} : ${settings.taxe_1_numero}`,
                 settings.taxe_2_numero && `${settings.taxe_2_nom} : ${settings.taxe_2_numero}`

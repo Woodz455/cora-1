@@ -365,3 +365,68 @@ test('les polices du produit sont embarquées et correctement nommées', () => {
   assert.ok(empaquetes.includes('LICENCES-TIERCES.txt'),
     "la notice doit être empaquetée, sans quoi elle ne suit pas les polices");
 });
+
+/**
+ * L'échelle d'espacement.
+ *
+ * Il n'y en avait pas. Cinq cents déclarations de marge, de remplissage et
+ * d'écart employaient vingt-quatre valeurs différentes, réparties presque
+ * exactement moitié-moitié entre une grille de quatre pixels et une grille de
+ * cinq : 228 sur l'une, 228 sur l'autre, 44 sur ni l'une ni l'autre. Deux
+ * systèmes incompatibles cohabitaient donc sans que rien ne tranche.
+ *
+ * Les valeurs sont écrites en pixels plutôt qu'en jetons, parce que « 16px » se
+ * lit mieux dans un style en ligne que « var(--espace-16) ». C'est donc ce test
+ * qui fait tenir la règle : sans lui, l'échelle ne serait qu'un nettoyage
+ * ponctuel, et la vingt-cinquième valeur reviendrait au prochain écran.
+ */
+test("l'espacement se tient sur son échelle", () => {
+  const ECHELLE = [2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64];
+
+  /**
+   * La flèche de la bulle d'aide : son décalage négatif n'est pas de
+   * l'espacement mais la moitié de sa largeur, qui la centre sous l'icône. La
+   * ranger sur l'échelle la décalerait d'un pixel.
+   */
+  const EXCEPTIONS = new Set(['InfoTooltip.jsx:-5']);
+
+  const PROPS_JSX = /\b(margin|marginTop|marginBottom|marginLeft|marginRight|padding|paddingTop|paddingBottom|paddingLeft|paddingRight|gap|rowGap|columnGap)\s*:\s*'([^']*)'/g;
+  const PROPS_CSS = /(?:^|[\s{;])(margin|margin-top|margin-bottom|margin-left|margin-right|padding|padding-top|padding-bottom|padding-left|padding-right|gap|row-gap|column-gap)\s*:\s*([^;{}]+);/gm;
+
+  const SOURCE = path.join(__dirname, '..', 'client', 'src');
+  const fautives = [];
+
+  const examiner = (chemin, nom, valeur, ligne) => {
+    for (const brut of String(valeur).trim().split(/\s+/)) {
+      const m = brut.match(/^(-?[\d.]+)px$/);
+      if (!m) continue;
+      const px = Number(m[1]);
+      if (px === 0 || ECHELLE.includes(Math.abs(px))) continue;
+      if (EXCEPTIONS.has(`${nom}:${px}`)) continue;
+      fautives.push(`${path.relative(SOURCE, chemin)}:${ligne} → ${px}px`);
+    }
+  };
+
+  const parcourir = (dossier) => {
+    for (const entree of fs.readdirSync(dossier, { withFileTypes: true })) {
+      const chemin = path.join(dossier, entree.name);
+      if (entree.isDirectory()) { parcourir(chemin); continue; }
+      const texte = fs.readFileSync(chemin, 'utf8');
+      const motif = /\.jsx$/.test(entree.name) ? PROPS_JSX
+        : /\.css$/.test(entree.name) ? PROPS_CSS : null;
+      if (!motif) continue;
+      motif.lastIndex = 0;
+      let trouve;
+      while ((trouve = motif.exec(texte)) !== null) {
+        const ligne = texte.slice(0, trouve.index).split('\n').length;
+        examiner(chemin, entree.name, trouve[2], ligne);
+      }
+    }
+  };
+  parcourir(SOURCE);
+
+  assert.deepEqual(fautives, [],
+    "Ces valeurs d'espacement ne sont pas sur l'échelle "
+    + `(${ECHELLE.join(', ')}). Prendre la marche la plus proche, et la plus `
+    + `petite à égalité.\n    ${fautives.join('\n    ')}`);
+});

@@ -79,7 +79,7 @@ function CreditNoteModal({ facture, onClose, onSuccess }) {
   return (
     <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label="Émettre une note de crédit">
       <div className="modal-content glass-panel" style={{ maxWidth: '720px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '10px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
+        <h3 style={{ marginTop: 0, marginBottom: '8px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
           Note de crédit
         </h3>
         <p style={{ marginTop: 0, color: 'var(--text-muted)' }}>
@@ -121,12 +121,12 @@ function CreditNoteModal({ facture, onClose, onSuccess }) {
               </div>
             </div>
 
-            <h4 style={{ color: 'var(--text-main)', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
+            <h4 style={{ color: 'var(--text-main)', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>
               Lignes à créditer
             </h4>
 
             {lignes.map((ligne, index) => (
-              <div key={ligne.cle} style={{ display: 'flex', gap: '15px', marginBottom: '15px', alignItems: 'flex-start' }}>
+              <div key={ligne.cle} style={{ display: 'flex', gap: '16px', marginBottom: '16px', alignItems: 'flex-start' }}>
                 <div className="form-group" style={{ flex: 3, marginBottom: 0 }}>
                   <input
                     type="text" className="form-control" placeholder="Description du crédit"
@@ -168,12 +168,12 @@ function CreditNoteModal({ facture, onClose, onSuccess }) {
             <button
               type="button"
               onClick={() => setLignes((prev) => [...prev, nouvelleLigne()])}
-              style={{ padding: '8px 15px', background: 'var(--glass-bg)', border: '1px dashed var(--safehill-blue)', color: 'var(--safehill-blue)', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}
+              style={{ padding: '8px 16px', background: 'var(--glass-bg)', border: '1px dashed var(--safehill-blue)', color: 'var(--safehill-blue)', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}
             >
               + Ajouter une ligne
             </button>
 
-            <div style={{ marginTop: '25px', padding: '15px 20px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px' }}>
+            <div style={{ marginTop: '24px', padding: '16px 20px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
                 <span>Sous-total</span><span>{formatMontant(sousTotal, facture.devise)}</span>
               </div>
@@ -187,7 +187,7 @@ function CreditNoteModal({ facture, onClose, onSuccess }) {
                   <span>{facture.taxe_2_nom}</span><span>{formatMontant(taxe2, facture.devise)}</span>
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed var(--border-color)', fontWeight: 'bold', fontSize: '1.2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed var(--border-color)', fontWeight: 'bold', fontSize: '1.2rem' }}>
                 <span>Total crédité</span>
                 <span style={{ color: depasse ? 'var(--status-danger)' : 'var(--text-main)' }}>
                   {formatMontant(total, facture.devise)}
@@ -196,12 +196,12 @@ function CreditNoteModal({ facture, onClose, onSuccess }) {
             </div>
 
             {depasse && (
-              <p className="alert alert-error" style={{ marginTop: '15px' }} role="alert">
+              <p className="alert alert-error" style={{ marginTop: '16px' }} role="alert">
                 Ce crédit dépasse le montant créditable de {formatMontant(total - creditable, facture.devise)}.
               </p>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '25px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
               <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>Annuler</button>
               <button type="submit" className="btn-primary" disabled={loading || depasse || total <= 0}>
                 {loading ? 'Émission…' : 'Émettre la note de crédit'}

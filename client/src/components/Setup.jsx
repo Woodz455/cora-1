@@ -66,11 +66,11 @@ function Setup({ onSetupComplete }) {
         <img
           src="/banner.png"
           alt=""
-          style={{ maxWidth: '100%', marginBottom: '30px' }}
+          style={{ maxWidth: '100%', marginBottom: '32px' }}
           onError={(e) => { e.currentTarget.style.display = 'none'; }}
         />
-        <h1 style={{ color: 'var(--text-main)', marginBottom: '10px', fontSize: '1.6rem' }}>Bienvenue sur Clora</h1>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '30px', fontSize: '0.9rem' }}>
+        <h1 style={{ color: 'var(--text-main)', marginBottom: '8px', fontSize: '1.6rem' }}>Bienvenue sur Clora</h1>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontSize: '0.9rem' }}>
           Première utilisation : nommez votre entreprise et créez le compte administrateur
           qui protégera vos données.
         </p>
@@ -133,7 +133,7 @@ function Setup({ onSetupComplete }) {
               required
             />
           </div>
-          <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '10px', padding: '12px' }} disabled={loading}>
+          <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '8px', padding: '12px' }} disabled={loading}>
             {loading ? 'Création en cours…' : 'Créer mon compte'}
           </button>
         </form>

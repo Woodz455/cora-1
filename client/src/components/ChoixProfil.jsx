@@ -24,7 +24,7 @@ function ChoixProfil({ valeur, onChange, nom = 'profil' }) {
             <label
               key={p.valeur}
               style={{
-                display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px 14px',
+                display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px 12px',
                 borderRadius: '10px', cursor: 'pointer', textAlign: 'left',
                 border: `1px solid ${actif ? 'var(--safehill-blue)' : 'var(--glass-border)'}`,
                 background: actif ? 'var(--hover-subtle)' : 'var(--card-bg)'
@@ -32,7 +32,7 @@ function ChoixProfil({ valeur, onChange, nom = 'profil' }) {
             >
               <input
                 type="radio" name={nom} value={p.valeur} checked={actif}
-                onChange={() => onChange(p.valeur)} style={{ marginTop: '3px', flexShrink: 0 }}
+                onChange={() => onChange(p.valeur)} style={{ marginTop: '2px', flexShrink: 0 }}
               />
               <span>
                 <span style={{ display: 'block', fontWeight: 600, color: 'var(--text-main)' }}>{p.libelle}</span>
@@ -44,7 +44,7 @@ function ChoixProfil({ valeur, onChange, nom = 'profil' }) {
           );
         })}
       </div>
-      <p style={{ margin: '10px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'left' }}>
+      <p style={{ margin: '8px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'left' }}>
         Le profil règle des valeurs de départ et l'ordre des premiers pas. Il ne retire
         aucune fonction, et se change à tout moment dans Paramètres.
       </p>

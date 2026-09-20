@@ -1,7 +1,7 @@
 # Clora : état du projet
 
 *Ce qui a été fait, ce qui reste à faire. Arrêté au 20 septembre 2026,
-version 1.7.2.*
+version 1.7.3.*
 
 ---
 
@@ -9,10 +9,10 @@ version 1.7.2.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.7.2, le 20 septembre 2026 |
-| **Publications** | 10 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 51 commits, 20 demandes de fusion, toutes fusionnées |
-| **Tests** | 367, tous au vert, exécutés à chaque fusion |
+| **Version publiée** | 1.7.3, le 20 septembre 2026 |
+| **Publications** | 11 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 54 commits, 21 demandes de fusion, toutes fusionnées |
+| **Tests** | 368, tous au vert, exécutés à chaque fusion |
 | **Durée** | 8 semaines, du 24 juillet au 20 septembre 2026 |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca |
 | **Ventes** | Aucune : les tests utilisateurs sont en cours |
@@ -203,6 +203,37 @@ nouveau, rien hors de l'interface, aucune reprise de données.
   dépendances, un import manquant, une police appelée depuis un service
   distant, ou la notice de licence disparue.
 
+### Phase 11 : l'échelle d'espacement
+*20 septembre · publié en 1.7.3*
+
+La troisième version de correction d'affilée, et le dernier chantier de finition
+connu. Rien de nouveau, rien hors de l'interface, aucune reprise de données.
+
+- **L'espacement n'avait pas d'échelle.** Cinq cents déclarations de marge, de
+  remplissage et d'écart employaient vingt-quatre valeurs, réparties presque
+  exactement moitié-moitié entre deux grilles incompatibles : 228 sur celle de
+  quatre pixels, 228 sur celle de cinq, 44 sur ni l'une ni l'autre. Deux
+  systèmes cohabitaient sans que rien ne tranche, et la valeur suivante se
+  choisissait au jugé.
+- **L'échelle est 2, 4, 8, 12, 16, 20, 24, 32, 40, 48 et 64 pixels**, et deux
+  cent soixante et onze valeurs y ont été rangées, ce qui ramène vingt-quatre
+  valeurs distinctes à douze.
+- **La règle est la marche la plus proche, et la plus petite à égalité.** Ce
+  second point n'est pas une préférence : un changement mécanique de cette
+  ampleur ne doit jamais agrandir une mise en page, car un conteneur qui tenait
+  tout juste peut déborder ou passer à la ligne, alors que le resserrer ne casse
+  rien. Les écarts vont de moins quatre à plus quatre pixels, et la valeur la
+  plus fréquente de l'application, vingt pixels, ne bouge pas.
+- **Les deux documents imprimés ont été mesurés**, leur hauteur décidant de la
+  pagination du PDF : la facture est identique au pixel près, et le compte rendu
+  perd un et demi pour cent, ce qui laisse l'un et l'autre sur le même nombre de
+  pages.
+- **Un huitième test d'apparence** fait tenir la règle. Il est nécessaire : les
+  valeurs restent écrites en pixels plutôt qu'en jetons, parce qu'un nombre se
+  lit mieux qu'une variable dans un style en ligne. Sans lui, ce serait un
+  nettoyage ponctuel, et la vingt-cinquième valeur reviendrait au prochain
+  écran.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
@@ -311,8 +342,8 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.7.2 en offre l'occasion sur toute installation restée en
-  1.7.1.
+  annoncer. La 1.7.3 en offre l'occasion sur toute installation restée en
+  1.7.2.
 - **Le redémarrage après restauration d'une sauvegarde.**
 
 Ce sont deux choses à regarder pendant les tests utilisateurs.
@@ -385,18 +416,16 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.7.2 par les testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.7.3 par les testeurs et écouter ce qu'ils disent.**
 
 Leurs trois premières demandes sont livrées : le compte rendu de la période, le
 profil du dossier, et le sérieux du design. Le reste (la clé de licence, le
 certificat, les améliorations du rapprochement bancaire) attend la suite de ce
 retour, et devrait être priorisé par lui.
 
-Un chantier de finition reste connu et non fait : **l'espacement n'a pas
-d'échelle**, quatre cent quarante-neuf marges étant écrites à la main dans le
-JSX sur deux grilles incompatibles, de quatre et de cinq pixels. C'est le
-dernier des deux relevés en corrigeant le design ; l'autre, les polices non
-embarquées, est livré dans cette version.
+**Les deux chantiers de finition relevés en corrigeant le design sont faits** :
+les polices embarquées en 1.7.2, l'échelle d'espacement en 1.7.3. Il n'en reste
+aucun d'identifié. Ce qui viendra ensuite devrait venir des testeurs.
 
 ---
 

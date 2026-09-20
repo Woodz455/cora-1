@@ -302,7 +302,7 @@ function ExpenseList() {
                 </td>
                 <td className="numeric" style={{ fontWeight: 'bold' }}>{formatMontant(expense.montant_ttc)}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <button type="button" className="btn-icon" onClick={() => openModal(expense)} aria-label="Modifier la dépense" style={{ marginRight: '5px' }}><Pencil size={16} aria-hidden="true" /></button>
+                  <button type="button" className="btn-icon" onClick={() => openModal(expense)} aria-label="Modifier la dépense" style={{ marginRight: '4px' }}><Pencil size={16} aria-hidden="true" /></button>
                   <button type="button" className="btn-danger" onClick={() => handleDelete(expense)} aria-label="Supprimer la dépense"><Trash2 size={16} aria-hidden="true" /></button>
                 </td>
               </tr>
@@ -311,13 +311,13 @@ function ExpenseList() {
           {depensesFiltrees.length > 0 && (
             <tfoot>
               <tr style={{ fontWeight: 'bold' }}>
-                <td colSpan="4" style={{ paddingTop: '14px' }}>Total ({depensesFiltrees.length} dépense{depensesFiltrees.length > 1 ? 's' : ''})</td>
-                <td className="numeric" style={{ paddingTop: '14px', color: 'var(--text-muted)' }}>
+                <td colSpan="4" style={{ paddingTop: '12px' }}>Total ({depensesFiltrees.length} dépense{depensesFiltrees.length > 1 ? 's' : ''})</td>
+                <td className="numeric" style={{ paddingTop: '12px', color: 'var(--text-muted)' }}>
                   {totaux.km > 0 ? formatKm(totaux.km) : ''}
                 </td>
-                <td className="numeric" style={{ paddingTop: '14px' }}>{formatMontant(totaux.ht)}</td>
-                <td className="numeric" style={{ paddingTop: '14px' }}>{formatMontant(totaux.taxes)}</td>
-                <td className="numeric" style={{ paddingTop: '14px' }}>{formatMontant(totaux.ttc)}</td>
+                <td className="numeric" style={{ paddingTop: '12px' }}>{formatMontant(totaux.ht)}</td>
+                <td className="numeric" style={{ paddingTop: '12px' }}>{formatMontant(totaux.taxes)}</td>
+                <td className="numeric" style={{ paddingTop: '12px' }}>{formatMontant(totaux.ttc)}</td>
                 <td></td>
               </tr>
             </tfoot>
@@ -335,7 +335,7 @@ function ExpenseList() {
             {modalError && <p className="alert alert-error" role="alert">{modalError}</p>}
 
             <form onSubmit={handleSave}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div className="form-group">
                   <label htmlFor="depense-date">{estDeplacement ? 'Date du déplacement *' : 'Date de la dépense *'}</label>
                   <input id="depense-date" type="date" className="form-control" value={currentExpense.date_depense} onChange={(e) => setCurrentExpense({ ...currentExpense, date_depense: e.target.value })} required />
@@ -350,7 +350,7 @@ function ExpenseList() {
                   <div className="form-group">
                     {/* La bulle est hors du libellé : son bouton porte un nom
                         accessible, qui entrerait sinon dans celui du champ. */}
-                    <span style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
                       <label htmlFor="depense-vehicule" style={{ marginBottom: 0 }}>Véhicule ou transport</label>
                       <InfoTooltip text="Le véhicule employé, ou le mode de transport. Les valeurs déjà saisies vous sont proposées." />
                     </span>
@@ -367,7 +367,7 @@ function ExpenseList() {
                 <input id="depense-description" type="text" className="form-control" placeholder={estDeplacement ? 'Audition à Montréal' : ''} value={currentExpense.description || ''} onChange={(e) => setCurrentExpense({ ...currentExpense, description: e.target.value })} required={estDeplacement} />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div className="form-group">
                   <label htmlFor="depense-categorie">Catégorie</label>
                   <select id="depense-categorie" className="form-control" value={currentExpense.categorie} onChange={(e) => setCurrentExpense({ ...currentExpense, categorie: e.target.value })}>
@@ -384,7 +384,7 @@ function ExpenseList() {
 
               {estDeplacement && (
                 <>
-                  <h4 style={{ marginTop: '20px', marginBottom: '10px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '5px' }}>
+                  <h4 style={{ marginTop: '20px', marginBottom: '8px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '4px' }}>
                     Distance parcourue
                   </h4>
 
@@ -394,9 +394,9 @@ function ExpenseList() {
                   </div>
 
                   {tauxDeLAnnee ? (
-                    <div style={{ padding: '15px', background: 'var(--glass-bg)', borderRadius: '8px', marginTop: '10px' }}>
+                    <div style={{ padding: '16px', background: 'var(--glass-bg)', borderRadius: '8px', marginTop: '8px' }}>
                       <strong>Indemnité kilométrique {tauxDeLAnnee.annee}</strong>
-                      <p style={{ margin: '6px 0 0', color: 'var(--text-muted)' }}>
+                      <p style={{ margin: '4px 0 0', color: 'var(--text-muted)' }}>
                         {formatMontant(tauxDeLAnnee.taux_1)} du kilomètre jusqu'à {formatKm(tauxDeLAnnee.seuil_km)} dans l'année,
                         puis {formatMontant(tauxDeLAnnee.taux_2)}.
                       </p>
@@ -404,13 +404,13 @@ function ExpenseList() {
                           kilomètres déjà parcourus dans l'année, et le calculer
                           une seconde fois au navigateur ouvrirait la porte à ce
                           qu'il diverge de celui du serveur. */}
-                      <p style={{ margin: '6px 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                      <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                         Le montant est calculé à l'enregistrement, selon les kilomètres
                         déjà parcourus cette année-là.
                       </p>
                     </div>
                   ) : (
-                    <p className="alert alert-error" role="alert" style={{ marginTop: '10px' }}>
+                    <p className="alert alert-error" role="alert" style={{ marginTop: '8px' }}>
                       Aucun taux kilométrique n'est réglé pour {String(currentExpense.date_depense || '').slice(0, 4)}.
                       Un administrateur doit le renseigner dans Paramètres avant que ce déplacement puisse être inscrit.
                     </p>
@@ -420,13 +420,13 @@ function ExpenseList() {
 
               {!estDeplacement && (
               <>
-              <h4 style={{ marginTop: '20px', marginBottom: '10px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '5px' }}>
+              <h4 style={{ marginTop: '20px', marginBottom: '8px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '4px' }}>
                 Montants (reprenez les taxes exactes du reçu)
               </h4>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
                 <div className="form-group">
-                  <span style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
                     <label htmlFor="depense-ht" style={{ marginBottom: 0 }}>Montant HT ($) *</label>
                     <InfoTooltip text="Hors taxes : le montant avant application des taxes." />
                   </span>
@@ -442,7 +442,7 @@ function ExpenseList() {
                 </div>
               </div>
 
-              <div style={{ padding: '15px', background: 'var(--glass-bg)', borderRadius: '8px', marginTop: '10px', textAlign: 'right' }}>
+              <div style={{ padding: '16px', background: 'var(--glass-bg)', borderRadius: '8px', marginTop: '8px', textAlign: 'right' }}>
                 <strong>
                   Total TTC
                   <InfoTooltip text="Toutes taxes comprises : le montant final payé." />
@@ -455,7 +455,7 @@ function ExpenseList() {
               </>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
                 <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)} disabled={saving}>Annuler</button>
                 <button type="submit" className="btn-primary" disabled={saving || (estDeplacement && !tauxDeLAnnee)}>{saving ? 'Enregistrement…' : 'Enregistrer'}</button>
               </div>

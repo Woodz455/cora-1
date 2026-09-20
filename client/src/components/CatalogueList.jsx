@@ -103,7 +103,7 @@ function CatalogueList() {
             onChange={(e) => setRecherche(e.target.value)}
           />
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button type="button" className="btn-secondary" onClick={() => setImportOuvert(true)}>Importer</button>
           <button type="button" className="btn-primary" onClick={() => openModal()}>+ Nouveau service</button>
         </div>
@@ -134,7 +134,7 @@ function CatalogueList() {
                 <td style={{ color: 'var(--text-muted)' }}>{item.description}</td>
                 <td className="numeric">{formatMontant(item.prix_unitaire)}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <button type="button" className="btn-icon" onClick={() => openModal(item)} aria-label={`Modifier ${item.nom}`} style={{ marginRight: '5px' }}><Pencil size={16} aria-hidden="true" /></button>
+                  <button type="button" className="btn-icon" onClick={() => openModal(item)} aria-label={`Modifier ${item.nom}`} style={{ marginRight: '4px' }}><Pencil size={16} aria-hidden="true" /></button>
                   <button type="button" className="btn-danger" onClick={() => handleDelete(item)} aria-label={`Supprimer ${item.nom}`}><Trash2 size={16} aria-hidden="true" /></button>
                 </td>
               </tr>
@@ -182,7 +182,7 @@ function CatalogueList() {
                 <label htmlFor="service-prix">Prix ou tarif ($) *</label>
                 <input id="service-prix" type="number" step="0.01" min="0" className="form-control" value={currentItem.prix_unitaire} onChange={(e) => setCurrentItem({ ...currentItem, prix_unitaire: e.target.value })} required />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
                 <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)} disabled={saving}>Annuler</button>
                 <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Sauvegarde…' : 'Sauvegarder'}</button>
               </div>
