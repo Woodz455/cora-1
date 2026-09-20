@@ -11,7 +11,7 @@ version 1.7.3.*
 | --- | --- |
 | **Version publiée** | 1.7.3, le 20 septembre 2026 |
 | **Publications** | 11 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 54 commits, 21 demandes de fusion, toutes fusionnées |
+| **Développement** | 54 commits, 22 demandes de fusion, toutes fusionnées |
 | **Tests** | 368, tous au vert, exécutés à chaque fusion |
 | **Durée** | 8 semaines, du 24 juillet au 20 septembre 2026 |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca |
@@ -204,7 +204,7 @@ nouveau, rien hors de l'interface, aucune reprise de données.
   distant, ou la notice de licence disparue.
 
 ### Phase 11 : l'échelle d'espacement
-*20 septembre · publié en 1.7.3*
+*20 septembre · publié en 1.7.3 · demandes de fusion #21 et #22*
 
 La troisième version de correction d'affilée, et le dernier chantier de finition
 connu. Rien de nouveau, rien hors de l'interface, aucune reprise de données.
