@@ -21,10 +21,17 @@ const MOIS = [
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
 ];
 
-/** Carte d'indicateur. */
+/**
+ * Carte d'indicateur.
+ *
+ * La bande de couleur qui la coiffait est partie avec celles des autres écrans :
+ * cinq bandeaux de cinq teintes sur une même rangée faisaient tableau de
+ * démonstration, et le contour gris des panneaux délimite désormais la carte.
+ * La couleur reste sur le chiffre, où elle distingue les cinq indicateurs.
+ */
 function Carte({ titre, valeur, couleur, aide }) {
   return (
-    <div className="glass-card" style={{ borderTop: `4px solid ${couleur}` }}>
+    <div className="glass-card">
       <p style={{ margin: '0 0 10px 0', color: 'var(--text-muted)', fontWeight: '500', textTransform: 'uppercase', fontSize: '0.85rem' }}>
         {titre}{aide && <InfoTooltip text={aide} />}
       </p>
@@ -358,18 +365,18 @@ function ReportDashboard() {
         {taxStats ? (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '20px', marginBottom: '25px' }}>
-              <div style={{ padding: '15px', background: 'var(--glass-bg)', borderLeft: '4px solid #3b82f6', borderRadius: '8px' }}>
+              <div style={{ padding: '15px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
                 <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Taxes facturées</p>
                 <h4 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-main)' }}>{formatMontant(taxStats.taxes_facturees)}</h4>
               </div>
-              <div style={{ padding: '15px', background: 'var(--glass-bg)', borderLeft: '4px solid #f59e0b', borderRadius: '8px' }}>
+              <div style={{ padding: '15px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
                 <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                   Taxes payées (CTI)
                   <InfoTooltip text="La somme des taxes payées sur vos dépenses de la période." />
                 </p>
                 <h4 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-main)' }}>{formatMontant(taxStats.taxes_payees)}</h4>
               </div>
-              <div style={{ padding: '15px', background: 'var(--glass-bg)', borderLeft: '4px solid #10b981', borderRadius: '8px' }}>
+              <div style={{ padding: '15px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
                 <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                   Taxes nettes à remettre
                   <InfoTooltip text="Taxes facturées moins taxes payées. Un montant négatif correspond à un remboursement attendu." />

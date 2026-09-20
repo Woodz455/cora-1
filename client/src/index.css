@@ -22,8 +22,13 @@
   --gradient-brand: linear-gradient(135deg, #0e4a9e, #00c4b4);
   
   /* Glassmorphism premium (Light Aurora) */
-  --glass-bg: rgba(255, 255, 255, 0.65); 
-  --glass-border: rgba(255, 255, 255, 0.9); 
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  /* Le contour des conteneurs était blanc, sur un fond perle : autrement dit
+     invisible. La bande de couleur posée à gauche de chaque carte était donc la
+     seule chose qui délimitait un panneau, et c'est ce qui donnait à
+     l'application un air de démonstration. Un gris discret délimite sans
+     souligner, et rend les bandes inutiles. */
+  --glass-border: rgba(15, 23, 42, 0.12);
   --glass-shadow: 0 12px 40px -12px rgba(15, 23, 42, 0.1);
   --glass-card-bg: rgba(255, 255, 255, 0.45);
   
@@ -67,7 +72,8 @@
   --text-muted: #94a3b8;
   
   --glass-bg: rgba(30, 41, 59, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.05);
+  /* Même raison qu'en thème clair : à 0,05 le contour ne se voyait pas non plus. */
+  --glass-border: rgba(255, 255, 255, 0.14);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
   --glass-card-bg: rgba(30, 41, 59, 0.5);
   

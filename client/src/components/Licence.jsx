@@ -62,7 +62,7 @@ function Licence({ etat, onActive }) {
         <p style={{
           display: 'flex', gap: '.6rem', alignItems: 'flex-start',
           padding: '.9rem 1rem', marginBottom: '1.5rem', borderRadius: '10px',
-          background: 'rgba(36, 168, 144, .09)', borderLeft: '3px solid var(--safehill-teal)',
+          background: 'rgba(36, 168, 144, .09)', border: '1px solid var(--glass-border)',
           fontSize: '.9rem'
         }}>
           <ShieldCheck size={18} style={{ flexShrink: 0, marginTop: '.1rem' }} />

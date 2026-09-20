@@ -15,7 +15,7 @@ function PremiersPas({ demarrage, onMasquer, naviguer }) {
   const total = demarrage.etapes.length;
 
   return (
-    <div className="glass-card" style={{ padding: '30px', marginBottom: '40px', borderLeft: '4px solid var(--safehill-blue)' }}>
+    <div className="glass-card" style={{ padding: '30px', marginBottom: '40px' }}>
       <div className="toolbar" style={{ marginBottom: '15px' }}>
         <div>
           <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.2rem' }}>Pour commencer</h3>
@@ -164,17 +164,21 @@ function Dashboard({ naviguer }) {
 
   // Chaque indicateur ouvre la liste correspondante : un chiffre inquiétant
   // sans moyen d'agir obligeait à retrouver soi-même les factures visées.
+  //
+  // Les trois teintes qui peignaient la bande à gauche de chaque carte ont été
+  // retirées avec elle : trois couleurs alignées sur une même rangée faisaient
+  // tableau de démonstration, et le contour gris suffit à délimiter la carte.
   const cartes = [
     {
-      titre: "Chiffre d'affaires encaissé", valeur: stats.chiffreAffaires, couleur: '#10b981',
+      titre: "Chiffre d'affaires encaissé", valeur: stats.chiffreAffaires,
       vue: 'factures', parametres: { statutInitial: 'Payée' }, aide: 'Voir les factures réglées'
     },
     {
-      titre: 'Montant en attente', valeur: stats.facturesEnAttente, couleur: '#f59e0b',
+      titre: 'Montant en attente', valeur: stats.facturesEnAttente,
       vue: 'factures', parametres: { statutInitial: 'En attente' }, aide: 'Voir les factures en attente'
     },
     {
-      titre: 'Montant en retard', valeur: stats.facturesEnRetard, couleur: '#ef4444',
+      titre: 'Montant en retard', valeur: stats.facturesEnRetard,
       vue: 'factures', parametres: { echuesSeulement: true }, aide: 'Voir les factures échues'
     }
   ];
@@ -202,7 +206,7 @@ function Dashboard({ naviguer }) {
             onClick={() => naviguer(carte.vue, carte.parametres)}
             title={carte.aide}
             style={{
-              padding: '25px', borderLeft: `4px solid ${carte.couleur}`, textAlign: 'left',
+              padding: '25px', textAlign: 'left',
               cursor: 'pointer', font: 'inherit', width: '100%'
             }}
           >
