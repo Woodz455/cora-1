@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import { TriangleAlert } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import InfoTooltip from './InfoTooltip';
 import { api, formatMontant } from '../api';
@@ -24,22 +25,33 @@ const MOIS = [
 /**
  * Carte d'indicateur.
  *
- * Ni bande ni chiffre de couleur. La bande est partie avec celles des autres
- * écrans ; la couleur du chiffre l'a suivie, pour la même raison : cinq teintes
- * alignées sur une rangée ne distinguaient pas cinq indicateurs, elles faisaient
- * tableau de démonstration. Le titre nomme déjà l'indicateur, et le contour gris
- * des panneaux délimite la carte.
+ * Ni bande ni chiffre de couleur pour étiqueter. La bande est partie avec celles
+ * des autres écrans ; la couleur du chiffre l'a suivie, pour la même raison :
+ * cinq teintes alignées sur une rangée ne distinguaient pas cinq indicateurs,
+ * elles faisaient tableau de démonstration. Le titre nomme déjà l'indicateur, et
+ * le contour gris des panneaux délimite la carte.
  *
- * Une couleur sur un montant se garde pour ce qui alerte, comme les créances de
- * plus de quatre-vingt-dix jours dans la balance âgée, et non pour étiqueter.
+ * `alerte` est l'autre usage de la couleur, celui qui reste : un chiffre ne
+ * prend le rouge que lorsqu'il annonce quelque chose. Le triangle l'accompagne
+ * toujours, car une couleur seule ne signale rien à qui ne la distingue pas.
  */
-function Carte({ titre, valeur, aide }) {
+function Carte({ titre, valeur, aide, alerte = false }) {
   return (
     <div className="glass-card">
-      <p style={{ margin: '0 0 10px 0', color: 'var(--text-muted)', fontWeight: '500', textTransform: 'uppercase', fontSize: '0.85rem' }}>
+      <p style={{
+        margin: '0 0 10px 0', fontWeight: '500', textTransform: 'uppercase', fontSize: '0.85rem',
+        color: alerte ? 'var(--status-danger)' : 'var(--text-muted)',
+        display: 'flex', alignItems: 'center', gap: '.4rem'
+      }}>
+        {alerte && <TriangleAlert size={14} aria-label="Perte" />}
         {titre}{aide && <InfoTooltip text={aide} />}
       </p>
-      <h3 style={{ margin: 0, fontSize: '1.9rem', color: 'var(--text-main)' }}>{valeur}</h3>
+      <h3 style={{
+        margin: 0, fontSize: '1.9rem',
+        color: alerte ? 'var(--status-danger)' : 'var(--text-main)'
+      }}>
+        {valeur}
+      </h3>
     </div>
   );
 }
@@ -281,9 +293,13 @@ function ReportDashboard() {
           valeur={formatMontant(stats.total_depenses_ht)}
           aide="Le montant de vos achats avant taxes. C'est cette valeur qui constitue une charge : les taxes payées sont récupérables."
         />
+        {/* Le violet ne distinguait pas un bénéfice d'une perte. La seconde
+            marque est déjà là, et gratuite : en français canadien, `Intl` écrit
+            un montant négatif avec son signe. */}
         <Carte
           titre="Bénéfice net"
           valeur={formatMontant(beneficeNet)}
+          alerte={beneficeNet < 0}
           aide="Total encaissé moins les dépenses hors taxes."
         />
         <Carte titre="Reste à percevoir" valeur={formatMontant(stats.solde_a_percevoir)} />

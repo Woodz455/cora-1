@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { TriangleAlert } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { api, formatMontant } from '../api';
 
@@ -168,6 +169,12 @@ function Dashboard({ naviguer }) {
   // Les trois teintes qui peignaient la bande à gauche de chaque carte ont été
   // retirées avec elle : trois couleurs alignées sur une même rangée faisaient
   // tableau de démonstration, et le contour gris suffit à délimiter la carte.
+  //
+  // Reste `alerte`, qui n'est pas une étiquette mais un signalement : un chiffre
+  // ne prend une couleur que lorsqu'il annonce quelque chose, et redevient noir
+  // le reste du temps. C'est déjà ainsi que la balance âgée traite ses créances
+  // de plus de quatre-vingt-dix jours. À zéro, une carte au repos : c'est
+  // l'information.
   const cartes = [
     {
       titre: "Chiffre d'affaires encaissé", valeur: stats.chiffreAffaires,
@@ -179,6 +186,7 @@ function Dashboard({ naviguer }) {
     },
     {
       titre: 'Montant en retard', valeur: stats.facturesEnRetard,
+      alerte: stats.facturesEnRetard > 0,
       vue: 'factures', parametres: { echuesSeulement: true }, aide: 'Voir les factures échues'
     }
   ];
@@ -210,10 +218,23 @@ function Dashboard({ naviguer }) {
               cursor: 'pointer', font: 'inherit', width: '100%'
             }}
           >
-            <p style={{ margin: '0 0 10px 0', color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 'bold' }}>
+            {/* Deux marques plutôt qu'une : une couleur seule ne signale rien à
+                qui ne la distingue pas. Le triangle porte le mot, que la
+                couleur ne peut pas dire. */}
+            <p style={{
+              margin: '0 0 10px 0', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 'bold',
+              color: carte.alerte ? 'var(--status-danger)' : 'var(--text-muted)',
+              display: 'flex', alignItems: 'center', gap: '.4rem'
+            }}>
+              {carte.alerte && <TriangleAlert size={14} aria-label="En retard" />}
               {carte.titre}
             </p>
-            <h3 style={{ margin: 0, fontSize: '2.3rem', color: 'var(--text-main)' }}>{formatMontant(carte.valeur)}</h3>
+            <h3 style={{
+              margin: 0, fontSize: '2.3rem',
+              color: carte.alerte ? 'var(--status-danger)' : 'var(--text-main)'
+            }}>
+              {formatMontant(carte.valeur)}
+            </h3>
           </button>
         ))}
       </div>

@@ -146,3 +146,59 @@ test("l'interface ne porte aucun émoji", () => {
     + 'dessinées : `lucide-react`, `size={16}` sur un bouton, `size={20}` dans la '
     + `navigation.\n    ${fautives.join('\n    ')}`);
 });
+
+/**
+ * Le rouge des indicateurs est conditionnel.
+ *
+ * Les cinq chiffres de l'écran Rapports portaient chacun une couleur fixe, qui
+ * étiquetait au lieu de signaler : le bénéfice net était violet qu'il fût
+ * positif ou négatif, et les dépenses rouges même à zéro. Elles sont parties.
+ *
+ * Deux chiffres gardent le rouge, mais seulement quand ils annoncent quelque
+ * chose : le montant en retard du tableau de bord au-dessus de zéro, et le
+ * bénéfice net en dessous. Chacun porte aussi un triangle, parce qu'une couleur
+ * seule ne signale rien à qui ne la distingue pas.
+ *
+ * Ce test refuse qu'une couleur d'étiquette revienne par cette porte : sur ces
+ * deux écrans, `--status-danger` posé sur un indicateur doit dépendre d'une
+ * condition. Il ne juge pas la condition, seulement son existence.
+ */
+test('le rouge des indicateurs reste conditionnel', () => {
+  /**
+   * Le relevé ne porte que sur le chiffre des cartes, repéré par sa taille :
+   * c'est lui qui portait une couleur d'étiquette. Le panneau des alertes de
+   * trésorerie en contient d'autres, mais il ne se rend pas du tout s'il n'y a
+   * aucune facture en retard : sa condition est son existence même.
+   *
+   * Les deux tailles sont les deux seules de cet ordre dans ces fichiers. Si
+   * l'une disparaît, le test échoue en le disant plutôt que de cesser
+   * silencieusement de surveiller.
+   */
+  const CHIFFRES = { 'Dashboard.jsx': '2.3rem', 'ReportDashboard.jsx': '1.9rem' };
+  const fautives = [];
+
+  for (const [fichier, taille] of Object.entries(CHIFFRES)) {
+    const lignes = fs.readFileSync(path.join(COMPOSANTS, fichier), 'utf8').split('\n');
+
+    // La déclaration de style du chiffre s'étale sur quelques lignes : on lit
+    // depuis `fontSize` jusqu'à la fin de l'objet de style.
+    const debut = lignes.findIndex((l) => l.includes(`fontSize: '${taille}'`));
+    assert.ok(debut >= 0,
+      `le chiffre des cartes de ${fichier} ne se trouve plus à ${taille} : `
+      + 'ce test ne surveille plus rien, il faut le rattacher.');
+
+    const bloc = lignes.slice(debut, debut + 4).join(' ');
+    const couleur = bloc.match(/color:\s*([^,}]+)/);
+    assert.ok(couleur, `aucune couleur sur le chiffre des cartes de ${fichier}`);
+
+    const valeur = couleur[1].trim();
+    const conditionnelle = valeur.includes('?');
+    const neutre = valeur.includes('--text-main');
+    if (!conditionnelle && !neutre) fautives.push(`${fichier}:${debut + 1} → color: ${valeur}`);
+  }
+
+  assert.deepEqual(fautives, [],
+    "Le chiffre d'une carte porte une couleur fixe. Une couleur qui ne dépend "
+    + "de rien étiquette au lieu de signaler, et c'est ce qui donnait à ces deux "
+    + `écrans un air de démonstration.\n    ${fautives.join('\n    ')}`);
+});
