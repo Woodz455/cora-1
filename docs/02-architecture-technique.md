@@ -1,6 +1,6 @@
 # Clora : architecture, sécurité et licence
 
-*Document technique. Version 1.7.1, septembre 2026.*
+*Document technique. Version 1.7.2, septembre 2026.*
 
 Ce document décrit comment Clora est construit, ce qui protège les données, et
 comment fonctionne le modèle de licence. Pour la description fonctionnelle, voir
@@ -45,8 +45,10 @@ Clora est une application de bureau Windows qui embarque un serveur web complet.
 
 **Huit dépendances de production seulement** côté serveur : `bcryptjs`,
 `cookie-parser`, `dotenv`, `express`, `jsonwebtoken`, `nodemailer`, `sqlite`,
-`sqlite3`. Six côté interface : `react`, `react-dom`, `recharts`,
-`lucide-react`, `papaparse`, `html2pdf.js`.
+`sqlite3`. Huit côté interface : `react`, `react-dom`, `recharts`,
+`lucide-react`, `papaparse`, `html2pdf.js`, et les deux polices du produit,
+`@fontsource-variable/inter` et `@fontsource-variable/outfit`, qui n'apportent
+que des fichiers.
 
 Cette frugalité est délibérée : chaque dépendance est une surface d'attaque et
 une dette de mise à jour. **Il n'y a notamment aucune bibliothèque Stripe** :
@@ -684,7 +686,7 @@ Trois corrections peuvent être demandées explicitement :
 | **Volume du rapprochement** | Plafond de 5 000 lignes ; le relevé transite en JSON sous une limite de corps de 1 Mo |
 | **Retraits bancaires** | Ignorés : frais et sorties sont hors périmètre |
 | **Windows seul** | Aucune cible macOS ou Linux |
-| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.7.1 en offre l'occasion sur toute installation restée en 1.7.0, que les testeurs ont cette fois réellement installée |
+| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.7.2 en offre l'occasion sur toute installation restée en 1.7.1 |
 | **Redémarrage après restauration** | `app.relaunch()` non vérifié sur un vrai Windows |
 
 ---

@@ -1,7 +1,7 @@
 # Clora : état du projet
 
 *Ce qui a été fait, ce qui reste à faire. Arrêté au 20 septembre 2026,
-version 1.7.1.*
+version 1.7.2.*
 
 ---
 
@@ -9,10 +9,10 @@ version 1.7.1.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.7.1, le 20 septembre 2026 |
-| **Publications** | 9 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 48 commits, 18 demandes de fusion, toutes fusionnées |
-| **Tests** | 366, tous au vert, exécutés à chaque fusion |
+| **Version publiée** | 1.7.2, le 20 septembre 2026 |
+| **Publications** | 10 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 51 commits, 18 demandes de fusion, toutes fusionnées |
+| **Tests** | 367, tous au vert, exécutés à chaque fusion |
 | **Durée** | 8 semaines, du 24 juillet au 20 septembre 2026 |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca |
 | **Ventes** | Aucune : les tests utilisateurs sont en cours |
@@ -173,6 +173,36 @@ installation en 1.7.0 passe en 1.7.1 sans aucune reprise de données.
   d'étiquette sur un chiffre, une couleur en dur dans une cellule de tableau, et
   une bulle d'aide hors de portée du clavier.
 
+### Phase 10 : les polices embarquées
+*20 septembre · publié en 1.7.2*
+
+Une seconde version de correction, du même ordre que la précédente : rien de
+nouveau, rien hors de l'interface, aucune reprise de données.
+
+- **Inter et Outfit sont embarquées dans l'exécutable.** Elles étaient nommées
+  dans la feuille de style sans être chargées nulle part : un poste Windows
+  affichait Segoe UI à leur place, et le produit n'avait pas la typographie
+  qu'il croyait avoir. Le défaut se cachait bien, puisque sur un poste de
+  développement où Inter est installée tout paraissait normal. L'import Google
+  Fonts d'origine avait été retiré pour la bonne raison, un logiciel de bureau
+  devant fonctionner hors ligne, mais rien ne l'avait remplacé.
+- **Le nom comptait autant que les fichiers.** Les paquets déclarent « Inter
+  Variable » et « Outfit Variable » : demander « Inter », comme le faisait la
+  feuille, n'aurait rien chargé du tout. Les polices embarquées mais inemployées
+  auraient été le même défaut sous une autre forme.
+- **Neuf fichiers, 272 Ko**, dans un installateur de cent quatre mégaoctets. La
+  variante variable couvre en un fichier par alphabet les quatre graisses que
+  l'application emploie, là où des fichiers fixes en auraient demandé quatre.
+- **La licence voyage avec les fichiers.** Inter et Outfit sont sous SIL Open
+  Font 1.1, qui autorise l'emploi commercial mais exige que sa notice
+  accompagne les polices. Le dossier des dépendances n'étant pas empaqueté, les
+  deux notices sont copiées dans `LICENCES-TIERCES.txt`, lui-même ajouté aux
+  fichiers de l'exécutable.
+- **Un septième test d'apparence** refuse le retour du défaut sous ses cinq
+  formes : une famille nommée sans être chargée, un paquet absent des
+  dépendances, un import manquant, une police appelée depuis un service
+  distant, ou la notice de licence disparue.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
@@ -281,8 +311,8 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.7.1 en offre l'occasion sur toute installation restée en
-  1.7.0, que les testeurs ont cette fois réellement installée.
+  annoncer. La 1.7.2 en offre l'occasion sur toute installation restée en
+  1.7.1.
 - **Le redémarrage après restauration d'une sauvegarde.**
 
 Ce sont deux choses à regarder pendant les tests utilisateurs.
@@ -355,19 +385,18 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.7.1 par les testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.7.2 par les testeurs et écouter ce qu'ils disent.**
 
 Leurs trois premières demandes sont livrées : le compte rendu de la période, le
 profil du dossier, et le sérieux du design. Le reste (la clé de licence, le
 certificat, les améliorations du rapprochement bancaire) attend la suite de ce
 retour, et devrait être priorisé par lui.
 
-Deux chantiers de finition sont connus et non faits, tous deux relevés en
-corrigeant les précédents : **les polices Inter et Outfit ne sont pas embarquées
-dans l'exécutable**, si bien qu'un poste Windows affiche Segoe UI à leur place ;
-et **l'espacement n'a pas d'échelle**, quatre cent quarante-neuf marges étant
-écrites à la main dans le JSX sur deux grilles incompatibles, de quatre et de
-cinq pixels.
+Un chantier de finition reste connu et non fait : **l'espacement n'a pas
+d'échelle**, quatre cent quarante-neuf marges étant écrites à la main dans le
+JSX sur deux grilles incompatibles, de quatre et de cinq pixels. C'est le
+dernier des deux relevés en corrigeant le design ; l'autre, les polices non
+embarquées, est livré dans cette version.
 
 ---
 

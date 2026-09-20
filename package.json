@@ -1,6 +1,6 @@
 {
   "name": "clora",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "private": true,
   "description": "Clora — facturation, devis et suivi financier pour PME canadiennes",
   "main": "main.js",
@@ -30,6 +30,7 @@
       "routes/**/*.js",
       "package.json",
       "build-info.json",
+      "LICENCES-TIERCES.txt",
       "client/dist/**/*",
       "!reset_data.js",
       "!tests/**",

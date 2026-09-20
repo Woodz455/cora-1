@@ -280,3 +280,88 @@ test("la bulle d'aide est atteignable au clavier, et hors des libellés", () => 
     "Une bulle d'aide est posée dans un `<label>` : le nom accessible de son "
     + `bouton entre alors dans celui du champ.\n    ${niches.join('\n    ')}`);
 });
+
+/**
+ * Les polices sont embarquées, et portent le nom qu'il faut.
+ *
+ * Elles étaient nommées dans la feuille de style sans être chargées nulle part :
+ * `--font-body` demandait « Inter », et rien dans l'application ne fournissait
+ * Inter. Un poste Windows affichait Segoe UI à sa place, et le produit n'avait
+ * pas la typographie qu'il croyait avoir. Le défaut était invisible sur un poste
+ * de développement où la police est installée, ce qui est la pire espèce.
+ *
+ * Le piège, une fois les fichiers embarqués, est le nom : les paquets déclarent
+ * « Inter Variable » et « Outfit Variable ». Demander « Inter » ne charge rien.
+ *
+ * Ce test lit les sources du dépôt et non `client/node_modules`, parce que la
+ * suite s'exécute avant l'installation des dépendances de l'interface. Quand
+ * elles sont là, il vérifie en plus le nom auprès des paquets eux-mêmes.
+ */
+test('les polices du produit sont embarquées et correctement nommées', () => {
+  const CLIENT = path.join(__dirname, '..', 'client');
+  const ATTENDUES = [
+    { paquet: '@fontsource-variable/inter', famille: 'Inter Variable', jeton: '--font-body' },
+    { paquet: '@fontsource-variable/outfit', famille: 'Outfit Variable', jeton: '--font-display' }
+  ];
+
+  const manifeste = JSON.parse(fs.readFileSync(path.join(CLIENT, 'package.json'), 'utf8'));
+  const entree = fs.readFileSync(path.join(CLIENT, 'src', 'main.jsx'), 'utf8');
+  const feuille = fs.readFileSync(path.join(CLIENT, 'src', 'index.css'), 'utf8');
+
+  for (const { paquet, famille, jeton } of ATTENDUES) {
+    assert.ok(manifeste.dependencies[paquet],
+      `${paquet} doit être une dépendance : c'est lui qui apporte les fichiers`);
+
+    assert.ok(entree.includes(`'${paquet}/wght.css'`),
+      `${paquet} doit être importé par main.jsx, sans quoi rien n'est chargé`);
+
+    // Le premier nom du jeton est celui que le navigateur essaie en premier.
+    const declaration = feuille.match(new RegExp(`${jeton}:\\s*'([^']+)'`));
+    assert.ok(declaration, `${jeton} doit nommer une famille`);
+    assert.equal(declaration[1], famille,
+      `${jeton} demande « ${declaration[1] } » alors que le paquet fournit `
+      + `« ${famille} » : la police ne serait pas chargée`);
+
+    // Quand les dépendances de l'interface sont installées, le nom se vérifie
+    // à la source plutôt que sur parole.
+    const css = path.join(CLIENT, 'node_modules', paquet, 'wght.css');
+    if (fs.existsSync(css)) {
+      const familles = [...fs.readFileSync(css, 'utf8').matchAll(/font-family:\s*'([^']+)'/g)]
+        .map((m) => m[1]);
+      assert.ok(familles.includes(famille),
+        `${paquet} déclare « ${[...new Set(familles)].join(', ')} », non « ${famille} »`);
+    }
+  }
+
+  // Le but premier : un logiciel de bureau ne va pas chercher une police en ligne.
+  const sources = [feuille, entree, fs.readFileSync(path.join(CLIENT, 'index.html'), 'utf8')];
+  for (const source of sources) {
+    assert.ok(!/fonts\.(googleapis|gstatic)\.com/.test(source),
+      'aucune police ne doit être chargée depuis un service distant : '
+      + "l'application doit fonctionner hors ligne");
+  }
+
+  // Les deux polices sont sous licence SIL Open Font 1.1, qui autorise leur
+  // emploi dans un logiciel commercial mais exige que sa notice accompagne les
+  // fichiers. `node_modules` n'est pas empaqueté dans l'exécutable : la notice
+  // doit donc être copiée dans le dépôt et listée parmi les fichiers empaquetés.
+  const RACINE = path.join(__dirname, '..');
+  const notice = path.join(RACINE, 'LICENCES-TIERCES.txt');
+  assert.ok(fs.existsSync(notice),
+    'LICENCES-TIERCES.txt doit exister : la licence des polices embarquées doit '
+    + 'voyager avec elles');
+
+  const texte = fs.readFileSync(notice, 'utf8');
+  for (const { famille } of ATTENDUES) {
+    const nom = famille.replace(' Variable', '');
+    assert.ok(texte.includes(nom), `la notice doit citer ${nom}`);
+  }
+  assert.ok(texte.includes('SIL Open Font License'),
+    'la notice doit porter le texte de la licence, non son seul nom');
+
+  const empaquetes = JSON.parse(
+    fs.readFileSync(path.join(RACINE, 'package.json'), 'utf8')
+  ).build.files;
+  assert.ok(empaquetes.includes('LICENCES-TIERCES.txt'),
+    "la notice doit être empaquetée, sans quoi elle ne suit pas les polices");
+});

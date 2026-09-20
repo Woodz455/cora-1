@@ -1,11 +1,17 @@
-/* Aucune police n'est chargée depuis un service distant : l'application est un
-   logiciel de bureau qui doit fonctionner hors ligne, et l'import Google Fonts
-   laissait l'interface en police de repli dès qu'il n'y avait pas de réseau.
-   Inter et Outfit restent utilisées si elles sont installées sur le poste ;
-   sinon les polices système, très proches, prennent le relais. */
+/* Inter et Outfit sont embarquées dans l'exécutable, et chargées par `main.jsx`.
+   Aucune requête réseau : l'application est un logiciel de bureau qui doit
+   fonctionner hors ligne, ce pour quoi l'import Google Fonts d'origine avait été
+   retiré, sans être remplacé.
+
+   Le nom qui compte est celui que déclarent les fichiers, « Inter Variable » et
+   « Outfit Variable », et non « Inter » et « Outfit ». Nommer les seconds, comme
+   le faisait cette feuille, ne chargeait rien du tout.
+
+   Les deux noms courts restent en second, pour un poste où la police serait
+   installée, puis les polices système, très proches, en dernier recours. */
 :root {
-  --font-body: 'Inter', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
-  --font-display: 'Outfit', 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-body: 'Inter Variable', 'Inter', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Outfit Variable', 'Outfit', 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
 }
 
 :root {
