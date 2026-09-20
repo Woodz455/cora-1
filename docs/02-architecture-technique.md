@@ -1,6 +1,6 @@
 # Clora : architecture, sécurité et licence
 
-*Document technique. Version 1.7.3, septembre 2026.*
+*Document technique. Version 1.7.4, septembre 2026.*
 
 Ce document décrit comment Clora est construit, ce qui protège les données, et
 comment fonctionne le modèle de licence. Pour la description fonctionnelle, voir
@@ -88,10 +88,10 @@ licenceService.js  Vérification Ed25519 des clés, essai, maintenance
 kilometrageService.js  Indemnité kilométrique : paliers et recalcul de l'année
 secretStorage.js   Chiffrement des secrets au repos
 companyStore.js    Registre des dossiers d'entreprise et comptes partagés
-*Service.js        Logique métier par domaine (15 services)
-routes/            20 modules de points d'entrée HTTP
-client/src/        Interface React (33 composants et crochets)
-tests/             22 fichiers, 331 tests
+*Service.js        Logique métier par domaine (17 services)
+routes/            21 modules de points d'entrée HTTP
+client/src/        Interface React (31 composants, 11 crochets et modules)
+tests/             25 fichiers, 369 tests
 ```
 
 Le découpage est strict : **`server.js` ne fait que câbler**. Il ne contient
@@ -554,7 +554,7 @@ facture émise), donc une vérification fréquente est sans risque.
 
 ## 10. Tests et intégration continue
 
-**331 tests**, exécutés par `node --test`. Répartition :
+**369 tests**, exécutés par `node --test`. Répartition :
 
 | Domaine | Tests |
 | --- | --- |
@@ -567,18 +567,21 @@ facture émise), donc une vérification fréquente est sans risque.
 | Relances automatiques | 17 |
 | Notes de crédit | 17 |
 | Envoi de courriels | 16 |
+| Compte rendu de gestion | 16 |
 | Licence et maintenance | 15 |
 | Exports CSV | 15 |
 | Conditions de paiement | 15 |
 | Journal d'audit | 15 |
 | Encaissements et annulations | 14 |
 | API et cloisonnement des rôles | 14 |
+| Profils et premiers pas | 13 |
 | Devis | 12 |
 | Montants figés | 11 |
 | Mises à jour | 10 |
 | Balance âgée | 9 |
 | Multi-entreprise | 8 |
 | Abonnements | 8 |
+| Apparence de l'interface | 9 |
 | Arithmétique monétaire | 7 |
 
 Deux partis pris méritent d'être signalés :
@@ -590,6 +593,26 @@ montants générés. Une divergence entre les deux implémentations ferait qu'un
 **Les tests Stripe passent par un vrai serveur HTTP local**, et non par un
 simulacre en mémoire. Ils éprouvent donc l'encodage réel des requêtes, les
 en-têtes d'authentification et la version d'API épinglée.
+
+**Les décisions visuelles sont écrites en tests.** `apparence.test.js` en porte
+huit, qui lisent les sources de l'interface plutôt que son rendu. Une décision
+de design qui n'est écrite nulle part revient d'elle-même au bout de trois
+écrans ; celles-ci sont écrites, avec la raison qui les a produites :
+
+| Règle | Ce qu'elle empêche de revenir |
+| --- | --- |
+| Pas de bande de couleur sur un conteneur | Le contour des panneaux était blanc sur un fond perle, donc invisible : la bande était la seule limite visible d'une carte |
+| Le contour des conteneurs est un gris visible | Le jeton était à 0,9 d'opacité en blanc, et à 0,05 en thème sombre |
+| Aucun émoji dans l'interface | Un émoji est rendu par la police du système : le bouton « Supprimer » avait un texte rouge et une corbeille grise |
+| Le rouge d'un indicateur est conditionnel | Une couleur fixe étiquette au lieu de signaler ; le bénéfice net était violet qu'il fût positif ou négatif |
+| Aucune couleur écrite en dur dans une cellule | Une valeur en dur ne suit pas les deux thèmes |
+| La bulle d'aide est atteignable au clavier | Elle ne répondait qu'au survol, et trois de ses emplacements étaient rognés par un conteneur de défilement |
+| Les polices sont embarquées et bien nommées | Elles étaient nommées sans être chargées : Windows affichait Segoe UI |
+| L'espacement se tient sur son échelle | Cinq cents déclarations employaient deux grilles incompatibles, à parts égales |
+
+Ces tests ne remplacent pas le coup d'œil : ils empêchent une régression, ils ne
+jugent pas une mise en page. Chacun a été éprouvé en reposant le défaut qu'il
+surveille.
 
 ### L'atelier d'intégration continue
 
@@ -686,7 +709,7 @@ Trois corrections peuvent être demandées explicitement :
 | **Volume du rapprochement** | Plafond de 5 000 lignes ; le relevé transite en JSON sous une limite de corps de 1 Mo |
 | **Retraits bancaires** | Ignorés : frais et sorties sont hors périmètre |
 | **Windows seul** | Aucune cible macOS ou Linux |
-| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.7.3 en offre l'occasion sur toute installation restée en 1.7.2 |
+| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.7.4 en offre l'occasion sur toute installation restée en 1.7.3 |
 | **Redémarrage après restauration** | `app.relaunch()` non vérifié sur un vrai Windows |
 
 ---

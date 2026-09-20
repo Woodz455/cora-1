@@ -430,3 +430,50 @@ test("l'espacement se tient sur son échelle", () => {
     + `(${ECHELLE.join(', ')}). Prendre la marche la plus proche, et la plus `
     + `petite à égalité.\n    ${fautives.join('\n    ')}`);
 });
+
+/**
+ * L'anneau de focus, et les fenêtres qui annoncent ce qu'elles sont.
+ *
+ * L'anneau est la seule marque qu'un utilisateur au clavier ait de l'endroit où
+ * il se trouve, et il exige 3:1 contre ce qui l'entoure. Les trois règles de la
+ * feuille étaient fautives, en miroir : la règle globale posait le turquoise, à
+ * 2,14:1 sur un panneau clair, et les deux autres le bleu, à 1,93:1 sur un
+ * panneau sombre. Chaque couleur de marque porte dans un thème et échoue dans
+ * l'autre ; un jeton par thème les emploie là où elles portent.
+ *
+ * L'autre moitié du test tient à une promesse : une fenêtre qui annonce
+ * `role="dialog"` et `aria-modal` dit à un lecteur d'écran que le focus y est
+ * enfermé. Si le crochet `useModale` ne la sert pas, cette promesse est fausse,
+ * ce qui est pire que de ne rien annoncer. `ImportModal` était la seule dans ce
+ * cas.
+ */
+test("l'anneau de focus et les fenêtres tiennent leurs promesses", () => {
+  const CLIENT = path.join(__dirname, '..', 'client', 'src');
+  const feuille = fs.readFileSync(path.join(CLIENT, 'index.css'), 'utf8');
+
+  // Un jeton par thème, et aucune règle de focus qui nomme une couleur en dur.
+  const jetons = [...feuille.matchAll(/--anneau-focus:\s*([^;]+);/g)].map((m) => m[1].trim());
+  assert.deepEqual(jetons, ['var(--safehill-blue)', 'var(--safehill-teal)'],
+    "l'anneau doit prendre le bleu en thème clair et le turquoise en sombre, "
+    + 'chacun étant la seule des deux couleurs de marque à passer 3:1 dans son thème');
+
+  const focus = [...feuille.matchAll(/:focus-visible[^{]*\{[^}]*outline:\s*[^;]+;/g)].map((m) => m[0]);
+  assert.ok(focus.length >= 3, 'les règles de focus doivent être trouvées');
+  for (const regle of focus) {
+    assert.match(regle, /var\(--anneau-focus\)/,
+      `une règle de focus nomme une couleur qui n'est pas le jeton :\n    ${regle.slice(0, 120)}`);
+  }
+
+  // Toute fenêtre qui s'annonce modale doit employer le crochet qui la rend telle.
+  const menteuses = [];
+  for (const fichier of fs.readdirSync(COMPOSANTS).filter((f) => f.endsWith('.jsx'))) {
+    const source = fs.readFileSync(path.join(COMPOSANTS, fichier), 'utf8');
+    if (!source.includes('aria-modal')) continue;
+    if (!source.includes('useModale')) menteuses.push(fichier);
+  }
+
+  assert.deepEqual(menteuses, [],
+    "Ces fenêtres annoncent `aria-modal` sans employer `useModale` : le focus n'y "
+    + "reste pas, Échap ne les ferme pas, et il ne revient pas à son point de "
+    + `départ.\n    ${menteuses.join('\n    ')}`);
+});

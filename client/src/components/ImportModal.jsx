@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Upload, TriangleAlert, CheckCircle2 } from 'lucide-react';
 import { api } from '../api';
+import { useModale } from '../useModale';
 
 /**
  * Import d'un tableur, en trois temps : choisir le fichier, vérifier les
@@ -13,6 +14,13 @@ import { api } from '../api';
  * le résultat montré avant toute écriture.
  */
 function ImportModal({ modele, titre, onFerme, onTermine }) {
+  /* La fenêtre annonçait `role="dialog"` et `aria-modal` sans le crochet qui
+     les rend vrais : le focus ne restait pas dedans, Échap ne la fermait pas, et
+     il ne revenait pas à son point de départ. Annoncer une modale sans se
+     comporter comme telle est pire que de ne rien annoncer, un lecteur d'écran
+     disant à l'utilisateur qu'il y est enfermé alors qu'il n'y est pas. Toutes
+     les autres fenêtres de l'application emploient ce crochet. */
+  const modaleRef = useModale(onFerme);
   const [fichier, setFichier] = useState(null);
   const [contenu, setContenu] = useState(null);
   const [apercu, setApercu] = useState(null);
@@ -90,7 +98,7 @@ function ImportModal({ modele, titre, onFerme, onTermine }) {
     .map((c) => c.libelle);
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={titre}>
+    <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={titre}>
       {/* `glass-panel` porte le fond du panneau : sans elle le contenu flotte
           au-dessus de la page. La hauteur est bornée parce que la liste des
           lignes refusées peut être longue. */}
