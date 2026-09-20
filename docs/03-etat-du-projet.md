@@ -11,7 +11,7 @@ version 1.7.2.*
 | --- | --- |
 | **Version publiée** | 1.7.2, le 20 septembre 2026 |
 | **Publications** | 10 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 51 commits, 18 demandes de fusion, toutes fusionnées |
+| **Développement** | 51 commits, 20 demandes de fusion, toutes fusionnées |
 | **Tests** | 367, tous au vert, exécutés à chaque fusion |
 | **Durée** | 8 semaines, du 24 juillet au 20 septembre 2026 |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca |
@@ -174,7 +174,7 @@ installation en 1.7.0 passe en 1.7.1 sans aucune reprise de données.
   une bulle d'aide hors de portée du clavier.
 
 ### Phase 10 : les polices embarquées
-*20 septembre · publié en 1.7.2*
+*20 septembre · publié en 1.7.2 · demandes de fusion #19 et #20*
 
 Une seconde version de correction, du même ordre que la précédente : rien de
 nouveau, rien hors de l'interface, aucune reprise de données.
