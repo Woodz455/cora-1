@@ -42,7 +42,7 @@ function ConfirmationModal({
         <p id="confirmation-message" style={{ color: 'var(--text-muted)', lineHeight: 1.55 }}>
           {message}
         </p>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '24px' }}>
           {/* « Annuler » d'abord dans le document : c'est lui qui reçoit le
               focus à l'ouverture, pour qu'une frappe distraite ne détruise rien. */}
           <button type="button" className="btn-secondary" onClick={onAnnuler}>

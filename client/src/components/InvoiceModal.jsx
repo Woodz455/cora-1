@@ -173,7 +173,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
   return (
     <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={titre}>
       <div className="modal-content glass-panel" style={{ maxWidth: '760px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '25px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
+        <h3 style={{ marginTop: 0, marginBottom: '24px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
           {titre}
         </h3>
 
@@ -248,7 +248,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
               <div className="form-group">
                 <label htmlFor="doc-devise">Devise *</label>
                 <select
@@ -282,14 +282,14 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
               )}
             </div>
 
-            <h4 style={{ color: 'var(--text-main)', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
+            <h4 style={{ color: 'var(--text-main)', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>
               Lignes de facturation
             </h4>
 
             {lignes.map((ligne, index) => (
               // La clé est propre à la ligne et non son index : supprimer une
               // ligne du milieu décalait les valeurs saisies dans les suivantes.
-              <div key={ligne.cle} style={{ display: 'flex', gap: '15px', marginBottom: '15px', alignItems: 'flex-start' }}>
+              <div key={ligne.cle} style={{ display: 'flex', gap: '16px', marginBottom: '16px', alignItems: 'flex-start' }}>
                 <div className="form-group" style={{ flex: 3, marginBottom: 0 }}>
                   <input
                     type="text"
@@ -303,7 +303,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                   {catalogue.length > 0 && (
                     <select
                       className="form-control"
-                      style={{ marginTop: '5px', padding: '6px', fontSize: '0.85rem' }}
+                      style={{ marginTop: '4px', padding: '4px', fontSize: '0.85rem' }}
                       aria-label={`Insérer un service du catalogue dans la ligne ${index + 1}`}
                       value=""
                       onChange={(e) => {
@@ -364,19 +364,19 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
             <button
               type="button"
               onClick={addLigne}
-              style={{ padding: '8px 15px', background: 'var(--glass-bg)', border: '1px dashed var(--safehill-blue)', color: 'var(--safehill-blue)', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}
+              style={{ padding: '8px 16px', background: 'var(--glass-bg)', border: '1px dashed var(--safehill-blue)', color: 'var(--safehill-blue)', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}
             >
               + Ajouter une ligne
             </button>
 
             <div style={{ textAlign: 'right', marginTop: '20px', fontSize: '1.2rem', color: 'var(--text-main)' }}>
               Sous-total hors taxes : <strong>{formatMontant(total, formData.devise)}</strong>
-              <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 Les taxes sont calculées à l'enregistrement, selon la province du client.
               </p>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '35px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px' }}>
               <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>Annuler</button>
               <button type="submit" className="btn-primary" disabled={loading}>
                 {loading ? 'Enregistrement…' : (factureIdToEdit ? 'Enregistrer les modifications' : (estDevis ? 'Créer le devis' : 'Créer la facture'))}

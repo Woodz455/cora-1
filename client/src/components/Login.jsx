@@ -38,7 +38,7 @@ function Login({ onLogin }) {
         <img
           src="/banner.png"
           alt=""
-          style={{ maxWidth: '100%', marginBottom: '30px' }}
+          style={{ maxWidth: '100%', marginBottom: '32px' }}
           onError={(e) => { e.currentTarget.style.display = 'none'; }}
         />
         <h1 style={{ color: 'var(--text-main)', marginBottom: '20px', fontSize: '1.6rem' }}>Connexion à Clora</h1>
@@ -71,7 +71,7 @@ function Login({ onLogin }) {
               required
             />
           </div>
-          <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '10px', padding: '12px' }} disabled={loading}>
+          <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '8px', padding: '12px' }} disabled={loading}>
             {loading ? 'Connexion en cours…' : 'Se connecter'}
           </button>
         </form>

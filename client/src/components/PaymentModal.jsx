@@ -62,11 +62,11 @@ function PaymentModal({ facture, onClose }) {
   return (
     <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label="Saisir un paiement">
       <div className="modal-content glass-panel" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '25px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
+        <h3 style={{ marginTop: 0, marginBottom: '24px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
           Saisir un paiement
         </h3>
 
-        <div style={{ marginBottom: '25px', padding: '15px 20px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px' }}>
+        <div style={{ marginBottom: '24px', padding: '16px 20px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
             <span style={{ color: 'var(--text-muted)' }}>Facture n°</span>
             <strong style={{ color: 'var(--text-main)' }}>{facture.numero_facture}</strong>
@@ -75,7 +75,7 @@ function PaymentModal({ facture, onClose }) {
             <span style={{ color: 'var(--text-muted)' }}>Client</span>
             <strong style={{ color: 'var(--text-main)' }}>{facture.client}</strong>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed var(--border-color)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed var(--border-color)' }}>
             <span style={{ color: 'var(--text-main)', fontWeight: '600' }}>Solde actuel</span>
             <strong className="gradient-text" style={{ fontSize: '1.4rem' }}>
               {formatMontant(solde, facture.devise)}
@@ -86,7 +86,7 @@ function PaymentModal({ facture, onClose }) {
         {error && <p className="alert alert-error" role="alert">{error}</p>}
 
         {paiements.length > 0 && (
-          <div style={{ marginBottom: '25px' }}>
+          <div style={{ marginBottom: '24px' }}>
             <h4 style={{ margin: '0 0 12px 0', color: 'var(--text-main)', fontSize: '1rem' }}>
               Encaissements enregistrés
             </h4>
@@ -96,7 +96,7 @@ function PaymentModal({ facture, onClose }) {
                   key={p.id}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '12px',
-                    padding: '10px 0', borderBottom: '1px solid var(--glass-border)',
+                    padding: '8px 0', borderBottom: '1px solid var(--glass-border)',
                     opacity: p.annule_le ? 0.55 : 1
                   }}
                 >
@@ -132,8 +132,8 @@ function PaymentModal({ facture, onClose }) {
             {/* Hors de la liste défilante, pour rester visible quel que soit le
                 nombre d'encaissements. */}
             {paiementAAnnuler && (
-              <form onSubmit={handleAnnuler} style={{ marginTop: '15px' }}>
-                <label htmlFor="motif-annulation" style={{ display: 'block', marginBottom: '6px', color: 'var(--text-main)' }}>
+              <form onSubmit={handleAnnuler} style={{ marginTop: '16px' }}>
+                <label htmlFor="motif-annulation" style={{ display: 'block', marginBottom: '4px', color: 'var(--text-main)' }}>
                   Motif de l'annulation de {formatMontant(paiementAAnnuler.montant, facture.devise)}
                 </label>
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -152,7 +152,7 @@ function PaymentModal({ facture, onClose }) {
                     Renoncer
                   </button>
                 </div>
-                <p style={{ margin: '6px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                   Le paiement restera visible, marqué annulé, avec ce motif.
                 </p>
               </form>
@@ -188,7 +188,7 @@ function PaymentModal({ facture, onClose }) {
               autoFocus
             />
             {facture.devise !== 'CAD' && (
-              <p style={{ margin: '6px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 Le montant s'exprime dans la devise de la facture ({facture.devise}).
               </p>
             )}
@@ -218,7 +218,7 @@ function PaymentModal({ facture, onClose }) {
             />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '35px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px' }}>
             <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>Annuler</button>
             <button type="submit" className="btn-primary" disabled={loading}>
               {loading ? 'Enregistrement…' : 'Confirmer le paiement'}

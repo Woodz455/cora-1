@@ -199,7 +199,7 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
               }}
             >
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
                   <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '600', textDecoration: isAnnulee ? 'line-through' : 'none' }}>
                     {facture.numero_facture}
                   </h3>
@@ -213,7 +213,7 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                   {' '}| Émise le {facture.date_emission} | Échéance {facture.date_echeance}
                 </p>
                 {facture.montant_credite > 0 && (
-                  <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--status-warning)' }}>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem', color: 'var(--status-warning)' }}>
                     Note(s) de crédit : − {formatMontant(facture.montant_credite, facture.devise)}
                     {facture.montant_a_rembourser > 0
                       && `, ${formatMontant(facture.montant_a_rembourser, facture.devise)} à rembourser au client`}
@@ -223,11 +223,11 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <div className="numeric">
-                  <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total</p>
+                  <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total</p>
                   <p style={{ margin: 0, fontWeight: '600', fontSize: '1.1rem' }}>{formatMontant(facture.montant_total, facture.devise)}</p>
                 </div>
                 <div className="numeric">
-                  <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Reste à payer</p>
+                  <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Reste à payer</p>
                   <p style={{ margin: 0, fontWeight: '700', fontSize: '1.4rem', color: facture.solde_restant > 0 ? 'var(--status-partial)' : 'var(--status-paid)' }}>
                     {formatMontant(facture.solde_restant, facture.devise)}
                   </p>

@@ -387,10 +387,10 @@ function Settings({ ancre }) {
 
       <Message contenu={message} />
 
-      <form onSubmit={handleSave} className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+      <form onSubmit={handleSave} className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
         <div>
-          <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>Identité visuelle</h3>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
+          <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>Identité visuelle</h3>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
             Ce logo apparaît en haut de vos factures et devis. Taille maximale : 2 Mo.
           </p>
           <div className="form-group">
@@ -398,12 +398,12 @@ function Settings({ ancre }) {
             <input id="logo" type="file" accept="image/*" onChange={handleImageUpload} className="form-control" style={{ padding: '8px' }} />
           </div>
           {settings.entreprise_logo && (
-            <div style={{ marginTop: '10px' }}>
+            <div style={{ marginTop: '8px' }}>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Aperçu :</p>
-              <img src={settings.entreprise_logo} alt="Aperçu du logo" style={{ maxHeight: '100px', maxWidth: '100%', border: '1px solid var(--glass-border)', borderRadius: '4px', padding: '5px' }} />
+              <img src={settings.entreprise_logo} alt="Aperçu du logo" style={{ maxHeight: '100px', maxWidth: '100%', border: '1px solid var(--glass-border)', borderRadius: '4px', padding: '4px' }} />
               <button
                 type="button" className="btn-secondary"
-                style={{ marginTop: '10px', display: 'block', padding: '4px 8px', fontSize: '0.8rem' }}
+                style={{ marginTop: '8px', display: 'block', padding: '4px 8px', fontSize: '0.8rem' }}
                 onClick={() => setSettings((prev) => ({ ...prev, entreprise_logo: '' }))}
               >
                 Supprimer le logo
@@ -413,8 +413,8 @@ function Settings({ ancre }) {
         </div>
 
         <div>
-          <h3 id="section-entreprise" style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>Informations générales</h3>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
+          <h3 id="section-entreprise" style={{ margin: '0 0 16px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>Informations générales</h3>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
             Ce nom identifie votre entreprise sur les documents et comme expéditeur de vos courriels.
           </p>
           <div className="form-group">
@@ -437,7 +437,7 @@ function Settings({ ancre }) {
               {!settings.profil && <option value="">Non précisé</option>}
               {PROFILS.map((p) => <option key={p.valeur} value={p.valeur}>{p.libelle}</option>)}
             </select>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
               Le profil règle l'ordre des premiers pas sur le tableau de bord. Il ne retire aucune fonction.
             </p>
           </div>
@@ -446,15 +446,15 @@ function Settings({ ancre }) {
             <select id="conditions_defaut" className="form-control" name="conditions_defaut" value={settings.conditions_defaut || 'net30'} onChange={handleChange}>
               {CONDITIONS.map((c) => <option key={c.valeur} value={c.valeur}>{c.libelle}</option>)}
             </select>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
               Proposées à la création d'une fiche client ; chaque fiche garde son propre terme.
             </p>
           </div>
         </div>
 
         <div>
-          <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>Paiement</h3>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
+          <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>Paiement</h3>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
             Ces instructions s'affichent au bas de chaque facture (virement Interac, lien de paiement…).
           </p>
           <div className="form-group">
@@ -464,10 +464,10 @@ function Settings({ ancre }) {
         </div>
 
         <div>
-          <h3 id="section-stripe" style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
+          <h3 id="section-stripe" style={{ margin: '0 0 16px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>
             Paiement en ligne (Stripe)
           </h3>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
             Chaque facture porte alors un lien de paiement. Votre client règle par carte ou par
             débit bancaire, sans créer de compte, et Clora inscrit l'encaissement tout seul dans
             l'heure qui suit.
@@ -502,21 +502,21 @@ function Settings({ ancre }) {
           </div>
 
           {settings.stripe_cle_definie && settings.stripe_cle_restreinte === false && (
-            <p style={{ fontSize: '0.85rem', color: 'var(--status-warning)', marginBottom: '15px' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--status-warning)', marginBottom: '16px' }}>
               Cette clé est une clé secrète complète : elle donne tous les droits sur votre compte
               Stripe. Remplacez-la par une clé restreinte dès que possible.
             </p>
           )}
 
           {settings.stripe_cle_illisible && (
-            <p style={{ fontSize: '0.85rem', color: 'var(--status-danger)', marginBottom: '15px' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--status-danger)', marginBottom: '16px' }}>
               La clé enregistrée n'est plus déchiffrable sur cette machine : la base vient sans
               doute d'une sauvegarde restaurée ailleurs. Saisissez-la de nouveau.
             </p>
           )}
 
           {settings.stripe_cle_definie && settings.coffre_disponible === false && (
-            <p style={{ fontSize: '0.85rem', color: 'var(--status-warning)', marginBottom: '15px' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--status-warning)', marginBottom: '16px' }}>
               Le coffre-fort de Windows n'est pas accessible : cette clé est enregistrée sans
               chiffrement. Évitez d'envoyer vos sauvegardes vers un dossier partagé tant que
               c'est le cas.
@@ -524,7 +524,7 @@ function Settings({ ancre }) {
           )}
 
           <div className="form-group">
-            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input
                 type="checkbox"
                 checked={Boolean(settings.stripe_actif)}
@@ -546,7 +546,7 @@ function Settings({ ancre }) {
             </p>
           )}
 
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
             <button
               type="button" className="btn-secondary"
               disabled={testStripeEnCours || (!cleStripe && !settings.stripe_cle_definie)}
@@ -594,7 +594,7 @@ function Settings({ ancre }) {
               </p>
               <ul style={{ margin: 0, paddingLeft: '20px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                 {enSouffrance.map((e) => (
-                  <li key={e.id} style={{ marginBottom: '6px' }}>
+                  <li key={e.id} style={{ marginBottom: '4px' }}>
                     {e.recu_le}, {formatMontant(e.montant, e.devise)}
                     {e.numero_facture ? `, facture ${e.numero_facture}` : ''} : {e.message}
                   </li>
@@ -605,17 +605,17 @@ function Settings({ ancre }) {
         </div>
 
         <div>
-          <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
+          <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>
             Relances automatiques
           </h3>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
             Un rappel de paiement est envoyé au client dès qu'une facture impayée dépasse l'un des
             paliers ci-dessous. Chaque palier ne part qu'une fois par facture, et plus rien n'est
             envoyé dès que la facture est réglée ou créditée.
           </p>
 
           <div className="form-group">
-            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input
                 type="checkbox"
                 checked={Boolean(settings.relances_actives)}
@@ -644,7 +644,7 @@ function Settings({ ancre }) {
           </p>
 
           {relancesDues && (
-            <div style={{ marginTop: '15px' }}>
+            <div style={{ marginTop: '16px' }}>
               {relanceMessage && (
                 <p
                   className={`alert ${relanceMessage.erreur ? 'alert-error' : 'alert-success'}`}
@@ -694,10 +694,10 @@ function Settings({ ancre }) {
         </div>
 
         <div>
-          <h3 id="section-sauvegardes" style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
+          <h3 id="section-sauvegardes" style={{ margin: '0 0 16px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>
             Sauvegardes
           </h3>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
             Une copie complète de votre comptabilité est enregistrée chaque jour, ainsi qu'à la
             fermeture de l'application. Choisissez un dossier synchronisé (OneDrive, Dropbox,
             Google Drive) pour que la copie quitte cet ordinateur : c'est ce qui vous protège
@@ -705,7 +705,7 @@ function Settings({ ancre }) {
           </p>
 
           <div className="form-group">
-            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input
                 type="checkbox"
                 checked={Boolean(settings.sauvegarde_active)}
@@ -718,7 +718,7 @@ function Settings({ ancre }) {
 
           <div className="form-group">
             <label htmlFor="sauvegarde_dossier">Dossier de destination</label>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
               <input
                 id="sauvegarde_dossier" type="text" className="form-control" name="sauvegarde_dossier"
                 value={settings.sauvegarde_dossier || ''} onChange={handleChange}
@@ -748,7 +748,7 @@ function Settings({ ancre }) {
           </div>
 
           <div className="form-group">
-            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input
                 type="checkbox"
                 checked={Boolean(settings.verifier_maj)}
@@ -763,7 +763,7 @@ function Settings({ ancre }) {
             </small>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
             <button type="button" className="btn-secondary" disabled={sauvegardeEnCours} onClick={sauvegarderMaintenant}>
               {sauvegardeEnCours ? 'Sauvegarde en cours…' : 'Sauvegarder maintenant'}
             </button>
@@ -785,7 +785,7 @@ function Settings({ ancre }) {
                       key={s.nom}
                       style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        gap: '10px', padding: '8px 0', borderBottom: '1px solid var(--glass-border)'
+                        gap: '8px', padding: '8px 0', borderBottom: '1px solid var(--glass-border)'
                       }}
                     >
                       <span style={{ fontSize: '0.9rem' }}>
@@ -808,7 +808,7 @@ function Settings({ ancre }) {
             n'apprendrait rien et inquiéterait pour rien. */}
         {licence && licence.etat !== 'desactive' && (
           <div>
-            <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
+            <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>
               Licence
             </h3>
             {licence.etat === 'activee' ? (
@@ -831,10 +831,10 @@ function Settings({ ancre }) {
         )}
 
         <div>
-          <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>
+          <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>
             Courriel
           </h3>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
             Nécessaire pour transmettre vos factures et vos devis depuis Clora, et pour les
             relances automatiques. Ces renseignements vous sont fournis par votre service de
             messagerie.
@@ -897,14 +897,14 @@ function Settings({ ancre }) {
           {/* Hors Electron — serveur lancé seul — le coffre du système n'existe
               pas. Le taire laisserait croire à une protection absente. */}
           {settings.smtp_pass_defini && settings.coffre_disponible === false && (
-            <p style={{ fontSize: '0.85rem', color: 'var(--status-warning)', marginBottom: '15px' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--status-warning)', marginBottom: '16px' }}>
               Le coffre-fort de Windows n'est pas accessible : ce mot de passe est enregistré
               sans chiffrement. Évitez d'envoyer vos sauvegardes vers un dossier partagé tant
               que c'est le cas.
             </p>
           )}
 
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
             <button
               type="button" className="btn-secondary"
               disabled={testEnCours || !settings.smtp_host}
@@ -928,7 +928,7 @@ function Settings({ ancre }) {
         </div>
 
         <div>
-          <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>Numéros de taxes</h3>
+          <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>Numéros de taxes</h3>
           {/* Les taux appliqués aux documents proviennent de la province du
               client. Ces champs ne servent qu'à l'affichage des numéros
               d'enregistrement au bas des factures. */}
@@ -939,7 +939,7 @@ function Settings({ ancre }) {
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            <div style={{ padding: '15px', background: 'var(--hover-subtle)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+            <div style={{ padding: '16px', background: 'var(--hover-subtle)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
               <div className="form-group">
                 <label htmlFor="taxe_1_nom">Nom de la taxe 1 (ex. : TPS)</label>
                 <input id="taxe_1_nom" type="text" className="form-control" name="taxe_1_nom" value={settings.taxe_1_nom || ''} onChange={handleChange} />
@@ -950,7 +950,7 @@ function Settings({ ancre }) {
               </div>
             </div>
 
-            <div style={{ padding: '15px', background: 'var(--hover-subtle)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+            <div style={{ padding: '16px', background: 'var(--hover-subtle)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
               <div className="form-group">
                 <label htmlFor="taxe_2_nom">Nom de la taxe 2 (ex. : TVQ)</label>
                 <input id="taxe_2_nom" type="text" className="form-control" name="taxe_2_nom" value={settings.taxe_2_nom || ''} onChange={handleChange} />
@@ -970,7 +970,7 @@ function Settings({ ancre }) {
         </div>
       </form>
 
-      <h2 id="section-kilometrage" style={{ color: 'var(--text-main)', marginTop: '50px', marginBottom: '20px' }}>Indemnité kilométrique</h2>
+      <h2 id="section-kilometrage" style={{ color: 'var(--text-main)', marginTop: '48px', marginBottom: '20px' }}>Indemnité kilométrique</h2>
       <Message contenu={tauxMessage} />
 
       <div className="glass-panel" style={{ padding: '20px' }}>
@@ -993,7 +993,7 @@ function Settings({ ancre }) {
           usage d'affaires ; le montant calculé ici n'est alors qu'une estimation.
         </p>
 
-        <form onSubmit={handleTauxKm} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px', alignItems: 'end' }}>
+        <form onSubmit={handleTauxKm} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px', alignItems: 'end' }}>
           <div className="form-group">
             <label htmlFor="km-annee">Année</label>
             <input id="km-annee" type="number" min="2000" max="2100" step="1" className="form-control" value={nouveauTaux.annee} onChange={(e) => setNouveauTaux({ ...nouveauTaux, annee: e.target.value })} required />
@@ -1043,7 +1043,7 @@ function Settings({ ancre }) {
                 ))}
               </tbody>
             </table>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '10px' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '8px' }}>
               Modifier un taux réajuste aussitôt les indemnités de l'année concernée, et le
               changement est consigné au journal d'audit. Les autres années ne bougent pas.
             </p>
@@ -1051,10 +1051,10 @@ function Settings({ ancre }) {
         )}
       </div>
 
-      <h2 style={{ color: 'var(--text-main)', marginTop: '50px', marginBottom: '20px' }}>Mes identifiants</h2>
+      <h2 style={{ color: 'var(--text-main)', marginTop: '48px', marginBottom: '20px' }}>Mes identifiants</h2>
       <Message contenu={secMessage} />
 
-      <form onSubmit={handleSecuritySave} className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+      <form onSubmit={handleSecuritySave} className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div className="form-group">
           <label htmlFor="sec-actuel">Mot de passe actuel</label>
           <input id="sec-actuel" type="password" autoComplete="current-password" className="form-control" value={securityData.currentPassword} onChange={(e) => setSecurityData({ ...securityData, currentPassword: e.target.value })} required />
@@ -1074,7 +1074,7 @@ function Settings({ ancre }) {
         </div>
       </form>
 
-      <h2 id="section-comptes" style={{ color: 'var(--text-main)', marginTop: '50px', marginBottom: '20px' }}>Gestion des utilisateurs</h2>
+      <h2 id="section-comptes" style={{ color: 'var(--text-main)', marginTop: '48px', marginBottom: '20px' }}>Gestion des utilisateurs</h2>
       <Message contenu={usersMessage} />
 
       <div className="glass-panel" style={{ padding: '20px' }}>
@@ -1087,7 +1087,7 @@ function Settings({ ancre }) {
 
         {isAddingUser && (
           <form onSubmit={handleAddUser} style={{ background: 'var(--glass-card-bg)', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid var(--glass-border)' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
               <div className="form-group">
                 <label htmlFor="nouvel-utilisateur">Nom d'utilisateur</label>
                 <input id="nouvel-utilisateur" type="text" className="form-control" value={newUser.username} onChange={(e) => setNewUser({ ...newUser, username: e.target.value })} required minLength={3} />
@@ -1103,7 +1103,7 @@ function Settings({ ancre }) {
                 </select>
               </div>
             </div>
-            <div style={{ textAlign: 'right', marginTop: '15px' }}>
+            <div style={{ textAlign: 'right', marginTop: '16px' }}>
               <button type="submit" className="btn-primary">Créer l'utilisateur</button>
             </div>
           </form>
@@ -1129,7 +1129,7 @@ function Settings({ ancre }) {
                       {estMoi && <span style={{ color: 'var(--text-muted)', fontWeight: 'normal' }}> (vous)</span>}
                     </td>
                     <td>
-                      <span style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold', background: couleurs.fond, color: couleurs.texte }}>
+                      <span style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold', background: couleurs.fond, color: couleurs.texte }}>
                         {user.role}
                       </span>
                     </td>

@@ -180,10 +180,10 @@ function SubscriptionList() {
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="glass-panel" style={{ padding: '20px', marginBottom: '30px' }}>
-          <h3 style={{ margin: '0 0 15px 0' }}>Créer un abonnement</h3>
+        <form onSubmit={handleSubmit} className="glass-panel" style={{ padding: '20px', marginBottom: '32px' }}>
+          <h3 style={{ margin: '0 0 16px 0' }}>Créer un abonnement</h3>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px', marginBottom: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '20px' }}>
             <div className="form-group">
               <label htmlFor="abo-client">Client *</label>
               <select id="abo-client" className="form-control" value={newSub.client_id} onChange={(e) => setNewSub({ ...newSub, client_id: e.target.value })} required>
@@ -215,9 +215,9 @@ function SubscriptionList() {
             </div>
           </div>
 
-          <h4 style={{ margin: '0 0 10px 0' }}>Lignes de la facture à générer</h4>
+          <h4 style={{ margin: '0 0 8px 0' }}>Lignes de la facture à générer</h4>
           {newSub.lignes.map((ligne, i) => (
-            <div key={ligne.cle} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div key={ligne.cle} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               <input
                 type="text" className="form-control" style={{ flex: 2, minWidth: '220px' }}
                 placeholder="Description (ex. : hébergement web)"
@@ -252,12 +252,12 @@ function SubscriptionList() {
               </button>
             </div>
           ))}
-          <button type="button" className="btn-secondary" style={{ marginTop: '10px' }} onClick={handleAddLine}>
+          <button type="button" className="btn-secondary" style={{ marginTop: '8px' }} onClick={handleAddLine}>
             + Ajouter une ligne
           </button>
 
           <div style={{ textAlign: 'right', marginTop: '20px' }}>
-            <p style={{ margin: '0 0 10px 0', color: 'var(--text-muted)' }}>
+            <p style={{ margin: '0 0 8px 0', color: 'var(--text-muted)' }}>
               Sous-total hors taxes par facture : <strong style={{ color: 'var(--text-main)' }}>{formatMontant(totalLignes, newSub.devise)}</strong>
             </p>
             <button type="submit" className="btn-primary" disabled={saving}>
@@ -268,7 +268,7 @@ function SubscriptionList() {
       )}
 
       <div className="glass-panel" style={{ padding: '20px' }}>
-        <div className="toolbar-group" style={{ marginBottom: '15px' }}>
+        <div className="toolbar-group" style={{ marginBottom: '16px' }}>
           <label htmlFor="recherche-abonnement" style={{ position: 'absolute', left: '-9999px' }}>
             Rechercher un abonnement
           </label>

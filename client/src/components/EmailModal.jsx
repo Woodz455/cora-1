@@ -47,7 +47,7 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
       <div className="modal-content glass-panel" style={{ maxWidth: '500px', width: '100%' }}>
         <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '1.4rem' }}>Envoyer par courriel</h3>
         
-        {error && <p style={{ color: 'red', background: '#fee2e2', padding: '10px', borderRadius: '5px' }}>{error}</p>}
+        {error && <p style={{ color: 'red', background: '#fee2e2', padding: '8px', borderRadius: '5px' }}>{error}</p>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -99,7 +99,7 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
             ></textarea>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
             <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>
               Annuler
             </button>

@@ -81,7 +81,7 @@ const COULEURS = {
 function Section({ titre, sousTitre, children }) {
   return (
     <section style={{ marginTop: '32px', breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-      <h3 style={{ margin: '0 0 4px 0', fontSize: '1.05rem', color: COULEURS.encre, borderBottom: `2px solid ${COULEURS.filet}`, paddingBottom: '6px' }}>
+      <h3 style={{ margin: '0 0 4px 0', fontSize: '1.05rem', color: COULEURS.encre, borderBottom: `2px solid ${COULEURS.filet}`, paddingBottom: '4px' }}>
         {titre}
       </h3>
       {sousTitre && <p style={{ margin: '0 0 12px 0', fontSize: '0.8rem', color: COULEURS.clair }}>{sousTitre}</p>}
@@ -93,8 +93,8 @@ function Section({ titre, sousTitre, children }) {
 
 function Tuile({ titre, valeur, detail, couleur }) {
   return (
-    <div style={{ minWidth: 0, padding: '14px 16px', background: COULEURS.fond, borderRadius: '8px', borderTop: `4px solid ${couleur}` }}>
-      <p style={{ margin: '0 0 6px 0', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.03em', color: COULEURS.gris, fontWeight: 600 }}>
+    <div style={{ minWidth: 0, padding: '12px 16px', background: COULEURS.fond, borderRadius: '8px', borderTop: `4px solid ${couleur}` }}>
+      <p style={{ margin: '0 0 4px 0', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.03em', color: COULEURS.gris, fontWeight: 600 }}>
         {titre}
       </p>
       <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: COULEURS.encre }}>{valeur}</p>
@@ -107,11 +107,11 @@ function Tuile({ titre, valeur, detail, couleur }) {
 const grille = (colonnes) => ({ display: 'grid', gridTemplateColumns: `repeat(${colonnes}, minmax(0, 1fr))`, gap: '12px' });
 
 const th = (align = 'left', extra = {}) => ({
-  padding: '8px 10px', textAlign: align, fontSize: '0.8rem', color: COULEURS.gris,
+  padding: '8px 8px', textAlign: align, fontSize: '0.8rem', color: COULEURS.gris,
   fontWeight: 600, background: COULEURS.fond, borderBottom: `2px solid ${COULEURS.filet}`, ...extra
 });
 const td = (align = 'left', extra = {}) => ({
-  padding: '8px 10px', textAlign: align, fontSize: '0.9rem', color: COULEURS.encre,
+  padding: '8px 8px', textAlign: align, fontSize: '0.9rem', color: COULEURS.encre,
   borderBottom: `1px solid ${COULEURS.filet}`, ...extra
 });
 const tdTotal = (align = 'left', extra = {}) => td(align, {
@@ -119,7 +119,7 @@ const tdTotal = (align = 'left', extra = {}) => td(align, {
 });
 
 /** La balance âgée compte sept colonnes : elle se serre pour tenir en largeur. */
-const SERRE = { padding: '8px 6px', fontSize: '0.84rem' };
+const SERRE = { padding: '8px 4px', fontSize: '0.84rem' };
 
 /**
  * Barre proportionnelle en pur HTML : un graphique SVG survit mal à la
@@ -227,7 +227,7 @@ function RapportSommaire({ periode, onClose }) {
       ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={titre}
       style={{ zIndex: 9999, padding: '20px', overflowY: 'auto', display: 'block' }}
     >
-      <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginBottom: '20px', position: 'sticky', top: '10px', zIndex: 10000, flexWrap: 'wrap' }}>
+      <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '20px', position: 'sticky', top: '10px', zIndex: 10000, flexWrap: 'wrap' }}>
         <button type="button" className="btn-secondary" onClick={onClose} style={{ background: 'white' }}>Fermer</button>
         {/* Des icônes dessinées, comme sur les autres boutons de
             l'application, et non des émojis rendus par la police du système.
@@ -277,8 +277,8 @@ function RapportSommaire({ periode, onClose }) {
             )}
           </div>
           <div style={{ textAlign: 'right' }}>
-            <h2 style={{ margin: '0 0 6px 0', fontSize: '1.7rem', color: COULEURS.encre, letterSpacing: '0.02em' }}>COMPTE RENDU</h2>
-            <p style={{ margin: '0 0 6px 0', fontWeight: 'bold', fontSize: '1.05rem' }}>{libellePeriode(s.periode)}</p>
+            <h2 style={{ margin: '0 0 4px 0', fontSize: '1.7rem', color: COULEURS.encre, letterSpacing: '0.02em' }}>COMPTE RENDU</h2>
+            <p style={{ margin: '0 0 4px 0', fontWeight: 'bold', fontSize: '1.05rem' }}>{libellePeriode(s.periode)}</p>
             <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: COULEURS.gris }}>
               Du {dateLongue(s.periode.debut)} au {dateLongue(s.periode.fin)}
             </p>
@@ -495,7 +495,7 @@ function RapportSommaire({ periode, onClose }) {
         </Section>
 
         <footer style={{ marginTop: '48px', paddingTop: '16px', borderTop: `1px solid ${COULEURS.filet}`, fontSize: '0.78rem', color: COULEURS.clair, textAlign: 'center', lineHeight: 1.5 }}>
-          <p style={{ margin: '0 0 6px 0' }}>
+          <p style={{ margin: '0 0 4px 0' }}>
             Ce document est un sommaire de gestion produit par Clora. Il ne constitue pas des états financiers
             et ne remplace ni un bilan ni un état des résultats préparés par un comptable.
           </p>

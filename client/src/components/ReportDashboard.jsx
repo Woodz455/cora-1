@@ -91,7 +91,7 @@ function Carte({ titre, valeur, aide, alerte = false }) {
   return (
     <div className="glass-card">
       <p style={{
-        margin: '0 0 10px 0', fontWeight: '500', textTransform: 'uppercase', fontSize: '0.85rem',
+        margin: '0 0 8px 0', fontWeight: '500', textTransform: 'uppercase', fontSize: '0.85rem',
         color: alerte ? 'var(--status-danger)' : 'var(--text-muted)',
         display: 'flex', alignItems: 'center', gap: '.4rem'
       }}>
@@ -181,7 +181,7 @@ function ReportDashboard() {
     <div>
       <div className="toolbar">
         <h2 style={{ color: 'var(--text-main)', margin: 0 }}>Vue d'ensemble financière</h2>
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', background: 'var(--glass-bg)', padding: '6px 12px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', background: 'var(--glass-bg)', padding: '4px 12px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
           {/* Le drapeau qui ouvrait cette phrase était une paire d'indicateurs
               régionaux, que Windows ne compose pas : les testeurs voyaient deux
               lettres encadrées. La phrase nomme la devise, cela suffit. */}
@@ -191,14 +191,14 @@ function ReportDashboard() {
 
       {/* Une seule période pour toute la page : le compte rendu, les registres
           et le rapport de taxes portent sur les mêmes bornes, et se recoupent. */}
-      <div className="glass-panel" style={{ padding: '20px', marginTop: '25px' }}>
+      <div className="glass-panel" style={{ padding: '20px', marginTop: '24px' }}>
         <div className="toolbar">
           <div>
             <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
               Compte rendu de la période
               <InfoTooltip text="Un sommaire de gestion en PDF : facturé, encaissé, dépenses, bénéfice, créances, clients et taxes de la période. À remettre à votre comptable ou à votre banquier." />
             </h3>
-            <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
               Choisissez un mois, un trimestre ou l'année entière. La période retenue s'applique
               aussi aux registres et au rapport de taxes ci-dessous.
             </p>
@@ -245,14 +245,14 @@ function ReportDashboard() {
       )}
 
       {balance && balance.clients.length > 0 && (
-        <div className="glass-panel" style={{ padding: '25px', marginTop: '30px' }}>
+        <div className="glass-panel" style={{ padding: '24px', marginTop: '32px' }}>
           <div className="toolbar">
             <div>
               <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
                 Balance âgée
                 <InfoTooltip text="Répartition de ce qui vous est dû selon l'ancienneté du retard. Plus une créance vieillit, moins elle a de chances d'être recouvrée." />
               </h3>
-              <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                 Au {new Date(balance.date_reference).toLocaleDateString('fr-CA')}
               </p>
             </div>
@@ -309,11 +309,11 @@ function ReportDashboard() {
         </div>
       )}
 
-      <div className="glass-panel" style={{ padding: '20px', marginTop: '25px' }}>
+      <div className="glass-panel" style={{ padding: '20px', marginTop: '24px' }}>
         <div className="toolbar">
           <div>
             <h3 style={{ margin: 0, color: 'var(--text-main)' }}>Registres pour votre comptable</h3>
-            <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
               Fichiers CSV directement lisibles dans Excel, à transmettre au logiciel comptable
               (Acomba, Sage, QuickBooks) pour la fin d'année. Période : {libellePeriode(periode)}.
             </p>
@@ -430,19 +430,19 @@ function ReportDashboard() {
       </div>
 
       {stats.lateInvoices && stats.lateInvoices.length > 0 && (
-        <div className="glass-panel" style={{ marginTop: '40px', padding: '30px', border: '1px solid var(--status-danger-border)' }}>
+        <div className="glass-panel" style={{ marginTop: '40px', padding: '32px', border: '1px solid var(--status-danger-border)' }}>
           {/* Le titre en rouge et le contour rouge du panneau signalent déjà :
               l'émoji d'avertissement n'ajoutait rien qu'une couleur que nous
               ne dessinons pas. */}
-          <h3 style={{ margin: '0 0 15px 0', color: 'var(--status-danger)' }}>
+          <h3 style={{ margin: '0 0 16px 0', color: 'var(--status-danger)' }}>
             Alertes de trésorerie : factures en retard
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {stats.lateInvoices.map((invoice) => (
-              <div key={invoice.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px', padding: '15px', background: 'var(--status-danger-bg)', borderRadius: '8px' }}>
+              <div key={invoice.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px', padding: '16px', background: 'var(--status-danger-bg)', borderRadius: '8px' }}>
                 <div>
                   <strong style={{ color: 'var(--text-main)' }}>{invoice.numero_facture}</strong>, {invoice.client}
-                  <p style={{ margin: '5px 0 0 0', fontSize: '0.9rem', color: 'var(--status-danger)' }}>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem', color: 'var(--status-danger)' }}>
                     Échéance dépassée : {invoice.date_echeance}
                   </p>
                 </div>
@@ -455,7 +455,7 @@ function ReportDashboard() {
         </div>
       )}
 
-      <div className="glass-panel" style={{ marginTop: '40px', padding: '30px' }}>
+      <div className="glass-panel" style={{ marginTop: '40px', padding: '32px' }}>
         <div className="toolbar">
           <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
             Rapport de taxes
@@ -467,20 +467,20 @@ function ReportDashboard() {
 
         {taxStats ? (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '20px', marginBottom: '25px' }}>
-              <div style={{ padding: '15px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
-                <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Taxes facturées</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+              <div style={{ padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
+                <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Taxes facturées</p>
                 <h4 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-main)' }}>{formatMontant(taxStats.taxes_facturees)}</h4>
               </div>
-              <div style={{ padding: '15px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
-                <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <div style={{ padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
+                <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                   Taxes payées (CTI)
                   <InfoTooltip text="La somme des taxes payées sur vos dépenses de la période." />
                 </p>
                 <h4 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-main)' }}>{formatMontant(taxStats.taxes_payees)}</h4>
               </div>
-              <div style={{ padding: '15px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
-                <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <div style={{ padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
+                <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                   Taxes nettes à remettre
                   <InfoTooltip text="Taxes facturées moins taxes payées. Un montant négatif correspond à un remboursement attendu." />
                 </p>
@@ -491,7 +491,7 @@ function ReportDashboard() {
             {/* Chaque régime est présenté séparément : TPS, TVH et TVQ se
                 déclarent à des administrations et sur des lignes distinctes,
                 les additionner en un seul total rendait le rapport inutilisable. */}
-            <h4 style={{ color: 'var(--text-main)', marginBottom: '10px' }}>Détail par régime de taxe</h4>
+            <h4 style={{ color: 'var(--text-main)', marginBottom: '8px' }}>Détail par régime de taxe</h4>
             {taxStats.parRegime && taxStats.parRegime.length > 0 ? (
               <div className="table-scroll">
                 <table className="data-table">

@@ -77,7 +77,7 @@ function ClientModal({ onClose, onSuccess, clientToEdit }) {
   return (
     <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={titre}>
       <div className="modal-content glass-panel" style={{ maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '25px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
+        <h3 style={{ marginTop: 0, marginBottom: '24px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
           {titre}
         </h3>
 
@@ -101,7 +101,7 @@ function ClientModal({ onClose, onSuccess, clientToEdit }) {
             <textarea id="client-adresse" className="form-control" name="adresse" value={formData.adresse} onChange={handleChange} rows="2"></textarea>
           </div>
 
-          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
             <div className="form-group" style={{ flex: 1, minWidth: '180px' }}>
               <label htmlFor="client-langue">Langue de facturation</label>
               <select id="client-langue" className="form-control" name="langue" value={formData.langue} onChange={handleChange}>
@@ -131,13 +131,13 @@ function ClientModal({ onClose, onSuccess, clientToEdit }) {
           </div>
 
           {clientToEdit && (
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '5px 0 0 0' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
               Changer la province ou les conditions n'affecte que les futurs documents :
               les taxes et l'échéance des factures déjà émises restent figées.
             </p>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '35px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px' }}>
             <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>Annuler</button>
             <button type="submit" className="btn-primary" disabled={loading}>
               {loading ? 'Sauvegarde…' : (clientToEdit ? 'Enregistrer' : 'Créer le client')}

@@ -20,14 +20,14 @@ function NoteCreditChooser({ facture, notes, onChoisir, onClose }) {
           {notes.length} notes ont été émises sur cette facture. Laquelle voulez-vous ouvrir ?
         </p>
 
-        <ul style={{ listStyle: 'none', padding: 0, margin: '20px 0 0 0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <ul style={{ listStyle: 'none', padding: 0, margin: '20px 0 0 0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {notes.map((note) => (
             <li key={note.id}>
               <button
                 type="button"
                 className="btn-secondary"
                 onClick={() => onChoisir(note)}
-                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', gap: '15px' }}
+                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', gap: '16px' }}
               >
                 <span>{note.numero_note}</span>
                 <span style={{ color: 'var(--text-muted)' }}>{note.date_emission}</span>

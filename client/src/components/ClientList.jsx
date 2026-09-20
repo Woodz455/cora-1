@@ -48,7 +48,7 @@ function ClientList() {
             {clientsFiltres.length} client{clientsFiltres.length > 1 ? 's' : ''}
           </span>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button type="button" className="btn-secondary" onClick={() => setImportOuvert(true)}>
             Importer
           </button>
@@ -68,7 +68,7 @@ function ClientList() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
           {affiches.map((client) => (
             <div key={client.id} className="glass-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
                 <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.2rem' }}>{client.nom_entreprise}</h3>
                 <button
                   type="button"
@@ -83,22 +83,22 @@ function ClientList() {
                   adresse sur deux lignes revenait sous son pictogramme au lieu
                   de s'aligner sur le texte. Le motif est celui des rangées de
                   `ChoixEntreprise`. */}
-              <p style={{ margin: '0 0 5px 0', color: 'var(--text-muted)', display: 'flex', gap: '.5rem', alignItems: 'flex-start' }}>
+              <p style={{ margin: '0 0 4px 0', color: 'var(--text-muted)', display: 'flex', gap: '.5rem', alignItems: 'flex-start' }}>
                 <User size={16} aria-hidden="true" style={{ flexShrink: 0, marginTop: '.15rem', opacity: .7 }} />
                 <span>{client.nom_contact || 'Non spécifié'}</span>
               </p>
-              <p style={{ margin: '0 0 5px 0', color: 'var(--text-muted)', display: 'flex', gap: '.5rem', alignItems: 'flex-start' }}>
+              <p style={{ margin: '0 0 4px 0', color: 'var(--text-muted)', display: 'flex', gap: '.5rem', alignItems: 'flex-start' }}>
                 <Mail size={16} aria-hidden="true" style={{ flexShrink: 0, marginTop: '.15rem', opacity: .7 }} />
                 <span>{client.email}</span>
               </p>
               {client.adresse && (
-                <p style={{ margin: '0 0 5px 0', color: 'var(--text-muted)', display: 'flex', gap: '.5rem', alignItems: 'flex-start' }}>
+                <p style={{ margin: '0 0 4px 0', color: 'var(--text-muted)', display: 'flex', gap: '.5rem', alignItems: 'flex-start' }}>
                   <MapPin size={16} aria-hidden="true" style={{ flexShrink: 0, marginTop: '.15rem', opacity: .7 }} />
                   <span>{client.adresse}</span>
                 </p>
               )}
               {/* La province détermine les taxes appliquées : elle mérite d'être visible. */}
-              <p style={{ margin: '10px 0 0 0' }}>
+              <p style={{ margin: '8px 0 0 0' }}>
                 <span className="status-badge pending">{client.province || '-'}</span>
                 {' '}
                 <span className="status-badge">{client.langue === 'en' ? 'Anglais' : 'Français'}</span>
