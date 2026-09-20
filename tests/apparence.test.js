@@ -93,3 +93,48 @@ test('le contour des conteneurs est un gris visible, non du blanc', () => {
   assert.ok(alphaSombre >= 0.1,
     `en thème sombre le contour est à ${alphaSombre}, trop faible pour délimiter`);
 });
+
+/**
+ * Les émojis de l'écran Rapports.
+ *
+ * Cet écran en portait six, le plus de toute l'application : cinq sur ses titres
+ * de panneau et un drapeau sur le bandeau des montants. Deux raisons de les
+ * avoir retirés, en plus de l'avis du propriétaire.
+ *
+ * La première : ailleurs, l'application utilise `lucide-react`, un jeu d'icônes
+ * dessiné, dans la navigation et sur les boutons, et **aucun titre de panneau ne
+ * porte d'icône**. Ces cinq titres étaient les seuls illustrés.
+ *
+ * La seconde : un émoji est rendu par la police du système, donc son trait, sa
+ * couleur et son épaisseur échappent au produit. Le drapeau `🇨🇦` ne s'affichait
+ * même pas sous Windows, qui ne compose pas les paires d'indicateurs régionaux
+ * et montrait deux lettres encadrées.
+ *
+ * `\p{Regional_Indicator}` est nécessaire en plus de `\p{Extended_Pictographic}` :
+ * au sens d'Unicode un drapeau n'est pas un pictogramme, et c'est justement
+ * celui qui ne s'affichait pas.
+ *
+ * Douze autres fichiers en contiennent encore, presque tous sur des boutons
+ * d'action. Ils ne sont pas couverts ici : ce test décrit l'écran Rapports, pas
+ * une règle déjà tenue partout.
+ */
+test("l'écran Rapports ne porte aucun émoji", () => {
+  const PICTOGRAMME = /[\p{Extended_Pictographic}\p{Regional_Indicator}]/u;
+  const fautives = [];
+
+  // Le second fichier est le gabarit du compte rendu. Le document imprimé garde
+  // ses conventions, mais ses deux boutons « Télécharger le PDF » et
+  // « Imprimer » sont des commandes à l'écran, ouvertes depuis cet écran.
+  for (const fichier of ['ReportDashboard.jsx', 'RapportSommaire.jsx']) {
+    const lignes = fs.readFileSync(path.join(COMPOSANTS, fichier), 'utf8').split('\n');
+    lignes.forEach((ligne, i) => {
+      const trouves = [...ligne].filter((c) => PICTOGRAMME.test(c));
+      if (trouves.length) fautives.push(`${fichier}:${i + 1} → ${trouves.join(' ')}`);
+    });
+  }
+
+  assert.deepEqual(fautives, [],
+    "Des émojis sont revenus sur l'écran Rapports. Les icônes de l'application "
+    + 'sont dessinées (`lucide-react`, `size={16}` sur les boutons), et ses titres '
+    + `de panneau n'en portent pas.\n    ${fautives.join('\n    ')}`);
+});

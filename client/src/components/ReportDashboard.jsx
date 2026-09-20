@@ -24,18 +24,22 @@ const MOIS = [
 /**
  * Carte d'indicateur.
  *
- * La bande de couleur qui la coiffait est partie avec celles des autres écrans :
- * cinq bandeaux de cinq teintes sur une même rangée faisaient tableau de
- * démonstration, et le contour gris des panneaux délimite désormais la carte.
- * La couleur reste sur le chiffre, où elle distingue les cinq indicateurs.
+ * Ni bande ni chiffre de couleur. La bande est partie avec celles des autres
+ * écrans ; la couleur du chiffre l'a suivie, pour la même raison : cinq teintes
+ * alignées sur une rangée ne distinguaient pas cinq indicateurs, elles faisaient
+ * tableau de démonstration. Le titre nomme déjà l'indicateur, et le contour gris
+ * des panneaux délimite la carte.
+ *
+ * Une couleur sur un montant se garde pour ce qui alerte, comme les créances de
+ * plus de quatre-vingt-dix jours dans la balance âgée, et non pour étiqueter.
  */
-function Carte({ titre, valeur, couleur, aide }) {
+function Carte({ titre, valeur, aide }) {
   return (
     <div className="glass-card">
       <p style={{ margin: '0 0 10px 0', color: 'var(--text-muted)', fontWeight: '500', textTransform: 'uppercase', fontSize: '0.85rem' }}>
         {titre}{aide && <InfoTooltip text={aide} />}
       </p>
-      <h3 style={{ margin: 0, fontSize: '1.9rem', color: couleur }}>{valeur}</h3>
+      <h3 style={{ margin: 0, fontSize: '1.9rem', color: 'var(--text-main)' }}>{valeur}</h3>
     </div>
   );
 }
@@ -114,7 +118,10 @@ function ReportDashboard() {
       <div className="toolbar">
         <h2 style={{ color: 'var(--text-main)', margin: 0 }}>Vue d'ensemble financière</h2>
         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', background: 'var(--glass-bg)', padding: '6px 12px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
-          🇨🇦 Tous les montants sont consolidés en dollars canadiens
+          {/* Le drapeau qui ouvrait cette phrase était une paire d'indicateurs
+              régionaux, que Windows ne compose pas : les testeurs voyaient deux
+              lettres encadrées. La phrase nomme la devise, cela suffit. */}
+          Tous les montants sont consolidés en dollars canadiens
         </span>
       </div>
 
@@ -124,7 +131,7 @@ function ReportDashboard() {
         <div className="toolbar">
           <div>
             <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
-              📄 Compte rendu de la période
+              Compte rendu de la période
               <InfoTooltip text="Un sommaire de gestion en PDF : facturé, encaissé, dépenses, bénéfice, créances, clients et taxes de la période. À remettre à votre comptable ou à votre banquier." />
             </h3>
             <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
@@ -178,7 +185,7 @@ function ReportDashboard() {
           <div className="toolbar">
             <div>
               <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
-                ⏳ Balance âgée
+                Balance âgée
                 <InfoTooltip text="Répartition de ce qui vous est dû selon l'ancienneté du retard. Plus une créance vieillit, moins elle a de chances d'être recouvrée." />
               </h3>
               <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
@@ -241,7 +248,7 @@ function ReportDashboard() {
       <div className="glass-panel" style={{ padding: '20px', marginTop: '25px' }}>
         <div className="toolbar">
           <div>
-            <h3 style={{ margin: 0, color: 'var(--text-main)' }}>📤 Registres pour votre comptable</h3>
+            <h3 style={{ margin: 0, color: 'var(--text-main)' }}>Registres pour votre comptable</h3>
             <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
               Fichiers CSV directement lisibles dans Excel, à transmettre au logiciel comptable
               (Acomba, Sage, QuickBooks) pour la fin d'année. Période : {libellePeriode(periode)}.
@@ -263,22 +270,23 @@ function ReportDashboard() {
 
       {error && <p className="alert alert-error" role="alert">{error}</p>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '20px' }}>
-        <Carte titre="Total facturé" valeur={formatMontant(stats.revenu_total)} couleur="var(--safehill-blue)" />
-        <Carte titre="Total encaissé" valeur={formatMontant(stats.total_encaisse)} couleur="var(--status-paid)" />
+      {/* La rangée d'indicateurs était le seul bloc de la page sans marge
+          haute : elle se collait au panneau des registres. Quarante pixels,
+          comme les trois blocs qui suivent. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '20px', marginTop: '40px' }}>
+        <Carte titre="Total facturé" valeur={formatMontant(stats.revenu_total)} />
+        <Carte titre="Total encaissé" valeur={formatMontant(stats.total_encaisse)} />
         <Carte
           titre="Dépenses hors taxes"
           valeur={formatMontant(stats.total_depenses_ht)}
-          couleur="#ef4444"
           aide="Le montant de vos achats avant taxes. C'est cette valeur qui constitue une charge : les taxes payées sont récupérables."
         />
         <Carte
           titre="Bénéfice net"
           valeur={formatMontant(beneficeNet)}
-          couleur="#8b5cf6"
           aide="Total encaissé moins les dépenses hors taxes."
         />
-        <Carte titre="Reste à percevoir" valeur={formatMontant(stats.solde_a_percevoir)} couleur="var(--status-partial)" />
+        <Carte titre="Reste à percevoir" valeur={formatMontant(stats.solde_a_percevoir)} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px', marginTop: '40px' }}>
@@ -331,8 +339,11 @@ function ReportDashboard() {
 
       {stats.lateInvoices && stats.lateInvoices.length > 0 && (
         <div className="glass-panel" style={{ marginTop: '40px', padding: '30px', border: '1px solid var(--status-danger-border)' }}>
+          {/* Le titre en rouge et le contour rouge du panneau signalent déjà :
+              l'émoji d'avertissement n'ajoutait rien qu'une couleur que nous
+              ne dessinons pas. */}
           <h3 style={{ margin: '0 0 15px 0', color: 'var(--status-danger)' }}>
-            ⚠️ Alertes de trésorerie : factures en retard
+            Alertes de trésorerie : factures en retard
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {stats.lateInvoices.map((invoice) => (
@@ -355,7 +366,7 @@ function ReportDashboard() {
       <div className="glass-panel" style={{ marginTop: '40px', padding: '30px' }}>
         <div className="toolbar">
           <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
-            📊 Rapport de taxes
+            Rapport de taxes
             <InfoTooltip text="CTI / RTI : crédit ou remboursement de la taxe sur les intrants. Vous récupérez les taxes payées sur vos achats." />
           </h3>
           {/* La période se choisit en tête de page, pour toute la page. */}

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { Download, Printer } from 'lucide-react';
 import { api, formatMontant } from '../api';
 import { useModale } from '../useModale';
 import { libellePeriode, dateLongue, moisLong, suffixePeriode } from '../periodes';
@@ -228,11 +229,23 @@ function RapportSommaire({ periode, onClose }) {
     >
       <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginBottom: '20px', position: 'sticky', top: '10px', zIndex: 10000, flexWrap: 'wrap' }}>
         <button type="button" className="btn-secondary" onClick={onClose} style={{ background: 'white' }}>Fermer</button>
-        <button type="button" className="btn-primary" onClick={telechargerPdf} disabled={enCours}>
-          {enCours ? 'Production du PDF…' : '⬇️ Télécharger le PDF'}
+        {/* Des icônes dessinées, comme sur les autres boutons de
+            l'application, et non des émojis rendus par la police du système.
+            L'icône reste pendant la production du PDF : seul le libellé change,
+            et le bouton ne saute pas. */}
+        <button
+          type="button" className="btn-primary" onClick={telechargerPdf} disabled={enCours}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}
+        >
+          <Download size={16} aria-hidden="true" />
+          {enCours ? 'Production du PDF…' : 'Télécharger le PDF'}
         </button>
-        <button type="button" className="btn-secondary" onClick={() => window.print()} style={{ background: 'white' }}>
-          🖨️ Imprimer
+        <button
+          type="button" className="btn-secondary" onClick={() => window.print()}
+          style={{ background: 'white', display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}
+        >
+          <Printer size={16} aria-hidden="true" />
+          Imprimer
         </button>
       </div>
 
