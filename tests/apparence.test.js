@@ -202,3 +202,81 @@ test('le rouge des indicateurs reste conditionnel', () => {
     + "de rien étiquette au lieu de signaler, et c'est ce qui donnait à ces deux "
     + `écrans un air de démonstration.\n    ${fautives.join('\n    ')}`);
 });
+
+/**
+ * Les couleurs des cellules de tableau.
+ *
+ * La colonne des taxes des dépenses était peinte en `#8b5cf6`, la valeur
+ * Tailwind retirée des cartes des rapports : 4,12:1 sur un panneau clair et
+ * 3,84:1 sur un panneau sombre, sous le seuil de 4,5:1 exigé du texte courant,
+ * et posée sans condition, si bien qu'un « 0,00 $ » s'annonçait en crédit de
+ * taxes.
+ *
+ * La règle est propre à vérifier : ces deux lignes étaient les seules cellules
+ * de toute l'application à porter une couleur écrite en dur. Toutes les autres
+ * passent par un jeton, qui suit les deux thèmes.
+ */
+test('aucune cellule de tableau ne porte de couleur écrite en dur', () => {
+  const CELLULE = /<t[dh][^>]*#[0-9a-fA-F]{3,8}/g;
+  const fautives = [];
+
+  for (const fichier of fichiersJsx(COMPOSANTS)) {
+    const source = fs.readFileSync(path.join(COMPOSANTS, fichier), 'utf8');
+    CELLULE.lastIndex = 0;
+    let trouve;
+    while ((trouve = CELLULE.exec(source)) !== null) {
+      const ligne = source.slice(0, trouve.index).split('\n').length;
+      fautives.push(`${fichier}:${ligne} → ${trouve[0].trim().slice(0, 90)}`);
+    }
+  }
+
+  assert.deepEqual(fautives, [],
+    "Une cellule de tableau porte une couleur écrite en dur. Les couleurs de "
+    + "l'application passent par un jeton, qui suit le thème clair et le thème "
+    + `sombre.\n    ${fautives.join('\n    ')}`);
+});
+
+/**
+ * La bulle d'aide est atteignable.
+ *
+ * `InfoTooltip` n'était qu'un `<span>` écoutant le survol de la souris : rien ne
+ * l'ouvrait au clavier, un lecteur d'écran n'en voyait ni nom ni rôle, et le
+ * doigt n'avait aucune prise. Son déclencheur est un bouton, ce qui règle les
+ * trois d'un coup et lui donne l'anneau de focus que la feuille de style
+ * accorde déjà à tous les boutons.
+ *
+ * La bulle n'est pas non plus posée dans un `<label>` : le nom accessible de son
+ * bouton entrerait dans celui du champ. Le dépôt avait déjà tranché cela pour
+ * les en-têtes de tri, où la propriété `suffixe` d'`EnTeteTri` existe pour que
+ * la bulle reste hors du bouton.
+ *
+ * Le dépôt n'a pas de bibliothèque de test de rendu : ce test lit la source.
+ * Le comportement au clavier se vérifie à l'écran, pas ici.
+ */
+test("la bulle d'aide est atteignable au clavier, et hors des libellés", () => {
+  const source = fs.readFileSync(path.join(COMPOSANTS, 'InfoTooltip.jsx'), 'utf8');
+
+  assert.match(source, /<button/,
+    'le déclencheur doit être un bouton : un `<span>` ne prend pas le focus');
+  assert.match(source, /aria-label=/,
+    "le bouton doit porter un nom accessible : son icône n'en est pas un");
+  assert.match(source, /role="tooltip"/, 'la bulle doit annoncer son rôle');
+  assert.match(source, /'Escape'/,
+    'la bulle doit se fermer au clavier, comme l\'exige la règle sur le contenu '
+    + 'qui apparaît au survol');
+  assert.match(source, /createPortal/,
+    'la bulle doit sortir de ses ancêtres : elle était rognée par le conteneur '
+    + 'de défilement des tableaux');
+
+  const niches = [];
+  for (const fichier of fichiersJsx(COMPOSANTS)) {
+    const jsx = fs.readFileSync(path.join(COMPOSANTS, fichier), 'utf8');
+    for (const bloc of jsx.matchAll(/<label[^>]*>([\s\S]*?)<\/label>/g)) {
+      if (bloc[1].includes('InfoTooltip')) niches.push(`${fichier} → ${bloc[0].slice(0, 70)}`);
+    }
+  }
+
+  assert.deepEqual(niches, [],
+    "Une bulle d'aide est posée dans un `<label>` : le nom accessible de son "
+    + `bouton entre alors dans celui du champ.\n    ${niches.join('\n    ')}`);
+});

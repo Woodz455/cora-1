@@ -19,6 +19,10 @@
   /* Couleurs de marque Safehill */
   --safehill-blue: #0e4a9e;
   --safehill-teal: #00c4b4;
+  /* L'icône des bulles d'aide. Le bleu de marque tient sur le fond clair, à
+     8,20:1, mais tombe à 1,93:1 sur le fond sombre, sous le seuil de 3:1 d'un
+     objet graphique : elle y était pratiquement invisible. */
+  --icone-aide: var(--safehill-blue);
   --gradient-brand: linear-gradient(135deg, #0e4a9e, #00c4b4);
   
   /* Glassmorphism premium (Light Aurora) */
@@ -85,6 +89,10 @@
   --hover-border: rgba(255, 255, 255, 0.18);
   --border-color: #334155;
   --table-header-bg: rgba(255,255,255,0.03);
+
+  /* Le bleu éclairci que le thème emploie déjà, pour l'icône des bulles
+     d'aide : 6,40:1, contre 1,93:1 pour le bleu de marque. */
+  --icone-aide: #60a5fa;
 
   /* Teintes éclaircies pour rester lisibles sur fond sombre. Seul le bleu en
      avait besoin : mesuré à 3,98:1 sur le fond des panneaux, sous le seuil AA.
