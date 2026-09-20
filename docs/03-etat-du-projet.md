@@ -11,7 +11,7 @@ version 1.7.1.*
 | --- | --- |
 | **Version publiée** | 1.7.1, le 20 septembre 2026 |
 | **Publications** | 9 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 48 commits, 17 demandes de fusion, toutes fusionnées |
+| **Développement** | 48 commits, 18 demandes de fusion, toutes fusionnées |
 | **Tests** | 366, tous au vert, exécutés à chaque fusion |
 | **Durée** | 8 semaines, du 24 juillet au 20 septembre 2026 |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca |
@@ -113,7 +113,7 @@ a corrigé ce qui, autrement, aurait fini par produire de faux chiffres.
   courriels de relance, facture imprimée, documents et blocs du site.
 
 ### Phase 8 : premiers retours des testeurs
-*12 septembre · publié en 1.7.0 · demande de fusion #16*
+*12 septembre · publié en 1.7.0 · demandes de fusion #16 et #17*
 
 - **Compte rendu de la période** en PDF, demandé par les testeurs pour lire la
   santé de leur entreprise : facturé, encaissé, dépenses, bénéfice, créances,
@@ -134,7 +134,7 @@ a corrigé ce qui, autrement, aurait fini par produire de faux chiffres.
   « Votre entreprise » jusqu'à ce qu'on retape le nom dans Paramètres.
 
 ### Phase 9 : le reproche sur le design, et la finition
-*20 septembre · publié en 1.7.1*
+*20 septembre · publié en 1.7.1 · demande de fusion #18*
 
 Une version de correction : aucune fonction nouvelle, et rien de touché hors de
 l'interface. Ni le serveur, ni la base, ni un format de fichier : une
