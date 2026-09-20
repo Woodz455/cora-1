@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { TriangleAlert } from 'lucide-react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Legend, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import InfoTooltip from './InfoTooltip';
 import { api, formatMontant } from '../api';
 import { libellePeriode } from '../periodes';
@@ -21,6 +21,58 @@ const MOIS = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
 ];
+
+/**
+ * Nom de client sur l'axe du graphique, en une seule ligne.
+ *
+ * Laissé à `recharts`, le nom était replié sur deux lignes dès qu'il dépassait
+ * la largeur de l'axe, et les deux lignes se serraient contre la barre. Une
+ * ligne coupée se lit mieux que deux lignes tassées, et l'infobulle de la barre
+ * donne le nom entier.
+ */
+const LONGUEUR_NOM = 18;
+
+/** Part en deçà de laquelle l'étiquette est omise : elle n'a pas la place. */
+const PART_MINIMALE = 0.08;
+
+/**
+ * Pourcentage posé au bord d'une part de camembert.
+ *
+ * Écrit par `recharts`, il héritait de la couleur de sa part : l'ambre de
+ * « Partiellement payée » tombait à 2,09:1 sur un panneau clair, très en
+ * dessous du seuil de 4,5:1 exigé du texte courant. La couleur reste dans
+ * l'arc et dans le carré de la légende, où elle est la clé de lecture ; le
+ * chiffre prend la couleur du texte.
+ */
+function EtiquettePart({ cx, cy, midAngle, outerRadius, percent }) {
+  if (percent < PART_MINIMALE) return null;
+
+  const rayon = outerRadius + 18;
+  const angle = -midAngle * (Math.PI / 180);
+  const x = cx + rayon * Math.cos(angle);
+  const y = cy + rayon * Math.sin(angle);
+
+  return (
+    <text
+      x={x} y={y} textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central"
+      style={{ fill: 'var(--text-main)', fontSize: '0.8rem' }}
+    >
+      {`${(percent * 100).toFixed(0)} %`}
+    </text>
+  );
+}
+
+function TickClient({ x, y, payload }) {
+  const nom = String(payload.value ?? '');
+  return (
+    <text
+      x={x - 8} y={y} dy={4} textAnchor="end"
+      style={{ fill: 'var(--text-main)', fontSize: '0.78rem' }}
+    >
+      {nom.length > LONGUEUR_NOM ? `${nom.slice(0, LONGUEUR_NOM - 1)}…` : nom}
+    </text>
+  );
+}
 
 /**
  * Carte d'indicateur.
@@ -312,16 +364,33 @@ function ReportDashboard() {
             <div style={{ width: '100%', height: 300 }}>
               <ResponsiveContainer>
                 <PieChart>
+                  {/* Le nom du statut était écrit au bout d'une ligne de rappel,
+                      hors du camembert : « Partiellement payée » dépassait du
+                      panneau et se lisait coupé. Le pourcentage tient dans
+                      l'arc, où sa largeur est bornée, et les noms descendent
+                      dans la légende, qui a celle du panneau. */}
                   <Pie
                     data={stats.statusDistribution}
-                    cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5}
+                    cx="50%" cy="50%" innerRadius={55} outerRadius={95} paddingAngle={5}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)} %`}
+                    labelLine={false}
+                    label={EtiquettePart}
                   >
                     {stats.statusDistribution.map((entry, index) => (
                       <Cell key={entry.name} fill={COULEURS_STATUT[entry.name] || COULEURS_DEFAUT[index % COULEURS_DEFAUT.length]} />
                     ))}
                   </Pie>
+                  {/* Le carré garde la couleur du statut, qui est la clé de
+                      lecture du camembert ; le libellé prend celle du texte.
+                      Laissés à `recharts`, les libellés héritaient de la
+                      couleur de leur part : « Partiellement payée » en ambre
+                      sur un panneau clair tombait à 2,09:1, sous le seuil de
+                      4,5:1 exigé du texte courant. */}
+                  <Legend
+                    verticalAlign="bottom" height={36}
+                    wrapperStyle={{ fontSize: '0.85rem' }}
+                    formatter={(valeur) => <span style={{ color: 'var(--text-main)' }}>{valeur}</span>}
+                  />
                   <Tooltip contentStyle={{ backgroundColor: 'var(--app-bg)', borderColor: 'var(--glass-border)', color: 'var(--text-main)' }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -336,9 +405,16 @@ function ReportDashboard() {
           {stats.topClients && stats.topClients.length > 0 ? (
             <div style={{ width: '100%', height: 300 }}>
               <ResponsiveContainer>
-                <BarChart data={stats.topClients} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <BarChart data={stats.topClients} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
                   <XAxis type="number" stroke="var(--text-muted)" />
-                  <YAxis dataKey="name" type="category" stroke="var(--text-main)" width={110} />
+                  {/* Cent dix pixels ne suffisaient pas à un nom d'entreprise :
+                      il chevauchait le départ de sa barre. La largeur seule ne
+                      tiendrait pas non plus, un nom pouvant être long sans
+                      limite : elle est accompagnée d'une coupe. */}
+                  <YAxis
+                    dataKey="name" type="category" stroke="var(--text-muted)" width={150}
+                    tick={<TickClient />}
+                  />
                   <Tooltip
                     contentStyle={{ backgroundColor: 'var(--app-bg)', borderColor: 'var(--glass-border)', color: 'var(--text-main)' }}
                     formatter={(value) => [formatMontant(value), 'Facturé']}
