@@ -1,3 +1,5 @@
+import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+
 /**
  * En-tête de colonne cliquable.
  *
@@ -24,8 +26,13 @@ function EnTeteTri({ colonne, tri, onTrier, children, suffixe = null, ...props }
         {/* Hors de la colonne triée, la flèche est sortie du flux : gardée dans
             le texte, les sept en-têtes des dépenses coûtaient 52 px et
             faisaient déborder le tableau. */}
+        {/* Des chevrons dessinés : les trois marques étaient deux glyphes
+            géométriques et un émoji dans un même contrôle, donc de trois
+            graisses différentes selon la police du système. */}
         <span className="th-tri-fleche" data-neutre={actif ? undefined : '1'} aria-hidden="true">
-          {actif ? (sens === 'asc' ? '▲' : '▼') : '↕'}
+          {actif
+            ? (sens === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)
+            : <ChevronsUpDown size={12} />}
         </span>
       </button>
       {suffixe}

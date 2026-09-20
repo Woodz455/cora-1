@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Send } from 'lucide-react';
 import { useModale } from '../useModale';
 
 function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaultMessage }) {
@@ -103,7 +104,8 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
               Annuler
             </button>
             <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Envoi en cours...' : 'Envoyer 🚀'}
+              <Send size={16} aria-hidden="true" />
+              {loading ? 'Envoi en cours…' : 'Envoyer'}
             </button>
           </div>
         </form>

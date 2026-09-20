@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import InfoTooltip from './InfoTooltip';
 import { api, formatMontant } from '../api';
 import { useApiResource } from '../useApiResource';
@@ -291,13 +292,18 @@ function ExpenseList() {
                     : '-'}
                 </td>
                 <td className="numeric">{formatMontant(expense.montant_ht)}</td>
-                <td className="numeric" style={{ color: '#8b5cf6' }}>
+                {/* Le violet de cette colonne mesurait 4,12:1 en thème clair et
+                    3,84:1 en sombre, sous le seuil de 4,5:1 exigé du texte
+                    courant, et ne dépendait de rien : un « 0,00 $ » s'annonçait
+                    en crédit de taxes. La colonne se lit comme ses deux
+                    voisines, le montant hors taxes et le total. */}
+                <td className="numeric">
                   {formatMontant((expense.tps || 0) + (expense.tvq || 0))}
                 </td>
                 <td className="numeric" style={{ fontWeight: 'bold' }}>{formatMontant(expense.montant_ttc)}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <button type="button" className="btn-icon" onClick={() => openModal(expense)} aria-label="Modifier la dépense" style={{ marginRight: '5px' }}>✏️</button>
-                  <button type="button" className="btn-danger" onClick={() => handleDelete(expense)} aria-label="Supprimer la dépense">🗑️</button>
+                  <button type="button" className="btn-icon" onClick={() => openModal(expense)} aria-label="Modifier la dépense" style={{ marginRight: '5px' }}><Pencil size={16} aria-hidden="true" /></button>
+                  <button type="button" className="btn-danger" onClick={() => handleDelete(expense)} aria-label="Supprimer la dépense"><Trash2 size={16} aria-hidden="true" /></button>
                 </td>
               </tr>
             ))}
@@ -310,7 +316,7 @@ function ExpenseList() {
                   {totaux.km > 0 ? formatKm(totaux.km) : ''}
                 </td>
                 <td className="numeric" style={{ paddingTop: '14px' }}>{formatMontant(totaux.ht)}</td>
-                <td className="numeric" style={{ paddingTop: '14px', color: '#8b5cf6' }}>{formatMontant(totaux.taxes)}</td>
+                <td className="numeric" style={{ paddingTop: '14px' }}>{formatMontant(totaux.taxes)}</td>
                 <td className="numeric" style={{ paddingTop: '14px' }}>{formatMontant(totaux.ttc)}</td>
                 <td></td>
               </tr>
@@ -342,10 +348,12 @@ function ExpenseList() {
                 )}
                 {estDeplacement && (
                   <div className="form-group">
-                    <label htmlFor="depense-vehicule">
-                      Véhicule ou transport
+                    {/* La bulle est hors du libellé : son bouton porte un nom
+                        accessible, qui entrerait sinon dans celui du champ. */}
+                    <span style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+                      <label htmlFor="depense-vehicule" style={{ marginBottom: 0 }}>Véhicule ou transport</label>
                       <InfoTooltip text="Le véhicule employé, ou le mode de transport. Les valeurs déjà saisies vous sont proposées." />
-                    </label>
+                    </span>
                     <input id="depense-vehicule" type="text" className="form-control" list="vehicules-connus" placeholder="Toyota Corolla 2022" value={currentExpense.vehicule || ''} onChange={(e) => setCurrentExpense({ ...currentExpense, vehicule: e.target.value })} />
                     <datalist id="vehicules-connus">
                       {vehicules.map((v) => <option key={v} value={v} />)}
@@ -418,10 +426,10 @@ function ExpenseList() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
                 <div className="form-group">
-                  <label htmlFor="depense-ht">
-                    Montant HT ($) *
+                  <span style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+                    <label htmlFor="depense-ht" style={{ marginBottom: 0 }}>Montant HT ($) *</label>
                     <InfoTooltip text="Hors taxes : le montant avant application des taxes." />
-                  </label>
+                  </span>
                   <input id="depense-ht" type="number" step="0.01" min="0" className="form-control" value={currentExpense.montant_ht} onChange={(e) => setCurrentExpense({ ...currentExpense, montant_ht: e.target.value })} required />
                 </div>
                 <div className="form-group">

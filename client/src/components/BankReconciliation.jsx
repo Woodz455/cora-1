@@ -272,7 +272,11 @@ export default function BankReconciliation() {
                           const exact = Math.abs(f.solde_restant - restant) < 0.01;
                           return (
                             <option key={f.id} value={f.id}>
-                              {f.numero_facture}, {f.client} (solde : {formatMontant(f.solde_restant)}){exact ? ' ⭐' : ''}
+                              {/* Une `<option>` ne rend que du texte : aucune
+                                  icône n'y est possible, et l'étoile qui
+                                  marquait la correspondance exacte se lit mieux
+                                  en mots, y compris par un lecteur d'écran. */}
+                              {f.numero_facture}, {f.client} (solde : {formatMontant(f.solde_restant)}{exact ? ', montant exact' : ''})
                             </option>
                           );
                         })}

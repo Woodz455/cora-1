@@ -1,7 +1,7 @@
 # Clora : état du projet
 
-*Ce qui a été fait, ce qui reste à faire. Arrêté au 12 septembre 2026,
-version 1.7.0.*
+*Ce qui a été fait, ce qui reste à faire. Arrêté au 20 septembre 2026,
+version 1.7.1.*
 
 ---
 
@@ -9,11 +9,11 @@ version 1.7.0.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.7.0, le 12 septembre 2026 |
-| **Publications** | 8 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 41 commits, 16 demandes de fusion, toutes fusionnées |
-| **Tests** | 360, tous au vert, exécutés à chaque fusion |
-| **Durée** | 7 semaines, du 24 juillet au 12 septembre 2026 |
+| **Version publiée** | 1.7.1, le 20 septembre 2026 |
+| **Publications** | 9 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 48 commits, 17 demandes de fusion, toutes fusionnées |
+| **Tests** | 366, tous au vert, exécutés à chaque fusion |
+| **Durée** | 8 semaines, du 24 juillet au 20 septembre 2026 |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca |
 | **Ventes** | Aucune : les tests utilisateurs sont en cours |
 
@@ -133,6 +133,46 @@ a corrigé ce qui, autrement, aurait fini par produire de faux chiffres.
   paramètres, et son nom se perdait dans la seconde. Ses factures disaient
   « Votre entreprise » jusqu'à ce qu'on retape le nom dans Paramètres.
 
+### Phase 9 : le reproche sur le design, et la finition
+*20 septembre · publié en 1.7.1*
+
+Une version de correction : aucune fonction nouvelle, et rien de touché hors de
+l'interface. Ni le serveur, ni la base, ni un format de fichier : une
+installation en 1.7.0 passe en 1.7.1 sans aucune reprise de données.
+
+- **Les bandes de couleur des conteneurs** retirées, remplacées par un mince
+  contour gris. C'est le seul reproche retenu sur le design de la 1.7.0, et il
+  cachait une cause : le contour des panneaux existait déjà, mais il était
+  **blanc sur un fond perle**, donc invisible. La bande était en pratique la
+  seule chose qui délimitait une carte. Un jeton corrigé a rendu leur limite aux
+  cinquante-cinq conteneurs de l'application.
+- **Les couleurs d'étiquette retirées des chiffres.** Cinq teintes alignées sur
+  la rangée des rapports ne distinguaient pas cinq indicateurs, elles faisaient
+  tableau de démonstration. Le titre nomme déjà l'indicateur.
+- **Deux signalements ajoutés**, là où la couleur en portait un vrai : le
+  montant en retard au-dessus de zéro, et le bénéfice net en dessous. Chacun
+  porte deux marques, un triangle et le rouge, parce qu'une couleur seule ne
+  signale rien à qui ne la distingue pas.
+- **Les trente-quatre émojis remplacés** par les icônes dessinées déjà employées
+  par la navigation. Un émoji est rendu par la police du système, donc son trait
+  et sa couleur échappent au produit : le bouton « Supprimer » avait un texte
+  rouge et une corbeille grise. Le drapeau de l'écran Rapports ne s'affichait
+  même pas sous Windows, qui montrait deux lettres encadrées à sa place.
+- **Les deux graphiques de l'écran Rapports réparés** : une étiquette de
+  camembert coupée par le bord de son panneau, et un nom de client qui
+  chevauchait sa barre.
+- **La bulle d'aide rendue atteignable.** Elle ne répondait qu'au survol de la
+  souris : rien ne l'ouvrait au clavier, un lecteur d'écran n'en voyait ni nom
+  ni rôle, et sur trois de ses treize emplacements elle était rognée par le
+  conteneur de défilement d'un tableau, donc invisible même à la souris.
+- **Cinq contrastes mesurés et corrigés**, tous sous leur seuil : la colonne des
+  taxes des dépenses, les libellés et les pourcentages du camembert, l'icône des
+  bulles d'aide en thème sombre, et le bord de la bulle elle-même.
+- **Six tests d'apparence** écrivent ces décisions et refusent leur retour :
+  une bande de couleur, un contour de conteneur invisible, un émoji, une couleur
+  d'étiquette sur un chiffre, une couleur en dur dans une cellule de tableau, et
+  une bulle d'aide hors de portée du clavier.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
@@ -241,8 +281,8 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.7.0 en offre l'occasion sur toute installation restée en
-  1.6.0, cette fois chez des testeurs qui l'ont réellement installée.
+  annoncer. La 1.7.1 en offre l'occasion sur toute installation restée en
+  1.7.0, que les testeurs ont cette fois réellement installée.
 - **Le redémarrage après restauration d'une sauvegarde.**
 
 Ce sont deux choses à regarder pendant les tests utilisateurs.
@@ -315,12 +355,19 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.7.0 par les testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.7.1 par les testeurs et écouter ce qu'ils disent.**
 
-Les deux premières demandes remontées par eux sont livrées : le compte rendu de
-la période et le profil du dossier. Le reste (la clé de licence, le certificat,
-les améliorations du rapprochement bancaire) attend la suite de ce retour, et
-devrait être priorisé par lui.
+Leurs trois premières demandes sont livrées : le compte rendu de la période, le
+profil du dossier, et le sérieux du design. Le reste (la clé de licence, le
+certificat, les améliorations du rapprochement bancaire) attend la suite de ce
+retour, et devrait être priorisé par lui.
+
+Deux chantiers de finition sont connus et non faits, tous deux relevés en
+corrigeant les précédents : **les polices Inter et Outfit ne sont pas embarquées
+dans l'exécutable**, si bien qu'un poste Windows affiche Segoe UI à leur place ;
+et **l'espacement n'a pas d'échelle**, quatre cent quarante-neuf marges étant
+écrites à la main dans le JSX sur deux grilles incompatibles, de quatre et de
+cinq pixels.
 
 ---
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { TriangleAlert } from 'lucide-react';
+import { PieChart, Pie, Cell, Legend, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import InfoTooltip from './InfoTooltip';
 import { api, formatMontant } from '../api';
 import { libellePeriode } from '../periodes';
@@ -21,14 +22,88 @@ const MOIS = [
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
 ];
 
-/** Carte d'indicateur. */
-function Carte({ titre, valeur, couleur, aide }) {
+/**
+ * Nom de client sur l'axe du graphique, en une seule ligne.
+ *
+ * Laissé à `recharts`, le nom était replié sur deux lignes dès qu'il dépassait
+ * la largeur de l'axe, et les deux lignes se serraient contre la barre. Une
+ * ligne coupée se lit mieux que deux lignes tassées, et l'infobulle de la barre
+ * donne le nom entier.
+ */
+const LONGUEUR_NOM = 18;
+
+/** Part en deçà de laquelle l'étiquette est omise : elle n'a pas la place. */
+const PART_MINIMALE = 0.08;
+
+/**
+ * Pourcentage posé au bord d'une part de camembert.
+ *
+ * Écrit par `recharts`, il héritait de la couleur de sa part : l'ambre de
+ * « Partiellement payée » tombait à 2,09:1 sur un panneau clair, très en
+ * dessous du seuil de 4,5:1 exigé du texte courant. La couleur reste dans
+ * l'arc et dans le carré de la légende, où elle est la clé de lecture ; le
+ * chiffre prend la couleur du texte.
+ */
+function EtiquettePart({ cx, cy, midAngle, outerRadius, percent }) {
+  if (percent < PART_MINIMALE) return null;
+
+  const rayon = outerRadius + 18;
+  const angle = -midAngle * (Math.PI / 180);
+  const x = cx + rayon * Math.cos(angle);
+  const y = cy + rayon * Math.sin(angle);
+
   return (
-    <div className="glass-card" style={{ borderTop: `4px solid ${couleur}` }}>
-      <p style={{ margin: '0 0 10px 0', color: 'var(--text-muted)', fontWeight: '500', textTransform: 'uppercase', fontSize: '0.85rem' }}>
+    <text
+      x={x} y={y} textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central"
+      style={{ fill: 'var(--text-main)', fontSize: '0.8rem' }}
+    >
+      {`${(percent * 100).toFixed(0)} %`}
+    </text>
+  );
+}
+
+function TickClient({ x, y, payload }) {
+  const nom = String(payload.value ?? '');
+  return (
+    <text
+      x={x - 8} y={y} dy={4} textAnchor="end"
+      style={{ fill: 'var(--text-main)', fontSize: '0.78rem' }}
+    >
+      {nom.length > LONGUEUR_NOM ? `${nom.slice(0, LONGUEUR_NOM - 1)}…` : nom}
+    </text>
+  );
+}
+
+/**
+ * Carte d'indicateur.
+ *
+ * Ni bande ni chiffre de couleur pour étiqueter. La bande est partie avec celles
+ * des autres écrans ; la couleur du chiffre l'a suivie, pour la même raison :
+ * cinq teintes alignées sur une rangée ne distinguaient pas cinq indicateurs,
+ * elles faisaient tableau de démonstration. Le titre nomme déjà l'indicateur, et
+ * le contour gris des panneaux délimite la carte.
+ *
+ * `alerte` est l'autre usage de la couleur, celui qui reste : un chiffre ne
+ * prend le rouge que lorsqu'il annonce quelque chose. Le triangle l'accompagne
+ * toujours, car une couleur seule ne signale rien à qui ne la distingue pas.
+ */
+function Carte({ titre, valeur, aide, alerte = false }) {
+  return (
+    <div className="glass-card">
+      <p style={{
+        margin: '0 0 10px 0', fontWeight: '500', textTransform: 'uppercase', fontSize: '0.85rem',
+        color: alerte ? 'var(--status-danger)' : 'var(--text-muted)',
+        display: 'flex', alignItems: 'center', gap: '.4rem'
+      }}>
+        {alerte && <TriangleAlert size={14} aria-label="Perte" />}
         {titre}{aide && <InfoTooltip text={aide} />}
       </p>
-      <h3 style={{ margin: 0, fontSize: '1.9rem', color: couleur }}>{valeur}</h3>
+      <h3 style={{
+        margin: 0, fontSize: '1.9rem',
+        color: alerte ? 'var(--status-danger)' : 'var(--text-main)'
+      }}>
+        {valeur}
+      </h3>
     </div>
   );
 }
@@ -107,7 +182,10 @@ function ReportDashboard() {
       <div className="toolbar">
         <h2 style={{ color: 'var(--text-main)', margin: 0 }}>Vue d'ensemble financière</h2>
         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', background: 'var(--glass-bg)', padding: '6px 12px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
-          🇨🇦 Tous les montants sont consolidés en dollars canadiens
+          {/* Le drapeau qui ouvrait cette phrase était une paire d'indicateurs
+              régionaux, que Windows ne compose pas : les testeurs voyaient deux
+              lettres encadrées. La phrase nomme la devise, cela suffit. */}
+          Tous les montants sont consolidés en dollars canadiens
         </span>
       </div>
 
@@ -117,7 +195,7 @@ function ReportDashboard() {
         <div className="toolbar">
           <div>
             <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
-              📄 Compte rendu de la période
+              Compte rendu de la période
               <InfoTooltip text="Un sommaire de gestion en PDF : facturé, encaissé, dépenses, bénéfice, créances, clients et taxes de la période. À remettre à votre comptable ou à votre banquier." />
             </h3>
             <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
@@ -171,7 +249,7 @@ function ReportDashboard() {
           <div className="toolbar">
             <div>
               <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
-                ⏳ Balance âgée
+                Balance âgée
                 <InfoTooltip text="Répartition de ce qui vous est dû selon l'ancienneté du retard. Plus une créance vieillit, moins elle a de chances d'être recouvrée." />
               </h3>
               <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
@@ -234,7 +312,7 @@ function ReportDashboard() {
       <div className="glass-panel" style={{ padding: '20px', marginTop: '25px' }}>
         <div className="toolbar">
           <div>
-            <h3 style={{ margin: 0, color: 'var(--text-main)' }}>📤 Registres pour votre comptable</h3>
+            <h3 style={{ margin: 0, color: 'var(--text-main)' }}>Registres pour votre comptable</h3>
             <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
               Fichiers CSV directement lisibles dans Excel, à transmettre au logiciel comptable
               (Acomba, Sage, QuickBooks) pour la fin d'année. Période : {libellePeriode(periode)}.
@@ -256,22 +334,27 @@ function ReportDashboard() {
 
       {error && <p className="alert alert-error" role="alert">{error}</p>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '20px' }}>
-        <Carte titre="Total facturé" valeur={formatMontant(stats.revenu_total)} couleur="var(--safehill-blue)" />
-        <Carte titre="Total encaissé" valeur={formatMontant(stats.total_encaisse)} couleur="var(--status-paid)" />
+      {/* La rangée d'indicateurs était le seul bloc de la page sans marge
+          haute : elle se collait au panneau des registres. Quarante pixels,
+          comme les trois blocs qui suivent. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '20px', marginTop: '40px' }}>
+        <Carte titre="Total facturé" valeur={formatMontant(stats.revenu_total)} />
+        <Carte titre="Total encaissé" valeur={formatMontant(stats.total_encaisse)} />
         <Carte
           titre="Dépenses hors taxes"
           valeur={formatMontant(stats.total_depenses_ht)}
-          couleur="#ef4444"
           aide="Le montant de vos achats avant taxes. C'est cette valeur qui constitue une charge : les taxes payées sont récupérables."
         />
+        {/* Le violet ne distinguait pas un bénéfice d'une perte. La seconde
+            marque est déjà là, et gratuite : en français canadien, `Intl` écrit
+            un montant négatif avec son signe. */}
         <Carte
           titre="Bénéfice net"
           valeur={formatMontant(beneficeNet)}
-          couleur="#8b5cf6"
+          alerte={beneficeNet < 0}
           aide="Total encaissé moins les dépenses hors taxes."
         />
-        <Carte titre="Reste à percevoir" valeur={formatMontant(stats.solde_a_percevoir)} couleur="var(--status-partial)" />
+        <Carte titre="Reste à percevoir" valeur={formatMontant(stats.solde_a_percevoir)} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px', marginTop: '40px' }}>
@@ -281,16 +364,33 @@ function ReportDashboard() {
             <div style={{ width: '100%', height: 300 }}>
               <ResponsiveContainer>
                 <PieChart>
+                  {/* Le nom du statut était écrit au bout d'une ligne de rappel,
+                      hors du camembert : « Partiellement payée » dépassait du
+                      panneau et se lisait coupé. Le pourcentage tient dans
+                      l'arc, où sa largeur est bornée, et les noms descendent
+                      dans la légende, qui a celle du panneau. */}
                   <Pie
                     data={stats.statusDistribution}
-                    cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5}
+                    cx="50%" cy="50%" innerRadius={55} outerRadius={95} paddingAngle={5}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)} %`}
+                    labelLine={false}
+                    label={EtiquettePart}
                   >
                     {stats.statusDistribution.map((entry, index) => (
                       <Cell key={entry.name} fill={COULEURS_STATUT[entry.name] || COULEURS_DEFAUT[index % COULEURS_DEFAUT.length]} />
                     ))}
                   </Pie>
+                  {/* Le carré garde la couleur du statut, qui est la clé de
+                      lecture du camembert ; le libellé prend celle du texte.
+                      Laissés à `recharts`, les libellés héritaient de la
+                      couleur de leur part : « Partiellement payée » en ambre
+                      sur un panneau clair tombait à 2,09:1, sous le seuil de
+                      4,5:1 exigé du texte courant. */}
+                  <Legend
+                    verticalAlign="bottom" height={36}
+                    wrapperStyle={{ fontSize: '0.85rem' }}
+                    formatter={(valeur) => <span style={{ color: 'var(--text-main)' }}>{valeur}</span>}
+                  />
                   <Tooltip contentStyle={{ backgroundColor: 'var(--app-bg)', borderColor: 'var(--glass-border)', color: 'var(--text-main)' }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -305,9 +405,16 @@ function ReportDashboard() {
           {stats.topClients && stats.topClients.length > 0 ? (
             <div style={{ width: '100%', height: 300 }}>
               <ResponsiveContainer>
-                <BarChart data={stats.topClients} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <BarChart data={stats.topClients} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
                   <XAxis type="number" stroke="var(--text-muted)" />
-                  <YAxis dataKey="name" type="category" stroke="var(--text-main)" width={110} />
+                  {/* Cent dix pixels ne suffisaient pas à un nom d'entreprise :
+                      il chevauchait le départ de sa barre. La largeur seule ne
+                      tiendrait pas non plus, un nom pouvant être long sans
+                      limite : elle est accompagnée d'une coupe. */}
+                  <YAxis
+                    dataKey="name" type="category" stroke="var(--text-muted)" width={150}
+                    tick={<TickClient />}
+                  />
                   <Tooltip
                     contentStyle={{ backgroundColor: 'var(--app-bg)', borderColor: 'var(--glass-border)', color: 'var(--text-main)' }}
                     formatter={(value) => [formatMontant(value), 'Facturé']}
@@ -324,8 +431,11 @@ function ReportDashboard() {
 
       {stats.lateInvoices && stats.lateInvoices.length > 0 && (
         <div className="glass-panel" style={{ marginTop: '40px', padding: '30px', border: '1px solid var(--status-danger-border)' }}>
+          {/* Le titre en rouge et le contour rouge du panneau signalent déjà :
+              l'émoji d'avertissement n'ajoutait rien qu'une couleur que nous
+              ne dessinons pas. */}
           <h3 style={{ margin: '0 0 15px 0', color: 'var(--status-danger)' }}>
-            ⚠️ Alertes de trésorerie : factures en retard
+            Alertes de trésorerie : factures en retard
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {stats.lateInvoices.map((invoice) => (
@@ -348,7 +458,7 @@ function ReportDashboard() {
       <div className="glass-panel" style={{ marginTop: '40px', padding: '30px' }}>
         <div className="toolbar">
           <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
-            📊 Rapport de taxes
+            Rapport de taxes
             <InfoTooltip text="CTI / RTI : crédit ou remboursement de la taxe sur les intrants. Vous récupérez les taxes payées sur vos achats." />
           </h3>
           {/* La période se choisit en tête de page, pour toute la page. */}
@@ -358,18 +468,18 @@ function ReportDashboard() {
         {taxStats ? (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '20px', marginBottom: '25px' }}>
-              <div style={{ padding: '15px', background: 'var(--glass-bg)', borderLeft: '4px solid #3b82f6', borderRadius: '8px' }}>
+              <div style={{ padding: '15px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
                 <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Taxes facturées</p>
                 <h4 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-main)' }}>{formatMontant(taxStats.taxes_facturees)}</h4>
               </div>
-              <div style={{ padding: '15px', background: 'var(--glass-bg)', borderLeft: '4px solid #f59e0b', borderRadius: '8px' }}>
+              <div style={{ padding: '15px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
                 <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                   Taxes payées (CTI)
                   <InfoTooltip text="La somme des taxes payées sur vos dépenses de la période." />
                 </p>
                 <h4 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-main)' }}>{formatMontant(taxStats.taxes_payees)}</h4>
               </div>
-              <div style={{ padding: '15px', background: 'var(--glass-bg)', borderLeft: '4px solid #10b981', borderRadius: '8px' }}>
+              <div style={{ padding: '15px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
                 <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                   Taxes nettes à remettre
                   <InfoTooltip text="Taxes facturées moins taxes payées. Un montant négatif correspond à un remboursement attendu." />

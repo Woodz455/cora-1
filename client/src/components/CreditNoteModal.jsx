@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { X } from 'lucide-react';
 import { api, formatMontant } from '../api';
 import { useModale } from '../useModale';
 
@@ -159,7 +160,7 @@ function CreditNoteModal({ facture, onClose, onSuccess }) {
                   disabled={lignes.length === 1}
                   aria-label={`Supprimer la ligne ${index + 1}`}
                 >
-                  ✖
+                  <X size={16} aria-hidden="true" />
                 </button>
               </div>
             ))}

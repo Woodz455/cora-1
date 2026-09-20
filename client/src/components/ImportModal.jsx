@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Upload, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Upload, TriangleAlert, CheckCircle2 } from 'lucide-react';
 import { api } from '../api';
 
 /**
@@ -160,7 +160,7 @@ function ImportModal({ modele, titre, onFerme, onTermine }) {
                 {apercu.rejets.length > 0 && (
                   <details style={{ marginBottom: '1rem' }}>
                     <summary style={{ cursor: 'pointer', color: 'var(--status-warning)', display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-                      <AlertTriangle size={16} />
+                      <TriangleAlert size={16} />
                       {apercu.rejets.length} ligne(s) seront ignorées, voir lesquelles
                     </summary>
                     {/* Toutes les lignes refusées, pas un échantillon : un import

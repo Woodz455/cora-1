@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { User, Mail, MapPin } from 'lucide-react';
 import ClientModal from './ClientModal';
 import ImportModal from './ImportModal';
 import { useApiResource } from '../useApiResource';
@@ -78,9 +79,24 @@ function ClientList() {
                   Éditer
                 </button>
               </div>
-              <p style={{ margin: '0 0 5px 0', color: 'var(--text-muted)' }}>👤 {client.nom_contact || 'Non spécifié'}</p>
-              <p style={{ margin: '0 0 5px 0', color: 'var(--text-muted)' }}>✉️ {client.email}</p>
-              {client.adresse && <p style={{ margin: '0 0 5px 0', color: 'var(--text-muted)' }}>📍 {client.adresse}</p>}
+              {/* Trois rangées, et non trois émojis en tête de ligne : une
+                  adresse sur deux lignes revenait sous son pictogramme au lieu
+                  de s'aligner sur le texte. Le motif est celui des rangées de
+                  `ChoixEntreprise`. */}
+              <p style={{ margin: '0 0 5px 0', color: 'var(--text-muted)', display: 'flex', gap: '.5rem', alignItems: 'flex-start' }}>
+                <User size={16} aria-hidden="true" style={{ flexShrink: 0, marginTop: '.15rem', opacity: .7 }} />
+                <span>{client.nom_contact || 'Non spécifié'}</span>
+              </p>
+              <p style={{ margin: '0 0 5px 0', color: 'var(--text-muted)', display: 'flex', gap: '.5rem', alignItems: 'flex-start' }}>
+                <Mail size={16} aria-hidden="true" style={{ flexShrink: 0, marginTop: '.15rem', opacity: .7 }} />
+                <span>{client.email}</span>
+              </p>
+              {client.adresse && (
+                <p style={{ margin: '0 0 5px 0', color: 'var(--text-muted)', display: 'flex', gap: '.5rem', alignItems: 'flex-start' }}>
+                  <MapPin size={16} aria-hidden="true" style={{ flexShrink: 0, marginTop: '.15rem', opacity: .7 }} />
+                  <span>{client.adresse}</span>
+                </p>
+              )}
               {/* La province détermine les taxes appliquées : elle mérite d'être visible. */}
               <p style={{ margin: '10px 0 0 0' }}>
                 <span className="status-badge pending">{client.province || '-'}</span>
