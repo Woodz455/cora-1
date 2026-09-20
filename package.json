@@ -30,6 +30,7 @@
       "routes/**/*.js",
       "package.json",
       "build-info.json",
+      "LICENCES-TIERCES.txt",
       "client/dist/**/*",
       "!reset_data.js",
       "!tests/**",
