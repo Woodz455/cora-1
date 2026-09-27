@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Mail, Printer } from 'lucide-react';
 import EmailModal from './EmailModal';
-import { api, formatMontant } from '../api';
+import { api, formatMontant, formatTaux } from '../api';
 import { useModale } from '../useModale';
 
 /**
@@ -183,7 +183,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
   // Le document part chez le client : les montants suivent sa langue, comme le
   // reste de la mise en page.
   const montant = (valeur) => formatMontant(valeur, details.devise, isEn ? 'en' : 'fr');
-  const pourcentage = (taux) => `${(taux * 100).toFixed(3).replace(/\.?0+$/, '')} %`;
+  const pourcentage = (taux) => formatTaux(taux, isEn ? 'en' : 'fr');
 
   const handleSendEmail = async (emailData) => {
     if (!printRef.current) throw new Error('Le document n\'est pas prêt.');

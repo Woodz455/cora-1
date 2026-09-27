@@ -276,6 +276,7 @@ function SubscriptionList() {
             id="recherche-abonnement"
             type="search"
             className="search-input"
+            style={{ width: '20em' }}
             placeholder="Rechercher un titre ou un client…"
             value={recherche}
             onChange={(e) => setRecherche(e.target.value)}

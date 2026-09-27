@@ -94,3 +94,37 @@ test('les deux copies de formatMontant restent alignées', () => {
   assert.match(bloc, /Number\(valeur\) \|\| 0/, 'même garde sur les entrées douteuses');
   assert.match(bloc, /catch \{/, 'même repli sur une devise inconnue');
 });
+
+test('le taux de taxe suit la langue du document', () => {
+  // La facture affichait « TVQ (9.975 %) » à tous ses clients : point décimal
+  // anglais et espace française, juste dans aucune des deux langues. Le taux
+  // n'est écrit que par l'interface, dans client/src/api.js ; la fonction en
+  // est extraite pour être exécutée ici, faute de module partagé.
+  const fs = require('fs');
+  const path = require('path');
+  const CLIENT = path.join(__dirname, '..', 'client', 'src');
+  const source = fs.readFileSync(path.join(CLIENT, 'api.js'), 'utf8');
+
+  const debut = source.indexOf('export function formatTaux');
+  assert.ok(debut >= 0, 'formatTaux doit exister dans client/src/api.js');
+  const fin = source.indexOf('\n}\n', debut) + 2;
+  const formatTaux = new Function(`${source.slice(debut, fin).replace('export ', '')}\nreturn formatTaux;`)();
+
+  // Français : virgule décimale, espace insécable devant le signe.
+  assert.equal(formatTaux(0.09975), '9,975 %');
+  assert.equal(formatTaux(0.14975), '14,975 %');
+  assert.equal(formatTaux(0.05), '5 %', 'pas de décimales inutiles');
+  assert.equal(formatTaux(0.13), '13 %');
+
+  // Anglais : point décimal, signe collé.
+  assert.equal(formatTaux(0.09975, 'en'), '9.975%');
+  assert.equal(formatTaux(0.05, 'en'), '5%');
+
+  // Jamais « NaN % » sur une facture.
+  assert.equal(formatTaux(null), '0 %');
+
+  // Et le gabarit des documents s'en sert, au lieu d'écrire le taux lui-même.
+  const gabarit = fs.readFileSync(path.join(CLIENT, 'components', 'InvoicePrintTemplate.jsx'), 'utf8');
+  assert.match(gabarit, /formatTaux\(taux, isEn \? 'en' : 'fr'\)/, 'le taux suit la langue du client');
+  assert.doesNotMatch(gabarit, /toFixed\(/, 'aucun nombre écrit à la main sur un document');
+});

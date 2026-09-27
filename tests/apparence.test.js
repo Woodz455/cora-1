@@ -477,3 +477,50 @@ test("l'anneau de focus et les fenêtres tiennent leurs promesses", () => {
     + "reste pas, Échap ne les ferme pas, et il ne revient pas à son point de "
     + `départ.\n    ${menteuses.join('\n    ')}`);
 });
+
+/**
+ * Le texte indicatif des champs de recherche.
+ *
+ * Les six champs faisaient 240 px, et quatre coupaient leur texte en plein mot :
+ * « Rechercher un numéro ou ur », sur l'écran des factures comme sur les images
+ * du site. Un champ dont le texte dépasse cette largeur porte désormais la
+ * sienne, en em, à côté de ce texte. Une largeur commune, calée sur le plus
+ * long, aurait fait passer la barre des factures sur deux rangées à la taille
+ * d'ouverture de la fenêtre.
+ *
+ * La largeur d'un texte dépend de sa police, que ce test ne peut pas mesurer.
+ * Il s'appuie donc sur la chasse relevée dans l'application pour les six textes,
+ * en Inter à 0,95 rem : de 0,47 à 0,52 em par caractère. Il compte 0,53. Un
+ * texte ajouté ou allongé au-delà de son champ échoue ici, et non sous les yeux
+ * d'un client.
+ */
+test('le texte indicatif des champs de recherche tient dans le champ', () => {
+  const CHASSE = 0.53;
+  const TAILLE = 15.2; // 0,95 rem, en pixels
+  // 12 px de marge intérieure et 1 px de bordure, de chaque côté.
+  const BORDS = 26 / TAILLE;
+
+  const feuille = fs.readFileSync(path.join(__dirname, '..', 'client', 'src', 'index.css'), 'utf8');
+  const minimum = feuille.match(/\.search-input\s*\{[^}]*min-width:\s*(\d+)px/);
+  assert.ok(minimum, 'la largeur minimale des champs de recherche doit être trouvée');
+  const parDefaut = Number(minimum[1]) / TAILLE;
+
+  const champs = [];
+  for (const fichier of fs.readdirSync(COMPOSANTS).filter((f) => f.endsWith('.jsx'))) {
+    const source = fs.readFileSync(path.join(COMPOSANTS, fichier), 'utf8');
+    for (const [, element] of source.matchAll(/type="search"([\s\S]*?)\/>/g)) {
+      const texte = element.match(/placeholder="([^"]+)"/);
+      if (!texte) continue;
+      const propre = element.match(/width:\s*'([\d.]+)em'/);
+      champs.push({ fichier, texte: texte[1], largeur: propre ? Number(propre[1]) : parDefaut });
+    }
+  }
+  assert.ok(champs.length >= 6, `les six champs de recherche doivent être trouvés (${champs.length})`);
+
+  const coupes = champs
+    .filter(({ texte, largeur }) => [...texte].length * CHASSE + BORDS > largeur)
+    .map(({ fichier, texte, largeur }) => `${fichier} : « ${texte} » dans ${largeur.toFixed(1)} em`);
+  assert.deepEqual(coupes, [],
+    "Ces textes indicatifs dépassent leur champ. Les raccourcir, ou donner au champ "
+    + `une largeur en em (style={{ width: '20em' }}).\n    ${coupes.join('\n    ')}`);
+});

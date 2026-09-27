@@ -74,6 +74,24 @@ export function formatMontant(valeur, devise = 'CAD', langue = 'fr') {
 }
 
 /**
+ * Écrit un taux de taxe dans les conventions du lecteur : « 9,975 % » en
+ * français, « 9.975% » en anglais.
+ *
+ * Les documents l'écrivaient avec `toFixed`, qui pose un point décimal quelle
+ * que soit la langue, suivi d'une espace et du signe quelle que soit la langue
+ * aussi : « 9.975 % » n'était juste ni en français ni en anglais. Intl connaît
+ * les deux usages, et met en français une espace insécable, qui empêche le
+ * signe de passer seul à la ligne.
+ *
+ * Seule l'interface en a besoin : aucun texte du serveur n'affiche de taux.
+ */
+export function formatTaux(taux, langue = 'fr') {
+  const locale = langue === 'en' ? 'en-CA' : 'fr-CA';
+  return new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 3 })
+    .format(Number(taux) || 0);
+}
+
+/**
  * Conditions de paiement proposées à la saisie.
  *
  * Dupliquée depuis `paymentTerms.js`, faute de module partagé entre le serveur
