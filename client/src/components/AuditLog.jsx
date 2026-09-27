@@ -26,6 +26,7 @@ const LIBELLES_CHAMPS = {
   taxe_2_nom: 'Nom de la taxe 2', taxe_2_taux: 'Taux de la taxe 2',
   taxe_2_numero: 'Numéro de la taxe 2',
   payment_instructions: 'Instructions de paiement',
+  payment_instructions_en: 'Instructions de paiement (anglais)',
   relances_actives: 'Relances automatiques', relances_paliers: 'Paliers de relance',
   sauvegarde_active: 'Sauvegardes automatiques', sauvegarde_dossier: 'Dossier des sauvegardes',
   sauvegarde_retention: 'Sauvegardes conservées',

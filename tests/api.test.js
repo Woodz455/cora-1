@@ -106,7 +106,8 @@ test('un employé peut lire les paramètres mais pas les modifier', async (t) =>
   const api = await withAdmin(t);
   await api.put('/api/settings', {
     entreprise_nom: 'Ma PME', taxe_1_nom: 'TPS', taxe_1_taux: 0.05,
-    taxe_2_nom: 'TVQ', taxe_2_taux: 0.09975, payment_instructions: 'Virement Interac'
+    taxe_2_nom: 'TVQ', taxe_2_taux: 0.09975, payment_instructions: 'Virement Interac',
+    payment_instructions_en: 'Interac e-Transfer'
   });
 
   await sessionPour(api, 'employe');
@@ -118,6 +119,8 @@ test('un employé peut lire les paramètres mais pas les modifier', async (t) =>
   assert.equal(lecture.status, 200);
   assert.equal(lecture.data.entreprise_nom, 'Ma PME');
   assert.equal(lecture.data.payment_instructions, 'Virement Interac');
+  assert.equal(lecture.data.payment_instructions_en, 'Interac e-Transfer',
+    'la version anglaise est conservée et relue, pour les factures anglaises');
 
   // Les colonnes techniques ne sont jamais exposées.
   assert.equal(lecture.data.admin_username, undefined);

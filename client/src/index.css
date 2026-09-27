@@ -441,6 +441,8 @@ textarea:focus-visible {
   align-items: center;
 }
 
+/* Un champ de recherche dont le texte indicatif dépasse 240 px porte sa propre
+   largeur, en em, à côté de ce texte ; un test vérifie que chacun y tient. */
 .search-input {
   min-width: 240px;
   padding: 8px 12px;

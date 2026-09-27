@@ -222,7 +222,7 @@ function ExpenseList() {
           <input
             type="search"
             className="search-input"
-            placeholder="Rechercher un fournisseur ou une catégorie…"
+            placeholder="Rechercher une dépense…"
             aria-label="Rechercher une dépense"
             value={recherche}
             onChange={(e) => setRecherche(e.target.value)}

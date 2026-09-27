@@ -234,6 +234,25 @@ async function verifierCle(cle) {
 }
 
 /**
+ * Textes que le client lit sur la page de paiement de Stripe : le nom du
+ * produit, et le message qui confirme son règlement. Ils suivent sa langue,
+ * comme la facture qui porte le lien ; un client de Toronto lisait
+ * « Facture SHT-… » et « Merci. Votre paiement… ».
+ */
+function textesDuLien(numero, langue) {
+  if (langue === 'en') {
+    return {
+      produit: `Invoice ${numero}`,
+      confirmation: `Thank you. Your payment for invoice ${numero} has been received.`
+    };
+  }
+  return {
+    produit: `Facture ${numero}`,
+    confirmation: `Merci. Votre paiement de la facture ${numero} a bien été reçu.`
+  };
+}
+
+/**
  * Paramètres qu'on peut perdre sans perdre le lien lui-même.
  *
  * Ils améliorent le lien — message de confirmation nommant la facture, refus
@@ -241,12 +260,12 @@ async function verifierCle(cle) {
  * venait à en refuser un, mieux vaut un lien dépouillé qu'une facture qu'on ne
  * peut pas envoyer.
  */
-function paramsConfort(numero) {
+function paramsConfort(numero, langue) {
   return {
     after_completion: {
       type: 'hosted_confirmation',
       hosted_confirmation: {
-        custom_message: `Merci. Votre paiement de la facture ${numero} a bien été reçu.`
+        custom_message: textesDuLien(numero, langue).confirmation
       }
     },
     // Un lien ne doit pouvoir régler la facture qu'une fois : un client qui
@@ -265,10 +284,11 @@ function paramsConfort(numero) {
  * et priverait la facture de tout moyen de paiement en ligne pour rien.
  *
  * @param {string} cle
- * @param {{numero: string, montant: number, devise: string, metadata?: Object, idempotence?: string}} facture
+ * @param {{numero: string, montant: number, devise: string, langue?: string, metadata?: Object, idempotence?: string}} facture
+ *   `langue` : celle du client, 'fr' ou 'en' ; le français par défaut.
  * @returns {Promise<{id: string, url: string, degrade: boolean}>}
  */
-async function creerLien(cle, { numero, montant, devise, metadata = {}, idempotence }) {
+async function creerLien(cle, { numero, montant, devise, langue = 'fr', metadata = {}, idempotence }) {
   const cents = Math.round(Number(montant) * 100);
   if (!Number.isFinite(cents) || cents <= 0) {
     throw Object.assign(new Error('Le montant à payer est invalide.'), { status: 400, expose: true });
@@ -277,7 +297,7 @@ async function creerLien(cle, { numero, montant, devise, metadata = {}, idempote
   const prix = await appel(cle, 'POST', '/v1/prices', {
     unit_amount: cents,
     currency: String(devise || 'CAD').toLowerCase(),
-    product_data: { name: `Facture ${numero}` }
+    product_data: { name: textesDuLien(numero, langue).produit }
   }, { idempotence: idempotence ? `${idempotence}-prix` : undefined });
 
   // Stripe n'accepte que du texte en métadonnée : un identifiant numérique
@@ -289,7 +309,7 @@ async function creerLien(cle, { numero, montant, devise, metadata = {}, idempote
 
   try {
     const lien = await appel(cle, 'POST', '/v1/payment_links', {
-      ...lignes, ...paramsConfort(numero)
+      ...lignes, ...paramsConfort(numero, langue)
     }, { idempotence });
     return { id: lien.id, url: lien.url, degrade: false };
   } catch (erreur) {

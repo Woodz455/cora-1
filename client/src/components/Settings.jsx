@@ -44,7 +44,7 @@ function Settings({ ancre }) {
     entreprise_nom: '', entreprise_adresse: '', entreprise_email: '',
     taxe_1_nom: '', taxe_1_taux: 0, taxe_1_numero: '',
     taxe_2_nom: '', taxe_2_taux: 0, taxe_2_numero: '',
-    payment_instructions: '', entreprise_logo: '',
+    payment_instructions: '', payment_instructions_en: '', entreprise_logo: '',
     relances_actives: 0, relances_paliers: '7,15,30',
     sauvegarde_active: 1, sauvegarde_dossier: '', sauvegarde_retention: 30,
     verifier_maj: 1,
@@ -455,11 +455,16 @@ function Settings({ ancre }) {
         <div>
           <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>Paiement</h3>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-            Ces instructions s'affichent au bas de chaque facture (virement Interac, lien de paiement…).
+            Ces instructions s'affichent au bas de chaque facture (virement Interac, lien de paiement…),
+            dans la langue du client. Sans texte anglais, les clients anglophones reçoivent le texte français.
           </p>
           <div className="form-group">
-            <label htmlFor="payment_instructions" style={{ position: 'absolute', left: '-9999px' }}>Instructions de paiement</label>
+            <label htmlFor="payment_instructions">Pour les clients francophones</label>
             <textarea id="payment_instructions" className="form-control" name="payment_instructions" value={settings.payment_instructions || ''} onChange={handleChange} rows="4" placeholder="Ex. : virement Interac à comptabilite@exemple.ca, ou paiement en ligne à l'adresse…"></textarea>
+          </div>
+          <div className="form-group">
+            <label htmlFor="payment_instructions_en">Pour les clients anglophones</label>
+            <textarea id="payment_instructions_en" className="form-control" name="payment_instructions_en" value={settings.payment_instructions_en || ''} onChange={handleChange} rows="4" placeholder="E.g. Interac e-Transfer to accounting@example.ca, or pay online at…"></textarea>
           </div>
         </div>
 

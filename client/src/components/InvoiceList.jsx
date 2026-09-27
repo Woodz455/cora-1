@@ -143,6 +143,7 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
             id="recherche-facture"
             type="search"
             className="search-input"
+            style={{ width: '20em' }}
             placeholder="Rechercher un numéro ou un client…"
             value={recherche}
             onChange={(e) => changerFiltre(setRecherche)(e.target.value)}

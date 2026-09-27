@@ -80,6 +80,7 @@ function DevisList() {
         <input
           type="search"
           className="search-input"
+          style={{ width: '20em' }}
           placeholder="Rechercher un numéro ou un client…"
           aria-label="Rechercher un devis"
           value={recherche}

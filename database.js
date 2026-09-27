@@ -318,6 +318,9 @@ async function runMigrations(db) {
   await addColumn(db, 'devis', 'taux_change', 'REAL DEFAULT 1.0');
 
   await addColumn(db, 'settings', 'payment_instructions', "TEXT DEFAULT ''");
+  // Leur version anglaise, pour les clients anglophones. Vide, c'est le texte
+  // français qui s'imprime : rien ne change pour qui ne la remplit pas.
+  await addColumn(db, 'settings', 'payment_instructions_en', "TEXT DEFAULT ''");
   await addColumn(db, 'settings', 'entreprise_logo', 'TEXT');
   // Colonnes héritées de l'époque où l'unique compte administrateur vivait
   // dans `settings`. Conservées le temps de la migration vers `users`.
