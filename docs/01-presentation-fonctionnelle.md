@@ -1,6 +1,6 @@
 # Clora : ce que fait l'application
 
-*Document de présentation fonctionnelle. Version 1.7.4, septembre 2026.*
+*Document de présentation fonctionnelle. Version 1.7.5, septembre 2026.*
 
 Ce document décrit ce que Clora fait, du point de vue de la personne qui s'en
 sert. Il ne suppose aucune connaissance technique. Pour l'architecture, la
@@ -158,7 +158,8 @@ reprises, et l'échéance découle des conditions de paiement du client.
 
 Répertoire : entreprise, contact, courriel, adresse, **province**, qui décide
 des taxes, **langue** (français ou anglais, qui décide de la langue des
-documents et des relances) et **conditions de paiement**.
+documents, de leurs courriels, des relances et de la page de paiement) et
+**conditions de paiement**.
 
 Import possible depuis un fichier Excel ou CSV : les colonnes se choisissent à
 l'écran, un aperçu montre ce qui passera et ce qui sera refusé avec le motif,
@@ -286,7 +287,8 @@ Filtres par action, par auteur, par période.
 *Administrateur seul*
 
 Identité de l'entreprise, logo, numéros de taxe, taux par défaut, conditions de
-paiement, serveur d'envoi de courriels, relances automatiques, paiement en
+paiement, instructions de paiement en français et en anglais, serveur d'envoi de
+courriels, relances automatiques, paiement en
 ligne, sauvegardes, restauration, gestion des comptes, activation de la licence.
 
 ---
@@ -354,6 +356,10 @@ sont figés sur la facture à l'émission.
 
 *Taux en vigueur en 2026, définis dans le code et modifiables dans les
 paramètres.*
+
+**Sur un document anglais**, les taxes portent leur nom anglais : GST, QST, HST
+et PST. Le taux suit l'usage de chaque langue : « 9,975 % » en français,
+« 9.975% » en anglais.
 
 **L'arrondi.** Chaque taxe est calculée sur le sous-total hors taxes et arrondie
 au cent séparément ; le total est la somme de ces valeurs arrondies. Le
