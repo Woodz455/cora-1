@@ -5,6 +5,23 @@ import { api, formatMontant, formatTaux } from '../api';
 import { useModale } from '../useModale';
 
 /**
+ * Noms anglais des taxes canadiennes.
+ *
+ * Le nom d'une taxe est enregistré sur chaque facture, en français, depuis la
+ * table des provinces (`invoiceService.js`) ou les paramètres. Une facture
+ * anglaise affichait donc « TVH (13%) » là où un client de Toronto attend
+ * « HST ». Un nom que la table ne connaît pas, choisi par l'entreprise, est
+ * laissé tel quel : mieux vaut son libellé qu'une traduction devinée.
+ */
+const TAXES_EN = { TPS: 'GST', TVQ: 'QST', TVH: 'HST', TVP: 'PST' };
+
+function nomTaxe(nom, isEn) {
+  const texte = (nom || '').trim();
+  if (!isEn) return texte;
+  return TAXES_EN[texte.toUpperCase()] || texte;
+}
+
+/**
  * Libellés du document, en français et en anglais.
  *
  * Le nom de l'entreprise ne figure plus dans ces textes : il était écrit en dur
@@ -20,6 +37,13 @@ function construireDictionnaire(isEn, nomEntreprise) {
     // s'insérer avant elle, et non après, sous peine de figurer sous le nom de
     // l'expéditeur comme une pièce rapportée.
     signature: societe ? `\n\n${isEn ? 'Thank you,' : 'Merci de votre confiance,'}\n${societe}` : '',
+    // L'anglais colle le deux-points au mot ; le français le précède d'une
+    // espace. « Issue Date : » n'est juste dans aucune des deux langues.
+    deuxPoints: isEn ? ':' : ' :',
+    numero: isEn ? 'No.' : 'N°',
+    numeroDansPhrase: isEn ? 'No.' : 'n°',
+    taxe1: isEn ? 'Tax 1' : 'Taxe 1',
+    taxe2: isEn ? 'Tax 2' : 'Taxe 2',
     invoice: isEn ? 'INVOICE' : 'FACTURE',
     quote: isEn ? 'QUOTE' : 'SOUMISSION',
     note: isEn ? 'CREDIT NOTE' : 'NOTE DE CRÉDIT',
@@ -188,7 +212,11 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
   const handleSendEmail = async (emailData) => {
     if (!printRef.current) throw new Error('Le document n\'est pas prêt.');
 
-    const typeDoc = estNote ? 'Note_de_credit' : estDevis ? 'Soumission' : 'Facture';
+    // Le nom de la pièce jointe est la première chose que le client lit du
+    // document : il suit sa langue, comme le reste.
+    const typeDoc = isEn
+      ? (estNote ? 'Credit_Note' : estDevis ? 'Quote' : 'Invoice')
+      : (estNote ? 'Note_de_credit' : estDevis ? 'Soumission' : 'Facture');
     const filename = `${typeDoc}_${numero}.pdf`;
 
     // html2pdf embarque jsPDF et html2canvas, à eux seuls la moitié du paquet
@@ -231,7 +259,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
     : estNote ? dict.emailSubjNote
       : estDevis ? dict.emailSubjQuote
         : dict.emailSubjFact;
-  const sujet = `${objetCourriel} n° ${numero}`
+  const sujet = `${objetCourriel} ${dict.numeroDansPhrase} ${numero}`
     + (settings.entreprise_nom ? ` (${settings.entreprise_nom})` : '');
 
   const texteCourriel = isRelance ? dict.emailBodyRelance
@@ -241,7 +269,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
 
   // Le lien est écrit tel quel : les logiciels de courriel le rendent
   // cliquable, et un client qui préfère l'imprimer le retrouve sur le PDF.
-  const blocLien = lienPaiement ? `\n\n${dict.payOnline} :\n${lienPaiement.url}` : '';
+  const blocLien = lienPaiement ? `\n\n${dict.payOnline}${dict.deuxPoints}\n${lienPaiement.url}` : '';
 
   const corps = `${dict.emailHello} ${client.nom_contact || client.nom_entreprise},`
     + `\n\n${texteCourriel}${blocLien}${dict.signature}`;
@@ -299,7 +327,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
               </p>
               {settings.entreprise_email && (
                 <p style={{ margin: '0 0 4px 0', fontSize: '0.95rem', color: '#475569' }}>
-                  {isEn ? 'Email' : 'Courriel'} : {settings.entreprise_email}
+                  {isEn ? 'Email' : 'Courriel'}{dict.deuxPoints} {settings.entreprise_email}
                 </p>
               )}
               {settings.entreprise_adresse && (
@@ -312,19 +340,19 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
               <h2 style={{ margin: '0 0 8px 0', fontSize: '2rem', color: estNote ? '#b45309' : '#0f172a' }}>
                 {estNote ? dict.note : estDevis ? dict.quote : dict.invoice}
               </h2>
-              <p style={{ margin: '0 0 4px 0', fontWeight: 'bold' }}>N° {numero}</p>
+              <p style={{ margin: '0 0 4px 0', fontWeight: 'bold' }}>{dict.numero} {numero}</p>
               <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem', color: '#475569' }}>
-                {dict.dateEmission} : {details.date_emission}
+                {dict.dateEmission}{dict.deuxPoints} {details.date_emission}
               </p>
               {/* Une note de crédit ne s'échoit pas : elle renvoie à la facture
                   qu'elle corrige, seul repère utile pour le client. */}
               {estNote ? (
                 <p style={{ margin: 0, fontSize: '0.9rem', color: '#475569' }}>
-                  {dict.noteRef} n° {details.numero_facture} {dict.noteDu} {details.facture_date_emission}
+                  {dict.noteRef} {dict.numeroDansPhrase} {details.numero_facture} {dict.noteDu} {details.facture_date_emission}
                 </p>
               ) : (
                 <p style={{ margin: 0, fontSize: '0.9rem', color: '#475569' }}>
-                  {estDevis ? dict.dateValidite : dict.dateEcheance} : {estDevis ? details.date_validite : details.date_echeance}
+                  {estDevis ? dict.dateValidite : dict.dateEcheance}{dict.deuxPoints} {estDevis ? details.date_validite : details.date_echeance}
                 </p>
               )}
             </div>
@@ -344,7 +372,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
         {estNote && details.motif && (
           <div style={{ marginBottom: '32px', padding: '16px 20px', background: '#fffbeb', borderRadius: '8px', borderLeft: '4px solid #b45309' }}>
             <p style={{ margin: 0, color: '#0f172a', whiteSpace: 'pre-line', fontSize: '0.95rem' }}>
-              <strong>{dict.noteMotif} : </strong>{details.motif}
+              <strong>{dict.noteMotif}{dict.deuxPoints} </strong>{details.motif}
             </p>
           </div>
         )}
@@ -382,13 +410,13 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
             </div>
             {details.taux_taxe_1 > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', color: '#475569' }}>
-                <span>{details.taxe_1_nom || 'Taxe 1'} ({pourcentage(details.taux_taxe_1)})</span>
+                <span>{nomTaxe(details.taxe_1_nom, isEn) || dict.taxe1} ({pourcentage(details.taux_taxe_1)})</span>
                 <span>{montant(details.montant_taxe_1)}</span>
               </div>
             )}
             {details.taux_taxe_2 > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', color: '#475569' }}>
-                <span>{details.taxe_2_nom || 'Taxe 2'} ({pourcentage(details.taux_taxe_2)})</span>
+                <span>{nomTaxe(details.taxe_2_nom, isEn) || dict.taxe2} ({pourcentage(details.taux_taxe_2)})</span>
                 <span>{montant(details.montant_taxe_2)}</span>
               </div>
             )}
@@ -463,7 +491,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
 
         <div style={{ marginTop: '64px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
           <p style={{ margin: '0 0 4px 0' }}>{dict.thanks}</p>
-          {estNote && <p style={{ margin: '0 0 4px 0' }}>{dict.noteFooter} n° {details.numero_facture}.</p>}
+          {estNote && <p style={{ margin: '0 0 4px 0' }}>{dict.noteFooter} {dict.numeroDansPhrase} {details.numero_facture}.</p>}
           {!estDevis && !estNote && <p style={{ margin: '0 0 4px 0' }}>{dict.payBefore}{details.date_echeance}.</p>}
           {estDevis && <p style={{ margin: '0 0 4px 0' }}>{dict.quoteValid}{details.date_validite}.</p>}
           {details.devise && details.devise !== 'CAD' && (
@@ -476,8 +504,8 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
           {(settings.taxe_1_numero || settings.taxe_2_numero) && (
             <p style={{ margin: '8px 0 0 0', fontSize: '0.75rem' }}>
               {[
-                settings.taxe_1_numero && `${settings.taxe_1_nom} : ${settings.taxe_1_numero}`,
-                settings.taxe_2_numero && `${settings.taxe_2_nom} : ${settings.taxe_2_numero}`
+                settings.taxe_1_numero && `${nomTaxe(settings.taxe_1_nom, isEn)}${dict.deuxPoints} ${settings.taxe_1_numero}`,
+                settings.taxe_2_numero && `${nomTaxe(settings.taxe_2_nom, isEn)}${dict.deuxPoints} ${settings.taxe_2_numero}`
               ].filter(Boolean).join(' | ')}
             </p>
           )}
