@@ -71,11 +71,12 @@ async function withStripe(t, { cle = CLE_LIVE, actif = true, refuserConfort = fa
 }
 
 /** Crée un client et une facture, et renvoie la facture avec son solde. */
-async function facture(api, { montant = 100, province = 'QC' } = {}) {
+async function facture(api, { montant = 100, province = 'QC', langue = 'fr' } = {}) {
   const client = await api.post('/api/clients', {
-    nom_entreprise: 'Boulangerie Côté',
-    email: 'info@cote.ca',
-    province
+    nom_entreprise: langue === 'en' ? 'Northview Property Group' : 'Boulangerie Côté',
+    email: langue === 'en' ? 'karen@northview.ca' : 'info@cote.ca',
+    province,
+    langue
   });
   assert.equal(client.status, 201, JSON.stringify(client.data));
 
@@ -157,6 +158,46 @@ test('la requête porte la clé et la version d\'API figée', async (t) => {
   assert.match(appel.entetes['stripe-version'], /^\d{4}-\d{2}-\d{2}$/);
   assert.ok(appel.entetes['idempotency-key'], 'un rejeu ne doit pas créer un second lien');
   assert.equal(appel.champs['metadata[facture]'], (await api.get(`/api/factures/${f.id}/solde`)).data.numero_facture);
+});
+
+test('la page de paiement parle la langue du client', async (t) => {
+  // Le nom du produit et le message de confirmation sont les deux textes que
+  // le client lit chez Stripe. Un client de Toronto lisait « Facture SHT-… »
+  // et « Merci. Votre paiement de la facture… ».
+  const { api, stripe } = await withStripe(t);
+  const fr = await facture(api);
+  const en = await facture(api, { province: 'ON', langue: 'en' });
+
+  assert.equal((await demanderLien(api, fr.id)).status, 200);
+  assert.equal((await demanderLien(api, en.id)).status, 200);
+
+  const produits = stripe.appels
+    .filter((a) => a.chemin === '/v1/prices')
+    .map((a) => a.champs['product_data[name]']);
+  const confirmations = stripe.appels
+    .filter((a) => a.chemin === '/v1/payment_links')
+    .map((a) => a.champs['after_completion[hosted_confirmation][custom_message]']);
+
+  assert.deepEqual(produits, [`Facture ${fr.numero_facture}`, `Invoice ${en.numero_facture}`]);
+  assert.deepEqual(confirmations, [
+    `Merci. Votre paiement de la facture ${fr.numero_facture} a bien été reçu.`,
+    `Thank you. Your payment for invoice ${en.numero_facture} has been received.`
+  ]);
+});
+
+test('un lien déjà créé garde sa langue, plutôt que de mourir dans le courriel du client', async (t) => {
+  // Le client a peut-être déjà ce lien dans sa boîte. Le désactiver pour
+  // traduire un libellé l'enverrait vers un lien mort : il ne change que si
+  // le montant change.
+  const { api, stripe } = await withStripe(t);
+  const f = await facture(api);
+  const premier = await demanderLien(api, f.id);
+
+  await api.db.run("UPDATE clients SET langue = 'en'");
+  const second = await demanderLien(api, f.id);
+
+  assert.equal(second.data.lien.url, premier.data.lien.url);
+  assert.equal(stripe.compter('/v1/payment_links'), 1);
 });
 
 test('un second affichage réutilise le lien au lieu d\'en créer un autre', async (t) => {

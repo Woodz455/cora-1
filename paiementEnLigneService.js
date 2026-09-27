@@ -147,6 +147,14 @@ async function lienPourFacture(db, factureId) {
   }
 
   const entreprise = await db.get('SELECT entreprise_nom FROM settings LIMIT 1');
+  // La page de paiement suit la langue du client, comme la facture. Un lien
+  // déjà créé n'est pas refait pour autant : il est peut-être dans le courriel
+  // du client, et le désactiver pour traduire un libellé l'enverrait vers un
+  // lien mort.
+  const client = await db.get(
+    'SELECT c.langue FROM factures f JOIN clients c ON c.id = f.client_id WHERE f.id = ?', [factureId]
+  );
+  const langue = client && client.langue === 'en' ? 'en' : 'fr';
   const { rang } = await db.get(
     'SELECT COUNT(*) AS rang FROM liens_paiement WHERE facture_id = ?', [factureId]
   );
@@ -155,6 +163,7 @@ async function lienPourFacture(db, factureId) {
     numero: facture.numero_facture,
     montant: facture.solde_restant,
     devise: facture.devise,
+    langue,
     metadata: {
       facture: facture.numero_facture,
       entreprise: (entreprise && entreprise.entreprise_nom) || '',
@@ -168,7 +177,10 @@ async function lienPourFacture(db, factureId) {
     // heures : sans lui, un acompte encaissé puis annulé ramènerait au même
     // montant, donc à la même clé, et Stripe rendrait le lien qu'on venait de
     // désactiver — un lien mort envoyé au client.
-    idempotence: `clora-${facture.numero_facture}-${Math.round(facture.solde_restant * 100)}-${rang}`
+    //
+    // La langue y figure aussi : Stripe refuse une clé rejouée avec d'autres
+    // paramètres, et les textes du lien en dépendent.
+    idempotence: `clora-${facture.numero_facture}-${Math.round(facture.solde_restant * 100)}-${rang}-${langue}`
   });
 
   // `ON CONFLICT` plutôt qu'une insertion sèche : deux requêtes simultanées
