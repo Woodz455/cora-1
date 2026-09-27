@@ -93,3 +93,16 @@ test('le gabarit ne réécrit aucun libellé en dur', () => {
   assert.doesNotMatch(code, /\{details\.taxe_[12]_nom\b/, 'un nom de taxe est affiché sans traduction');
   assert.doesNotMatch(code, /\$\{settings\.taxe_[12]_nom\}/, 'un nom de taxe est affiché sans traduction');
 });
+
+test('les instructions de paiement suivent la langue du client', () => {
+  // Un seul texte, écrit en français par l'entreprise, s'imprimait sur les
+  // factures anglaises. La version anglaise est facultative : vide, c'est le
+  // texte français qui s'imprime, plutôt que rien.
+  assert.match(GABARIT,
+    /const instructions = \(isEn && settings\.payment_instructions_en\) \|\| settings\.payment_instructions;/,
+    'le texte anglais pour un client anglophone, le français à défaut');
+
+  const rendu = GABARIT.slice(GABARIT.indexOf('function InvoicePrintTemplate'));
+  assert.doesNotMatch(rendu, /\{settings\.payment_instructions\}/,
+    'le document affiche les instructions choisies selon la langue, pas le texte français seul');
+});

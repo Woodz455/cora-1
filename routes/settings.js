@@ -161,7 +161,7 @@ const CHAMPS_SUIVIS = [
   'entreprise_nom', 'entreprise_adresse', 'entreprise_email',
   'taxe_1_nom', 'taxe_1_taux', 'taxe_1_numero',
   'taxe_2_nom', 'taxe_2_taux', 'taxe_2_numero',
-  'payment_instructions', 'relances_actives', 'relances_paliers',
+  'payment_instructions', 'payment_instructions_en', 'relances_actives', 'relances_paliers',
   'sauvegarde_active', 'sauvegarde_dossier', 'sauvegarde_retention',
   'verifier_maj', 'profil', 'conditions_defaut',
   // Le serveur et le compte d'envoi sont suivis ; le mot de passe ne l'est
@@ -213,6 +213,7 @@ module.exports = function settingsRoutes(getDb) {
       taxe_2_taux: parseTaux(body.taxe_2_taux ?? 0, 'Le taux de la taxe 2'),
       taxe_2_numero: sanitizeText(body.taxe_2_numero, 60),
       payment_instructions: sanitizeText(body.payment_instructions, 2000),
+      payment_instructions_en: sanitizeText(body.payment_instructions_en, 2000),
       entreprise_logo: logo,
       relances_actives: parseInterrupteur(body.relances_actives),
       relances_paliers: parsePaliers(body.relances_paliers),

@@ -208,6 +208,9 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
   // reste de la mise en page.
   const montant = (valeur) => formatMontant(valeur, details.devise, isEn ? 'en' : 'fr');
   const pourcentage = (taux) => formatTaux(taux, isEn ? 'en' : 'fr');
+  // Les instructions de paiement sont écrites par l'entreprise. Sans version
+  // anglaise, le client anglophone reçoit la française plutôt que rien.
+  const instructions = (isEn && settings.payment_instructions_en) || settings.payment_instructions;
 
   const handleSendEmail = async (emailData) => {
     if (!printRef.current) throw new Error('Le document n\'est pas prêt.');
@@ -481,10 +484,10 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
 
         {/* Les instructions de paiement n'ont pas de sens sur une note de
             crédit : c'est l'entreprise qui doit, pas le client. */}
-        {settings.payment_instructions && !estNote && (
+        {instructions && !estNote && (
           <div style={{ marginTop: '40px', padding: '20px', background: '#f8fafc', borderRadius: '8px', borderLeft: '4px solid #0e4a9e' }}>
             <p style={{ margin: 0, color: '#0f172a', whiteSpace: 'pre-line', fontSize: '0.95rem' }}>
-              {settings.payment_instructions}
+              {instructions}
             </p>
           </div>
         )}
