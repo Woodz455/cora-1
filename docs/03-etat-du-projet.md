@@ -11,7 +11,7 @@ version 1.7.5.*
 | --- | --- |
 | **Version publiée** | 1.7.5, le 27 septembre 2026 |
 | **Publications** | 13 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 63 commits, 25 demandes de fusion, toutes fusionnées |
+| **Développement** | 63 commits, 26 demandes de fusion, toutes fusionnées |
 | **Tests** | 377, tous au vert, exécutés à chaque fusion |
 | **Durée** | 9 semaines, du 24 juillet au 27 septembre 2026 |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
@@ -271,7 +271,7 @@ plus. C'est un comportement du crochet, commun à toutes les fenêtres, et non u
 défaut de celle-ci.
 
 ### Phase 13 : les documents dans la langue du client
-*27 septembre · publié en 1.7.5 · demandes de fusion #24 et #25*
+*27 septembre · publié en 1.7.5 · demandes de fusion #24, #25 et #26*
 
 Les défauts de cette version n'ont pas été trouvés en relisant l'application,
 mais en regardant ses images sur la page Clora du site, remise à jour pour la
