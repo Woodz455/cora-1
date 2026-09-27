@@ -1,6 +1,6 @@
 # Clora : architecture, sécurité et licence
 
-*Document technique. Version 1.7.4, septembre 2026.*
+*Document technique. Version 1.7.5, septembre 2026.*
 
 Ce document décrit comment Clora est construit, ce qui protège les données, et
 comment fonctionne le modèle de licence. Pour la description fonctionnelle, voir
@@ -91,7 +91,7 @@ companyStore.js    Registre des dossiers d'entreprise et comptes partagés
 *Service.js        Logique métier par domaine (17 services)
 routes/            21 modules de points d'entrée HTTP
 client/src/        Interface React (31 composants, 11 crochets et modules)
-tests/             25 fichiers, 369 tests
+tests/             26 fichiers, 377 tests
 ```
 
 Le découpage est strict : **`server.js` ne fait que câbler**. Il ne contient
@@ -554,11 +554,11 @@ facture émise), donc une vérification fréquente est sans risque.
 
 ## 10. Tests et intégration continue
 
-**369 tests**, exécutés par `node --test`. Répartition :
+**377 tests**, exécutés par `node --test`. Répartition :
 
 | Domaine | Tests |
 | --- | --- |
-| Paiement en ligne Stripe | 31 |
+| Paiement en ligne Stripe | 33 |
 | Sauvegardes et restauration | 24 |
 | Indemnité kilométrique | 17 |
 | Import de tableur | 19 |
@@ -581,8 +581,9 @@ facture émise), donc une vérification fréquente est sans risque.
 | Balance âgée | 9 |
 | Multi-entreprise | 8 |
 | Abonnements | 8 |
-| Apparence de l'interface | 9 |
-| Arithmétique monétaire | 7 |
+| Apparence de l'interface | 10 |
+| Arithmétique monétaire | 8 |
+| Documents dans la langue du client | 4 |
 
 Deux partis pris méritent d'être signalés :
 
@@ -595,7 +596,7 @@ simulacre en mémoire. Ils éprouvent donc l'encodage réel des requêtes, les
 en-têtes d'authentification et la version d'API épinglée.
 
 **Les décisions visuelles sont écrites en tests.** `apparence.test.js` en porte
-huit, qui lisent les sources de l'interface plutôt que son rendu. Une décision
+dix, qui lisent les sources de l'interface plutôt que son rendu. Une décision
 de design qui n'est écrite nulle part revient d'elle-même au bout de trois
 écrans ; celles-ci sont écrites, avec la raison qui les a produites :
 
@@ -609,10 +610,19 @@ de design qui n'est écrite nulle part revient d'elle-même au bout de trois
 | La bulle d'aide est atteignable au clavier | Elle ne répondait qu'au survol, et trois de ses emplacements étaient rognés par un conteneur de défilement |
 | Les polices sont embarquées et bien nommées | Elles étaient nommées sans être chargées : Windows affichait Segoe UI |
 | L'espacement se tient sur son échelle | Cinq cents déclarations employaient deux grilles incompatibles, à parts égales |
+| L'anneau de focus suit son jeton, et une fenêtre modale l'est vraiment | Le turquoise mesurait 2,14:1 sur un panneau clair, et une fenêtre annonçait `aria-modal` sans retenir le focus |
+| Le texte indicatif d'un champ de recherche tient dans son champ | Quatre champs sur six coupaient leur texte en plein mot : « Rechercher un numéro ou ur » |
 
 Ces tests ne remplacent pas le coup d'œil : ils empêchent une régression, ils ne
 jugent pas une mise en page. Chacun a été éprouvé en reposant le défaut qu'il
 surveille.
+
+**Les documents du client sont relus pour leur langue.** `documents.test.js`
+exécute la traduction des noms de taxes et le dictionnaire du gabarit, extraits
+du composant, puis relit le reste du gabarit : aucun « n° », aucun nom de taxe
+ni aucun deux-points n'y est plus écrit en dur. Il existe parce qu'une facture
+anglaise affichait « TVH (13%) » et « Issue Date : » depuis le début, sans
+qu'aucun test ni aucun testeur ne l'ait vu.
 
 ### L'atelier d'intégration continue
 
@@ -709,7 +719,7 @@ Trois corrections peuvent être demandées explicitement :
 | **Volume du rapprochement** | Plafond de 5 000 lignes ; le relevé transite en JSON sous une limite de corps de 1 Mo |
 | **Retraits bancaires** | Ignorés : frais et sorties sont hors périmètre |
 | **Windows seul** | Aucune cible macOS ou Linux |
-| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.7.4 en offre l'occasion sur toute installation restée en 1.7.3 |
+| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.7.5 en offre l'occasion sur toute installation restée en 1.7.4 |
 | **Redémarrage après restauration** | `app.relaunch()` non vérifié sur un vrai Windows |
 
 ---

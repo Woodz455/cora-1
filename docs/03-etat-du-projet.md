@@ -1,7 +1,7 @@
 # Clora : état du projet
 
-*Ce qui a été fait, ce qui reste à faire. Arrêté au 20 septembre 2026,
-version 1.7.4.*
+*Ce qui a été fait, ce qui reste à faire. Arrêté au 27 septembre 2026,
+version 1.7.5.*
 
 ---
 
@@ -9,12 +9,12 @@ version 1.7.4.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.7.4, le 20 septembre 2026 |
-| **Publications** | 12 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 57 commits, 23 demandes de fusion, toutes fusionnées |
-| **Tests** | 369, tous au vert, exécutés à chaque fusion |
-| **Durée** | 8 semaines, du 24 juillet au 20 septembre 2026 |
-| **Site web** | Page Clora en ligne sur safehilltechnologies.ca |
+| **Version publiée** | 1.7.5, le 27 septembre 2026 |
+| **Publications** | 13 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 63 commits, 25 demandes de fusion, toutes fusionnées |
+| **Tests** | 377, tous au vert, exécutés à chaque fusion |
+| **Durée** | 9 semaines, du 24 juillet au 27 septembre 2026 |
+| **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
 | **Ventes** | Aucune : les tests utilisateurs sont en cours |
 
 **L'application est complète et livrable.** Ce qui manque avant de vendre n'est
@@ -270,10 +270,45 @@ rend le focus à son point de départ ; le coût se limite donc à une frappe de
 plus. C'est un comportement du crochet, commun à toutes les fenêtres, et non un
 défaut de celle-ci.
 
+### Phase 13 : les documents dans la langue du client
+*27 septembre · publié en 1.7.5 · demandes de fusion #24 et #25*
+
+Les défauts de cette version n'ont pas été trouvés en relisant l'application,
+mais en regardant ses images sur la page Clora du site, remise à jour pour la
+1.7.4. Deux s'y voyaient. En les corrigeant, une facture destinée à un client
+anglophone en a montré d'autres, présents depuis le début.
+
+- **Le taux de taxe s'écrivait « 9.975 % » pour tous les clients** : point
+  décimal anglais et espace française, juste dans aucune des deux langues. Il
+  s'écrit désormais « 9,975 % » en français et « 9.975% » en anglais.
+- **Quatre champs de recherche sur six coupaient leur texte** en plein mot :
+  « Rechercher un numéro ou ur ». Chaque champ trop étroit a reçu sa propre
+  largeur. Une largeur commune a été essayée puis écartée : elle faisait passer
+  la barre des factures sur deux rangées à la taille d'ouverture de la fenêtre.
+  La recherche des dépenses change de texte, « Rechercher une dépense… » :
+  l'ancien oubliait la description, que la recherche interroge aussi.
+- **La facture anglaise gardait trois traces du français** : « TVH » au lieu de
+  « HST », l'espace française devant le deux-points (« Issue Date : ») et le
+  signe « N° ». Les mêmes se retrouvaient dans l'objet du courriel, les notes de
+  crédit et les numéros d'inscription du pied de page, et le PDF joint
+  s'appelait « Facture_… ».
+- **Les instructions de paiement ont une version anglaise.** Elle est
+  facultative : vide, le texte français s'imprime, comme avant.
+- **La page de paiement Stripe suit la langue du client** : « Invoice SHT-… »
+  et un message de confirmation en anglais. Un lien déjà créé n'est pas refait
+  pour changer de langue, puisqu'il est peut-être déjà dans le courriel du
+  client.
+- **Huit tests de plus**, dont un nouveau fichier qui relit le gabarit des
+  documents pour qu'aucun libellé n'y soit plus écrit en dur. Chacun a été lancé
+  sur l'ancien code et y échoue, sauf celui du lien Stripe conservé, qui protège
+  une décision et non un défaut.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
 - Page de présentation de Clora, annonçant le produit à venir.
+- Page Clora remise à jour le 27 septembre : captures refaites sur l'interface
+  actuelle, tirets cadratins retirés, deux fonctions ajoutées.
 - Images rangées, allégées et converties.
 - Lisibilité corrigée : 92 défauts de contraste relevés puis repris.
 - Référencement complété : `robots.txt`, plan de site, images de partage.
@@ -378,8 +413,8 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.7.4 en offre l'occasion sur toute installation restée en
-  1.7.3.
+  annoncer. La 1.7.5 en offre l'occasion sur toute installation restée en
+  1.7.4.
 - **Le redémarrage après restauration d'une sauvegarde.**
 
 Ce sont deux choses à regarder pendant les tests utilisateurs.
@@ -452,7 +487,7 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.7.4 par les testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.7.5 par les testeurs et écouter ce qu'ils disent.**
 
 Leurs trois premières demandes sont livrées : le compte rendu de la période, le
 profil du dossier, et le sérieux du design. Le reste (la clé de licence, le
@@ -461,13 +496,20 @@ retour, et devrait être priorisé par lui.
 
 **Tout ce qui avait été relevé en corrigeant le design est fait** : les polices
 embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la
-dernière fenêtre non conforme en 1.7.4. Il ne reste aucun défaut identifié.
+dernière fenêtre non conforme en 1.7.4.
 
-Ce qui viendra ensuite devrait donc venir des testeurs. La liste de ce qu'une
-relecture pouvait trouver est épuisée ; celle de ce que l'usage révélera ne
-commence qu'avec eux.
+En 1.7.4, ce document affirmait qu'il ne restait aucun défaut identifié, et que
+la liste de ce qu'une relecture pouvait trouver était épuisée. La 1.7.5 prouve
+le contraire. Ses défauts étaient là depuis le début, mais ne se voyaient que sur
+le document d'un client anglophone, ou dans un champ dont le texte était assez
+long pour être coupé. Aucun testeur ne les a signalés, sans doute parce qu'ils
+facturent en français.
+
+**Si un testeur a des clients anglophones, c'est à lui qu'il faut demander de
+regarder une facture anglaise**, un courriel d'envoi et la page de paiement.
+C'est là que le prochain défaut de ce genre se cachera.
 
 ---
 
 *Document maintenu par Safehill Technologies. Dernière mise à jour :
-12 septembre 2026.*
+27 septembre 2026.*
