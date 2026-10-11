@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
 import ImportModal from './ImportModal';
-import { api, formatMontant } from '../api';
+import { api } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useModale } from '../useModale';
 import { usePagination } from '../usePagination';
@@ -9,6 +9,7 @@ import Pagination from './Pagination';
 import { useTri } from '../useTri';
 import { useFeedback } from '../FeedbackContext';
 import EnTeteTri from './EnTeteTri';
+import { useLangue } from '../i18n.js';
 
 const ARTICLE_VIDE = { nom: '', description: '', prix_unitaire: 0 };
 
@@ -17,6 +18,7 @@ const ACCESSEURS = { prix_unitaire: (i) => Number(i.prix_unitaire) || 0 };
 
 function CatalogueList() {
   const { notifier, confirmer } = useFeedback();
+  const { t, montant } = useLangue();
   const { data: items, loading, error, setError, refresh } = useApiResource('/api/catalogue', []);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [importOuvert, setImportOuvert] = useState(false);
@@ -63,17 +65,16 @@ function CatalogueList() {
 
   const handleDelete = async (item) => {
     const accepte = await confirmer({
-      titre: `Supprimer « ${item.nom} » ?`,
-      message: 'Le service disparaît du catalogue. Les factures qui le mentionnent '
-        + 'gardent leurs lignes : elles ne sont pas modifiées.',
-      libelleConfirmer: 'Supprimer',
+      titre: t('Supprimer « {nom} » ?', { nom: item.nom }),
+      message: t('Le service disparaît du catalogue. Les factures qui le mentionnent gardent leurs lignes : elles ne sont pas modifiées.'),
+      libelleConfirmer: t('Supprimer'),
       danger: true
     });
     if (!accepte) return;
     try {
       setError(null);
       await api.del(`/api/catalogue/${item.id}`);
-      notifier(`« ${item.nom} » supprimé du catalogue.`);
+      notifier(t('« {nom} » supprimé du catalogue.', { nom: item.nom }));
       refresh();
     } catch (err) {
       // Le refus part au fil de messages et non dans le bandeau du haut : sur
@@ -97,15 +98,15 @@ function CatalogueList() {
           <input
             type="search"
             className="search-input"
-            placeholder="Rechercher un service…"
-            aria-label="Rechercher un service"
+            placeholder={t('Rechercher un service…')}
+            aria-label={t('Rechercher un service')}
             value={recherche}
             onChange={(e) => setRecherche(e.target.value)}
           />
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button type="button" className="btn-secondary" onClick={() => setImportOuvert(true)}>Importer</button>
-          <button type="button" className="btn-primary" onClick={() => openModal()}>+ Nouveau service</button>
+          <button type="button" className="btn-secondary" onClick={() => setImportOuvert(true)}>{t('Importer')}</button>
+          <button type="button" className="btn-primary" onClick={() => openModal()}>{t('+ Nouveau service')}</button>
         </div>
       </div>
 
@@ -113,29 +114,29 @@ function CatalogueList() {
         <table className="data-table">
           <thead>
             <tr>
-              <EnTeteTri colonne="nom" tri={tri} onTrier={basculer}>Nom du service</EnTeteTri>
-              <EnTeteTri colonne="description" tri={tri} onTrier={basculer}>Description</EnTeteTri>
-              <EnTeteTri colonne="prix_unitaire" tri={tri} onTrier={basculer} className="numeric">Prix / tarif</EnTeteTri>
-              <th style={{ textAlign: 'right' }}>Actions</th>
+              <EnTeteTri colonne="nom" tri={tri} onTrier={basculer}>{t('Nom du service')}</EnTeteTri>
+              <EnTeteTri colonne="description" tri={tri} onTrier={basculer}>{t('Description')}</EnTeteTri>
+              <EnTeteTri colonne="prix_unitaire" tri={tri} onTrier={basculer} className="numeric">{t('Prix / tarif')}</EnTeteTri>
+              <th style={{ textAlign: 'right' }}>{t('Actions')}</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="4" className="empty-state">Chargement…</td></tr>
+              <tr><td colSpan="4" className="empty-state">{t('Chargement…')}</td></tr>
             ) : itemsFiltres.length === 0 ? (
               <tr>
                 <td colSpan="4" className="empty-state">
-                  {items.length === 0 ? 'Votre catalogue est vide.' : 'Aucun service ne correspond à votre recherche.'}
+                  {items.length === 0 ? t('Votre catalogue est vide.') : t('Aucun service ne correspond à votre recherche.')}
                 </td>
               </tr>
             ) : itemsAffiches.map((item) => (
               <tr key={item.id}>
                 <td style={{ fontWeight: '500' }}>{item.nom}</td>
                 <td style={{ color: 'var(--text-muted)' }}>{item.description}</td>
-                <td className="numeric">{formatMontant(item.prix_unitaire)}</td>
+                <td className="numeric">{montant(item.prix_unitaire)}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <button type="button" className="btn-icon" onClick={() => openModal(item)} aria-label={`Modifier ${item.nom}`} style={{ marginRight: '4px' }}><Pencil size={16} aria-hidden="true" /></button>
-                  <button type="button" className="btn-danger" onClick={() => handleDelete(item)} aria-label={`Supprimer ${item.nom}`}><Trash2 size={16} aria-hidden="true" /></button>
+                  <button type="button" className="btn-icon" onClick={() => openModal(item)} aria-label={t('Modifier {nom}', { nom: item.nom })} style={{ marginRight: '4px' }}><Pencil size={16} aria-hidden="true" /></button>
+                  <button type="button" className="btn-danger" onClick={() => handleDelete(item)} aria-label={t('Supprimer {nom}', { nom: item.nom })}><Trash2 size={16} aria-hidden="true" /></button>
                 </td>
               </tr>
             ))}
@@ -146,45 +147,37 @@ function CatalogueList() {
       <Pagination {...pagination} />
 
       {importOuvert && (
-
         <ImportModal
-
           modele="catalogue"
-
-          titre="Importer des services"
-
+          titre={t('Importer des services')}
           onFerme={() => setImportOuvert(false)}
-
           onTermine={refresh}
-
         />
-
       )}
 
-
       {isModalOpen && (
-        <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={currentItem.id ? 'Modifier le service' : 'Ajouter un service'}>
+        <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={currentItem.id ? t('Modifier le service') : t('Ajouter un service')}>
           <div className="modal-content glass-panel">
-            <h3 style={{ marginTop: 0 }}>{currentItem.id ? 'Modifier le service' : 'Ajouter un service'}</h3>
+            <h3 style={{ marginTop: 0 }}>{currentItem.id ? t('Modifier le service') : t('Ajouter un service')}</h3>
 
             {modalError && <p className="alert alert-error" role="alert">{modalError}</p>}
 
             <form onSubmit={handleSave}>
               <div className="form-group">
-                <label htmlFor="service-nom">Nom du service *</label>
+                <label htmlFor="service-nom">{t('Nom du service *')}</label>
                 <input id="service-nom" type="text" className="form-control" value={currentItem.nom} onChange={(e) => setCurrentItem({ ...currentItem, nom: e.target.value })} required autoFocus />
               </div>
               <div className="form-group">
-                <label htmlFor="service-description">Description</label>
+                <label htmlFor="service-description">{t('Description')}</label>
                 <textarea id="service-description" className="form-control" value={currentItem.description || ''} onChange={(e) => setCurrentItem({ ...currentItem, description: e.target.value })} rows="3" />
               </div>
               <div className="form-group">
-                <label htmlFor="service-prix">Prix ou tarif ($) *</label>
+                <label htmlFor="service-prix">{t('Prix ou tarif ($) *')}</label>
                 <input id="service-prix" type="number" step="0.01" min="0" className="form-control" value={currentItem.prix_unitaire} onChange={(e) => setCurrentItem({ ...currentItem, prix_unitaire: e.target.value })} required />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
-                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)} disabled={saving}>Annuler</button>
-                <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Sauvegarde…' : 'Sauvegarder'}</button>
+                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)} disabled={saving}>{t('Annuler')}</button>
+                <button type="submit" className="btn-primary" disabled={saving}>{saving ? t('Sauvegarde…') : t('Sauvegarder')}</button>
               </div>
             </form>
           </div>

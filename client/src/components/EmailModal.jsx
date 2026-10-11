@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send } from 'lucide-react';
 import { useModale } from '../useModale';
+import { useLangue } from '../i18n.js';
 
 function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaultMessage }) {
   const modaleRef = useModale(onClose, { actif: isOpen });
+  const { t } = useLangue();
   const [to, setTo] = useState(initialTo || '');
   const [cc, setCc] = useState('');
   const [subject, setSubject] = useState(initialSubject || '');
@@ -36,22 +38,22 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
       setLoading(false);
       onClose();
     } catch (err) {
-      setError(err.message || 'Une erreur est survenue');
+      setError(err.message || t('Une erreur est survenue'));
       setLoading(false);
     }
   };
 
   return (
     <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true"
-      aria-label="Envoyer par courriel" style={{ zIndex: 10001 }}>
+      aria-label={t('Envoyer par courriel')} style={{ zIndex: 10001 }}>
       <div className="modal-content glass-panel" style={{ maxWidth: '500px', width: '100%' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '1.4rem' }}>Envoyer par courriel</h3>
+        <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '1.4rem' }}>{t('Envoyer par courriel')}</h3>
         
         {error && <p style={{ color: 'red', background: '#fee2e2', padding: '8px', borderRadius: '5px' }}>{error}</p>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="courriel-a">À :</label>
+            <label htmlFor="courriel-a">{t('À :')}</label>
             <input 
               id="courriel-a"
               type="text" 
@@ -59,24 +61,24 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
               value={to} 
               onChange={(e) => setTo(e.target.value)} 
               required 
-              placeholder="Ex: client@email.com, autre@email.com"
+              placeholder={t('Ex: client@email.com, autre@email.com')}
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="courriel-cc">Cc :</label>
+            <label htmlFor="courriel-cc">{t('Cc :')}</label>
             <input 
               id="courriel-cc"
               type="text" 
               className="form-control" 
               value={cc} 
               onChange={(e) => setCc(e.target.value)} 
-              placeholder="Ex: comptabilite@email.com"
+              placeholder={t('Ex: comptabilite@email.com')}
             />
           </div>
           
           <div className="form-group">
-            <label htmlFor="courriel-sujet">Sujet :</label>
+            <label htmlFor="courriel-sujet">{t('Sujet :')}</label>
             <input 
               id="courriel-sujet"
               type="text" 
@@ -88,7 +90,7 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
           </div>
 
           <div className="form-group">
-            <label htmlFor="courriel-message">Message :</label>
+            <label htmlFor="courriel-message">{t('Message :')}</label>
             <textarea 
               id="courriel-message"
               className="form-control" 
@@ -101,11 +103,11 @@ function EmailModal({ isOpen, onClose, onSend, initialTo, initialSubject, defaul
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
             <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>
-              Annuler
+              {t('Annuler')}
             </button>
             <button type="submit" className="btn-primary" disabled={loading}>
               <Send size={16} aria-hidden="true" />
-              {loading ? 'Envoi en cours…' : 'Envoyer'}
+              {loading ? t('Envoi en cours…') : t('Envoyer')}
             </button>
           </div>
         </form>

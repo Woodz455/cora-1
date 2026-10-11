@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Upload, TriangleAlert, CheckCircle2 } from 'lucide-react';
 import { api } from '../api';
 import { useModale } from '../useModale';
+import { useLangue } from '../i18n.js';
 
 /**
  * Import d'un tableur, en trois temps : choisir le fichier, vérifier les
@@ -21,6 +22,7 @@ function ImportModal({ modele, titre, onFerme, onTermine }) {
      disant à l'utilisateur qu'il y est enfermé alors qu'il n'y est pas. Toutes
      les autres fenêtres de l'application emploient ce crochet. */
   const modaleRef = useModale(onFerme);
+  const { t, tp } = useLangue();
   const [fichier, setFichier] = useState(null);
   const [contenu, setContenu] = useState(null);
   const [apercu, setApercu] = useState(null);
@@ -63,7 +65,7 @@ function ImportModal({ modele, titre, onFerme, onTermine }) {
       setResultat(null);
       analyser(f.name, base64);
     };
-    lecteur.onerror = () => setErreur("Ce fichier n'a pas pu être lu.");
+    lecteur.onerror = () => setErreur(t("Ce fichier n'a pas pu être lu."));
     lecteur.readAsDataURL(f);
   };
 
@@ -113,16 +115,16 @@ function ImportModal({ modele, titre, onFerme, onTermine }) {
             <p style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
               <CheckCircle2 size={18} style={{ color: 'var(--status-paid)' }} />
               {resultat.message}
-              {resultat.ignores > 0 && ` ${resultat.ignores} déjà présent(s), laissé(s) intact(s).`}
+              {resultat.ignores > 0 && ` ${t('{n} déjà présent(s), laissé(s) intact(s).', { n: resultat.ignores })}`}
             </p>
             <div className="modal-actions">
-              <button type="button" className="btn-primary" onClick={onFerme}>Fermer</button>
+              <button type="button" className="btn-primary" onClick={onFerme}>{t('Fermer')}</button>
             </div>
           </>
         ) : (
           <>
             <p style={{ color: 'var(--text-muted)', fontSize: '.9rem' }}>
-              Fichier Excel (.xlsx) ou CSV. La première ligne doit contenir les titres des colonnes.
+              {t('Fichier Excel (.xlsx) ou CSV. La première ligne doit contenir les titres des colonnes.')}
             </p>
 
             <div className="form-group">
@@ -138,9 +140,9 @@ function ImportModal({ modele, titre, onFerme, onTermine }) {
 
             {apercu && (
               <>
-                <h4 style={{ marginBottom: '.5rem' }}>Colonnes</h4>
+                <h4 style={{ marginBottom: '.5rem' }}>{t('Colonnes')}</h4>
                 <p style={{ color: 'var(--text-muted)', fontSize: '.85rem', marginTop: 0 }}>
-                  Vérifiez chaque association&nbsp;: c'est ici que se jouent les erreurs d'import.
+                  {t("Vérifiez chaque association\u00a0: c'est ici que se jouent les erreurs d'import.")}
                 </p>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem', marginBottom: '1.25rem' }}>
@@ -152,9 +154,9 @@ function ImportModal({ modele, titre, onFerme, onTermine }) {
                         value={correspondance[champ.cle] ?? ''}
                         onChange={(e) => associer(champ.cle, e.target.value)}
                       >
-                        <option value="">(non importé)</option>
+                        <option value="">{t('(non importé)')}</option>
                         {apercu.entetes.map((entete, i) => (
-                          <option key={i} value={i}>{entete || `Colonne ${i + 1}`}</option>
+                          <option key={i} value={i}>{entete || t('Colonne {n}', { n: i + 1 })}</option>
                         ))}
                       </select>
                     </label>
@@ -162,14 +164,14 @@ function ImportModal({ modele, titre, onFerme, onTermine }) {
                 </div>
 
                 <p style={{ fontSize: '.95rem' }}>
-                  <strong>{apercu.valides}</strong> ligne(s) sur {apercu.total} seront importées.
+                  <strong>{apercu.valides}</strong> {t('ligne(s) sur {total} seront importées.', { total: apercu.total })}
                 </p>
 
                 {apercu.rejets.length > 0 && (
                   <details style={{ marginBottom: '1rem' }}>
                     <summary style={{ cursor: 'pointer', color: 'var(--status-warning)', display: 'flex', alignItems: 'center', gap: '.4rem' }}>
                       <TriangleAlert size={16} />
-                      {apercu.rejets.length} ligne(s) seront ignorées, voir lesquelles
+                      {tp(apercu.rejets.length, '{n} ligne(s) seront ignorées, voir lesquelles', '{n} ligne(s) seront ignorées, voir lesquelles|pluriel')}
                     </summary>
                     {/* Toutes les lignes refusées, pas un échantillon : un import
                         où trente fiches disparaissent sans qu'on sache lesquelles
@@ -177,7 +179,7 @@ function ImportModal({ modele, titre, onFerme, onTermine }) {
                     <ul style={{ maxHeight: '11rem', overflowY: 'auto', fontSize: '.85rem', marginTop: '.5rem' }}>
                       {apercu.rejets.map((r) => (
                         <li key={r.ligne}>
-                          Ligne {r.ligne}{r.valeur ? ` (${r.valeur})` : ''} : {r.motif}
+                          {t('Ligne {n}', { n: r.ligne })}{r.valeur ? ` (${r.valeur})` : ''}{t(' : {motif}', { motif: r.motif })}
                         </li>
                       ))}
                     </ul>
@@ -186,14 +188,14 @@ function ImportModal({ modele, titre, onFerme, onTermine }) {
 
                 {champsRequisManquants.length > 0 && (
                   <p style={{ color: 'var(--status-danger)', fontSize: '.9rem' }}>
-                    Associez d'abord&nbsp;: {champsRequisManquants.join(', ')}.
+                    {t("Associez d'abord\u00a0: {champs}.", { champs: champsRequisManquants.join(', ') })}
                   </p>
                 )}
               </>
             )}
 
             <div className="modal-actions">
-              <button type="button" className="btn-secondary" onClick={onFerme}>Annuler</button>
+              <button type="button" className="btn-secondary" onClick={onFerme}>{t('Annuler')}</button>
               <button
                 type="button" className="btn-primary"
                 disabled={!apercu || enCours || apercu.valides === 0 || champsRequisManquants.length > 0}
@@ -201,7 +203,9 @@ function ImportModal({ modele, titre, onFerme, onTermine }) {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}
               >
                 <Upload size={16} />
-                {enCours ? 'Import en cours…' : `Importer ${apercu ? apercu.valides : ''} ligne(s)`}
+                {enCours ? t('Import en cours…') : apercu
+                  ? tp(apercu.valides, 'Importer {n} ligne(s)', 'Importer {n} ligne(s)|pluriel')
+                  : t('Importer ligne(s)')}
               </button>
             </div>
           </>

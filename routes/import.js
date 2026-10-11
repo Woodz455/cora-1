@@ -12,6 +12,7 @@ const { adminOrAccountant } = require('../authMiddleware.js');
 const { journaliser, ACTIONS } = require('../auditService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { analyser, deviner, preparer, MODELES } = require('../importService.js');
+const { traduire, langueDeRequete } = require('../traductionServeur.js');
 
 /** Taille maximale du fichier transmis, une fois décodé. */
 const MAX_OCTETS = 10 * 1024 * 1024;
@@ -53,6 +54,19 @@ function normaliserCorrespondance(brute) {
   return correspondance;
 }
 
+/**
+ * Les libellés des colonnes et les motifs de refus partent dans la langue de
+ * l'interface. Ils ne sont pas dans `error` ni dans `message`, que la
+ * traduction des réponses couvre d'elle-même.
+ */
+function dansLaLangue(req, champs, rejets) {
+  const langue = langueDeRequete(req);
+  return {
+    champs: champs.map((c) => ({ ...c, libelle: traduire(c.libelle, langue) })),
+    rejets: rejets.map((r) => ({ ...r, motif: traduire(r.motif, langue) }))
+  };
+}
+
 module.exports = function importRoutes(getDb) {
   const router = express.Router();
   // Un employé n'a pas à verser deux cents fiches d'un coup dans la base.
@@ -80,16 +94,17 @@ module.exports = function importRoutes(getDb) {
 
     const { valides, rejets } = preparer(modele, lignes, correspondance);
 
+    const traduits = dansLaLangue(req, MODELES[modele], rejets);
     res.json({
       entetes,
       correspondance,
-      champs: MODELES[modele],
+      champs: traduits.champs,
       total: lignes.length,
       apercu: lignes.slice(0, 5),
       valides: valides.length,
       // Toutes les lignes refusées, pas seulement les premières : un import où
       // trente fiches disparaissent sans qu'on sache lesquelles est inutilisable.
-      rejets
+      rejets: traduits.rejets
     });
   }));
 
@@ -159,11 +174,14 @@ module.exports = function importRoutes(getDb) {
       details: { fichier: String(req.body.nom_fichier || '').slice(0, 200), inseres, ignores, rejetes: rejets.length }
     });
 
+    // Deux phrases entières plutôt qu'un mot inséré : chacune se traduit.
     res.json({
-      message: `${inseres} ${modele === 'clients' ? 'client(s)' : 'article(s)'} importé(s).`,
+      message: modele === 'clients'
+        ? `${inseres} client(s) importé(s).`
+        : `${inseres} article(s) importé(s).`,
       inseres,
       ignores,
-      rejets
+      rejets: dansLaLangue(req, [], rejets).rejets
     });
   }));
 

@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { TriangleAlert } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { api, formatMontant } from '../api';
+import { api } from '../api';
+import { useLangue } from '../i18n.js';
 
 /**
  * Les premiers pas du dossier, dans l'ordre que son profil suggère.
@@ -12,6 +13,7 @@ import { api, formatMontant } from '../api';
  * Elle disparaît quand tout est fait, ou d'un clic.
  */
 function PremiersPas({ demarrage, onMasquer, naviguer }) {
+  const { t, tp } = useLangue();
   const faites = demarrage.etapes.filter((e) => e.fait).length;
   const total = demarrage.etapes.length;
 
@@ -19,13 +21,14 @@ function PremiersPas({ demarrage, onMasquer, naviguer }) {
     <div className="glass-card" style={{ padding: '32px', marginBottom: '40px' }}>
       <div className="toolbar" style={{ marginBottom: '16px' }}>
         <div>
-          <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.2rem' }}>Pour commencer</h3>
+          <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.2rem' }}>{t('Pour commencer')}</h3>
           <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-            {demarrage.profil ? `${demarrage.profil.libelle} : ` : ''}
-            {faites} étape{faites > 1 ? 's' : ''} sur {total}. Chaque étape se coche d'elle-même.
+            {demarrage.profil ? `${t(demarrage.profil.libelle)}${t(' : ')}` : ''}
+            {tp(faites, "{n} étape sur {total}. Chaque étape se coche d'elle-même.",
+              "{n} étapes sur {total}. Chaque étape se coche d'elle-même.", { total })}
           </p>
         </div>
-        <button type="button" className="btn-secondary" onClick={onMasquer}>Masquer</button>
+        <button type="button" className="btn-secondary" onClick={onMasquer}>{t('Masquer')}</button>
       </div>
       <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
         {demarrage.etapes.map((etape, index) => (
@@ -33,7 +36,7 @@ function PremiersPas({ demarrage, onMasquer, naviguer }) {
             <button
               type="button"
               onClick={() => naviguer(etape.vue, etape.ancre ? { ancre: etape.ancre } : null)}
-              aria-label={`${etape.titre}${etape.fait ? ', fait' : ''}`}
+              aria-label={etape.fait ? t('{titre}, fait', { titre: t(etape.titre) }) : t(etape.titre)}
               style={{
                 width: '100%', textAlign: 'left', padding: '12px 16px', font: 'inherit',
                 background: etape.fait ? 'transparent' : 'var(--hover-subtle)',
@@ -56,11 +59,11 @@ function PremiersPas({ demarrage, onMasquer, naviguer }) {
               </span>
               <span style={{ flex: 1 }}>
                 <span style={{ display: 'block', fontWeight: etape.fait ? 500 : 600, textDecoration: etape.fait ? 'line-through' : 'none' }}>
-                  {etape.titre}
+                  {t(etape.titre)}
                 </span>
                 {!etape.fait && (
                   <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    {etape.detail}
+                    {t(etape.detail)}
                   </span>
                 )}
               </span>
@@ -79,6 +82,7 @@ function Dashboard({ naviguer }) {
   const [demarrage, setDemarrage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { t, tp, montant } = useLangue();
 
   // Réservé à l'administration : un 403 signifie simplement qu'il n'y a rien à
   // montrer, les étapes menant presque toutes aux paramètres.
@@ -139,27 +143,27 @@ function Dashboard({ naviguer }) {
     {
       cle: 'factures',
       nombre: aFaire.factures.length,
-      libelle: (n) => `${n} facture${n > 1 ? 's' : ''} échue${n > 1 ? 's' : ''} à relancer`,
+      libelle: (n) => tp(n, '{n} facture échue à relancer', '{n} factures échues à relancer'),
       vue: 'factures',
       parametres: { echuesSeulement: true }
     },
     {
       cle: 'devis',
       nombre: aFaire.devis.length,
-      libelle: (n) => `${n} devis en attente de réponse`,
+      libelle: (n) => tp(n, '{n} devis en attente de réponse', '{n} devis en attente de réponse|pluriel'),
       vue: 'devis',
       parametres: null
     },
     {
       cle: 'depots',
       nombre: aFaire.depots.length,
-      libelle: (n) => `${n} dépôt${n > 1 ? 's' : ''} bancaire${n > 1 ? 's' : ''} à imputer`,
+      libelle: (n) => tp(n, '{n} dépôt bancaire à imputer', '{n} dépôts bancaires à imputer'),
       vue: 'banque',
       parametres: null
     }
-  ].filter((t) => t.nombre > 0), [aFaire]);
+  ].filter((tache) => tache.nombre > 0), [aFaire, tp]);
 
-  if (loading) return <p style={{ color: 'var(--text-muted)' }}>Chargement du tableau de bord…</p>;
+  if (loading) return <p style={{ color: 'var(--text-muted)' }}>{t('Chargement du tableau de bord…')}</p>;
   if (error) return <p className="alert alert-error" role="alert">{error}</p>;
   if (!stats) return null;
 
@@ -177,17 +181,17 @@ function Dashboard({ naviguer }) {
   // l'information.
   const cartes = [
     {
-      titre: "Chiffre d'affaires encaissé", valeur: stats.chiffreAffaires,
-      vue: 'factures', parametres: { statutInitial: 'Payée' }, aide: 'Voir les factures réglées'
+      titre: t("Chiffre d'affaires encaissé"), valeur: stats.chiffreAffaires,
+      vue: 'factures', parametres: { statutInitial: 'Payée' }, aide: t('Voir les factures réglées')
     },
     {
-      titre: 'Montant en attente', valeur: stats.facturesEnAttente,
-      vue: 'factures', parametres: { statutInitial: 'En attente' }, aide: 'Voir les factures en attente'
+      titre: t('Montant en attente'), valeur: stats.facturesEnAttente,
+      vue: 'factures', parametres: { statutInitial: 'En attente' }, aide: t('Voir les factures en attente')
     },
     {
-      titre: 'Montant en retard', valeur: stats.facturesEnRetard,
+      titre: t('Montant en retard'), valeur: stats.facturesEnRetard,
       alerte: stats.facturesEnRetard > 0,
-      vue: 'factures', parametres: { echuesSeulement: true }, aide: 'Voir les factures échues'
+      vue: 'factures', parametres: { echuesSeulement: true }, aide: t('Voir les factures échues')
     }
   ];
 
@@ -198,7 +202,7 @@ function Dashboard({ naviguer }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
         {/* L'action la plus fréquente était absente de l'écran d'accueil. */}
         <button type="button" className="btn-primary" onClick={() => naviguer('factures', { ouvrirNouvelle: true })}>
-          + Nouvelle facture
+          {t('+ Nouvelle facture')}
         </button>
       </div>
 
@@ -226,14 +230,14 @@ function Dashboard({ naviguer }) {
               color: carte.alerte ? 'var(--status-danger)' : 'var(--text-muted)',
               display: 'flex', alignItems: 'center', gap: '.4rem'
             }}>
-              {carte.alerte && <TriangleAlert size={14} aria-label="En retard" />}
+              {carte.alerte && <TriangleAlert size={14} aria-label={t('En retard')} />}
               {carte.titre}
             </p>
             <h3 style={{
               margin: 0, fontSize: '2.3rem',
               color: carte.alerte ? 'var(--status-danger)' : 'var(--text-main)'
             }}>
-              {formatMontant(carte.valeur)}
+              {montant(carte.valeur)}
             </h3>
           </button>
         ))}
@@ -243,9 +247,9 @@ function Dashboard({ naviguer }) {
           objet — Factures, Devis, Clients — et rien ne disait par quoi
           commencer. */}
       <div className="glass-card" style={{ padding: '32px', marginBottom: '40px' }}>
-        <h3 style={{ margin: '0 0 20px 0', color: 'var(--text-main)', fontSize: '1.2rem' }}>À faire</h3>
+        <h3 style={{ margin: '0 0 20px 0', color: 'var(--text-main)', fontSize: '1.2rem' }}>{t('À faire')}</h3>
         {taches.length === 0 ? (
-          <p className="empty-state">Rien ne demande votre attention pour l'instant.</p>
+          <p className="empty-state">{t("Rien ne demande votre attention pour l'instant.")}</p>
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {taches.map((tache) => (
@@ -272,25 +276,25 @@ function Dashboard({ naviguer }) {
       <div className="glass-card" style={{ padding: '32px' }}>
         {/* Les revenus sont regroupés par mois d'encaissement et non d'émission :
             c'est la trésorerie réellement entrée sur la période. */}
-        <h3 style={{ margin: '0 0 20px 0', color: 'var(--text-main)', fontSize: '1.2rem' }}>Encaissements par mois</h3>
+        <h3 style={{ margin: '0 0 20px 0', color: 'var(--text-main)', fontSize: '1.2rem' }}>{t('Encaissements par mois')}</h3>
         {stats.chartData && stats.chartData.length > 0 ? (
           <div style={{ height: '350px', width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={stats.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)' }} dx={-10} tickFormatter={(val) => `${val} $`} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)' }} dx={-10} tickFormatter={(val) => t('{valeur} $', { valeur: val })} />
                 <Tooltip
                   cursor={{ fill: 'var(--hover-subtle)' }}
                   contentStyle={{ borderRadius: '12px', border: '1px solid var(--glass-border)', background: 'var(--app-bg)', color: 'var(--text-main)' }}
-                  formatter={(value) => [formatMontant(value), 'Encaissé']}
+                  formatter={(value) => [montant(value), t('Encaissé')]}
                 />
                 <Bar dataKey="revenu" fill="#0e4a9e" radius={[6, 6, 0, 0]} maxBarSize={60} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         ) : (
-          <p className="empty-state">Aucun encaissement enregistré pour l'instant.</p>
+          <p className="empty-state">{t("Aucun encaissement enregistré pour l'instant.")}</p>
         )}
       </div>
     </div>

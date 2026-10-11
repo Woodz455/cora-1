@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { X } from 'lucide-react';
-import { api, formatMontant, calculerEcheance, CONDITIONS } from '../api';
+import { api, calculerEcheance, CONDITIONS } from '../api';
 import { useModale } from '../useModale';
+import { useLangue } from '../i18n.js';
 
 /** Identifiant local d'une ligne, stable pour la clé React. */
 let compteurLignes = 0;
@@ -18,6 +19,7 @@ const dateISO = (date) => date.toISOString().split('T')[0];
 function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' }) {
   const modaleRef = useModale(onClose);
   const estDevis = mode === 'devis';
+  const { t, montant } = useLangue();
 
   const [clients, setClients] = useState([]);
   const [catalogue, setCatalogue] = useState([]);
@@ -167,8 +169,8 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
   );
 
   const titre = factureIdToEdit
-    ? (estDevis ? 'Modifier le devis' : 'Modifier la facture')
-    : (estDevis ? 'Nouveau devis' : 'Nouvelle facture');
+    ? (estDevis ? t('Modifier le devis') : t('Modifier la facture'))
+    : (estDevis ? t('Nouveau devis') : t('Nouvelle facture'));
 
   return (
     <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={titre}>
@@ -180,21 +182,21 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
         {error && <p className="alert alert-error" role="alert">{error}</p>}
 
         {chargement ? (
-          <p style={{ color: 'var(--text-muted)' }}>Chargement du document…</p>
+          <p style={{ color: 'var(--text-muted)' }}>{t('Chargement du document…')}</p>
         ) : clients.length === 0 ? (
           <>
             <p className="alert alert-info">
-              Créez d'abord un client dans le répertoire : un document doit être rattaché à un client.
+              {t("Créez d'abord un client dans le répertoire : un document doit être rattaché à un client.")}
             </p>
             <div style={{ textAlign: 'right' }}>
-              <button type="button" className="btn-secondary" onClick={onClose}>Fermer</button>
+              <button type="button" className="btn-secondary" onClick={onClose}>{t('Fermer')}</button>
             </div>
           </>
         ) : (
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
               <div className="form-group">
-                <label htmlFor="doc-client">Client *</label>
+                <label htmlFor="doc-client">{t('Client *')}</label>
                 <select
                   id="doc-client"
                   className="form-control"
@@ -202,7 +204,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                   onChange={(e) => choisirClient(e.target.value)}
                   required
                 >
-                  <option value="">Sélectionner un client</option>
+                  <option value="">{t('Sélectionner un client')}</option>
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>{c.nom_entreprise} ({c.province})</option>
                   ))}
@@ -210,15 +212,14 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
               </div>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Le numéro est généré automatiquement ({estDevis ? 'DEV' : 'SHT'}-AAAAMM-NNNN).
-                  Les taxes suivent la province du client.
+                  {t('Le numéro est généré automatiquement ({prefixe}-AAAAMM-NNNN). Les taxes suivent la province du client.', { prefixe: estDevis ? 'DEV' : 'SHT' })}
                 </p>
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
               <div className="form-group">
-                <label htmlFor="doc-emission">Date d'émission *</label>
+                <label htmlFor="doc-emission">{t("Date d'émission *")}</label>
                 <input
                   id="doc-emission"
                   type="date"
@@ -230,7 +231,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="doc-echeance">{estDevis ? 'Date de validité *' : "Date d'échéance *"}</label>
+                <label htmlFor="doc-echeance">{estDevis ? t('Date de validité *') : t("Date d'échéance *")}</label>
                 <input
                   id="doc-echeance"
                   type="date"
@@ -242,7 +243,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                 />
                 {!estDevis && termeDuClient && (
                   <small style={{ color: 'var(--text-muted)' }}>
-                    Terme du client : {termeDuClient.libelle}. La date reste modifiable.
+                    {t('Terme du client : {terme}. La date reste modifiable.', { terme: t(termeDuClient.libelle) })}
                   </small>
                 )}
               </div>
@@ -250,7 +251,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
               <div className="form-group">
-                <label htmlFor="doc-devise">Devise *</label>
+                <label htmlFor="doc-devise">{t('Devise *')}</label>
                 <select
                   id="doc-devise"
                   className="form-control"
@@ -261,13 +262,13 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                     taux_change: e.target.value === 'CAD' ? 1.0 : formData.taux_change
                   })}
                 >
-                  <option value="CAD">CAD (dollars canadiens)</option>
-                  <option value="USD">USD (dollars américains)</option>
+                  <option value="CAD">{t('CAD (dollars canadiens)')}</option>
+                  <option value="USD">{t('USD (dollars américains)')}</option>
                 </select>
               </div>
               {formData.devise !== 'CAD' && (
                 <div className="form-group">
-                  <label htmlFor="doc-taux">Taux de change (1 {formData.devise} = ? CAD) *</label>
+                  <label htmlFor="doc-taux">{t('Taux de change (1 {devise} = ? CAD) *', { devise: formData.devise })}</label>
                   <input
                     id="doc-taux"
                     type="number"
@@ -283,7 +284,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
             </div>
 
             <h4 style={{ color: 'var(--text-main)', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>
-              Lignes de facturation
+              {t('Lignes de facturation')}
             </h4>
 
             {lignes.map((ligne, index) => (
@@ -294,8 +295,8 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Description du service"
-                    aria-label={`Description de la ligne ${index + 1}`}
+                    placeholder={t('Description du service')}
+                    aria-label={t('Description de la ligne {n}', { n: index + 1 })}
                     value={ligne.description}
                     onChange={(e) => handleLigneChange(index, { description: e.target.value })}
                     required
@@ -304,7 +305,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                     <select
                       className="form-control"
                       style={{ marginTop: '4px', padding: '4px', fontSize: '0.85rem' }}
-                      aria-label={`Insérer un service du catalogue dans la ligne ${index + 1}`}
+                      aria-label={t('Insérer un service du catalogue dans la ligne {n}', { n: index + 1 })}
                       value=""
                       onChange={(e) => {
                         const item = catalogue.find((c) => String(c.id) === e.target.value);
@@ -315,9 +316,9 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                         });
                       }}
                     >
-                      <option value="">Insérer depuis le catalogue…</option>
+                      <option value="">{t('Insérer depuis le catalogue…')}</option>
                       {catalogue.map((c) => (
-                        <option key={c.id} value={c.id}>{c.nom} ({formatMontant(c.prix_unitaire)})</option>
+                        <option key={c.id} value={c.id}>{c.nom} ({montant(c.prix_unitaire)})</option>
                       ))}
                     </select>
                   )}
@@ -326,8 +327,8 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                   <input
                     type="number"
                     className="form-control"
-                    placeholder="Qté / h"
-                    aria-label={`Quantité de la ligne ${index + 1}`}
+                    placeholder={t('Qté / h')}
+                    aria-label={t('Quantité de la ligne {n}', { n: index + 1 })}
                     value={ligne.quantite}
                     onChange={(e) => handleLigneChange(index, { quantite: e.target.value })}
                     min="0.01"
@@ -339,8 +340,8 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                   <input
                     type="number"
                     className="form-control"
-                    placeholder="Prix / tarif"
-                    aria-label={`Prix unitaire de la ligne ${index + 1}`}
+                    placeholder={t('Prix / tarif')}
+                    aria-label={t('Prix unitaire de la ligne {n}', { n: index + 1 })}
                     value={ligne.prix_unitaire}
                     onChange={(e) => handleLigneChange(index, { prix_unitaire: e.target.value })}
                     min="0"
@@ -353,7 +354,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                   className="btn-icon"
                   onClick={() => removeLigne(index)}
                   disabled={lignes.length === 1}
-                  aria-label={`Supprimer la ligne ${index + 1}`}
+                  aria-label={t('Supprimer la ligne {n}', { n: index + 1 })}
                   style={{ padding: '12px' }}
                 >
                   <X size={16} aria-hidden="true" />
@@ -366,20 +367,20 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
               onClick={addLigne}
               style={{ padding: '8px 16px', background: 'var(--glass-bg)', border: '1px dashed var(--safehill-blue)', color: 'var(--safehill-blue)', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}
             >
-              + Ajouter une ligne
+              {t('+ Ajouter une ligne')}
             </button>
 
             <div style={{ textAlign: 'right', marginTop: '20px', fontSize: '1.2rem', color: 'var(--text-main)' }}>
-              Sous-total hors taxes : <strong>{formatMontant(total, formData.devise)}</strong>
+              {t('Sous-total hors taxes :')} <strong>{montant(total, formData.devise)}</strong>
               <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Les taxes sont calculées à l'enregistrement, selon la province du client.
+                {t("Les taxes sont calculées à l'enregistrement, selon la province du client.")}
               </p>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px' }}>
-              <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>Annuler</button>
+              <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>{t('Annuler')}</button>
               <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? 'Enregistrement…' : (factureIdToEdit ? 'Enregistrer les modifications' : (estDevis ? 'Créer le devis' : 'Créer la facture'))}
+                {loading ? t('Enregistrement…') : (factureIdToEdit ? t('Enregistrer les modifications') : (estDevis ? t('Créer le devis') : t('Créer la facture')))}
               </button>
             </div>
           </form>
