@@ -22,14 +22,23 @@ import '@fontsource-variable/outfit/wght.css';
 import './index.css'
 import App from './App.jsx'
 import FeedbackProvider from './components/FeedbackProvider.jsx'
+import LangueProvider from './components/LangueProvider.jsx'
+import { langueCourante } from './i18n.js'
+
+// La langue est connue avant le premier rendu : un lecteur d'écran et la
+// césure du navigateur s'appuient sur l'attribut `lang`.
+document.documentElement.lang = langueCourante()
 
 // Le fil des messages et la fenêtre de confirmation sont montés une seule fois,
 // au-dessus de l'application : ils survivent aux changements d'écran, et
-// l'écran de connexion en dispose comme les autres.
+// l'écran de connexion en dispose comme les autres. La langue les enveloppe,
+// pour que leurs boutons la suivent aussi.
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <FeedbackProvider>
-      <App />
-    </FeedbackProvider>
+    <LangueProvider>
+      <FeedbackProvider>
+        <App />
+      </FeedbackProvider>
+    </LangueProvider>
   </StrictMode>,
 )

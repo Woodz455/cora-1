@@ -14,6 +14,7 @@ const { initDb } = require('./database.js');
 const { authMiddleware } = require('./authMiddleware.js');
 const { startScheduler } = require('./scheduler.js');
 const { apiNotFound, errorHandler } = require('./httpUtils.js');
+const { traductionDesReponses } = require('./traductionServeur.js');
 const { PORT, HOST } = require('./config.js');
 const { avecDossier, baseCourante } = require('./dbContext.js');
 const { etatLicence, ETATS } = require('./licenceService.js');
@@ -97,6 +98,10 @@ function createApp(db, options = {}) {
   app.disable('x-powered-by');
 
   app.use(securityHeaders);
+
+  // Avant toute route : les messages d'erreur et de confirmation partent dans
+  // la langue de l'utilisateur, y compris ceux de la connexion.
+  app.use(traductionDesReponses);
 
   // L'envoi de courriels transporte un PDF encodé en base64 et a donc besoin
   // d'une limite plus large. Elle lui est réservée : la limite de 50 Mo

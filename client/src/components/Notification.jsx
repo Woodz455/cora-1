@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
+import { useLangue } from '../i18n.js';
 
 const ICONES = { succes: CheckCircle, erreur: AlertCircle, info: Info };
 
@@ -29,6 +30,7 @@ function Notification({ notifications, onFermer }) {
 function Message({ notification, onFermer }) {
   const { type, texte, duree } = notification;
   const Icone = ICONES[type] || Info;
+  const { t } = useLangue();
 
   useEffect(() => {
     if (!duree) return undefined;
@@ -43,7 +45,7 @@ function Message({ notification, onFermer }) {
     <div className={`notification notification-${type}`}>
       <Icone size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
       <span>{texte}</span>
-      <button type="button" className="notification-fermer" onClick={onFermer} aria-label="Fermer le message">
+      <button type="button" className="notification-fermer" onClick={onFermer} aria-label={t('Fermer le message')}>
         <X size={16} aria-hidden="true" />
       </button>
     </div>

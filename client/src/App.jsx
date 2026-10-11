@@ -13,6 +13,8 @@ import BankReconciliation from './components/BankReconciliation';
 import SubscriptionList from './components/SubscriptionList';
 import AuditLog from './components/AuditLog';
 import { UserContext } from './UserContext';
+import { useLangue } from './i18n.js';
+import SelecteurLangue from './components/SelecteurLangue';
 
 // Ces deux écrans embarquent la bibliothèque de graphiques : ils sont chargés à
 // la demande pour alléger le démarrage de l'application.
@@ -44,6 +46,9 @@ import {
  * décrits par trois `switch` distincts qu'il fallait penser à modifier ensemble.
  * Les rôles ne servent qu'à masquer ce qui serait de toute façon refusé par le
  * serveur, seul garant des permissions.
+ *
+ * Les textes sont écrits en français et traduits à l'affichage : ce sont les
+ * clés du dictionnaire.
  */
 const VUES = [
   {
@@ -162,6 +167,7 @@ function App() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+  const { t, changerLangue } = useLangue();
 
   const isAuthenticated = Boolean(user);
 
@@ -214,6 +220,8 @@ function App() {
           try {
             const authData = await api.get('/api/auth/check');
             if (authData.authenticated) {
+              // La langue du compte l'emporte sur celle du poste.
+              if (authData.langue) changerLangue(authData.langue);
               setUser({ username: authData.username, role: authData.role });
               setEntreprises(authData.entreprises || []);
               setOuvert(authData.ouvert || null);
@@ -229,6 +237,8 @@ function App() {
       }
     };
     checkStatus();
+    // Une seule vérification, au démarrage. `changerLangue` est stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLogout = async () => {
@@ -243,7 +253,7 @@ function App() {
   if (isCheckingAuth) {
     return (
       <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)' }}>
-        Chargement…
+        {t('Chargement…')}
       </div>
     );
   }
@@ -333,7 +343,7 @@ function App() {
       </div>
 
       <div style={{ display: 'flex', height: '100vh', backgroundColor: 'transparent', color: 'var(--text-main)' }}>
-        <aside className="glass-panel" style={{ width: '260px', margin: '20px', padding: '32px 20px', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
+        <aside className="glass-panel" style={{ width: '260px', margin: '20px', padding: '32px 20px', display: 'flex', flexDirection: 'column', zIndex: 10, minHeight: 0 }}>
           {/* Le logotype écrit déjà « CLORA » : le doubler d'un titre textuel
               affichait le nom deux fois, et l'écraser dans une vignette carrée
               le rendait illisible. Il s'affiche donc à sa proportion propre. */}
@@ -358,7 +368,7 @@ function App() {
               bouton n'apparaît que s'il y a réellement ailleurs où aller. */}
           <div style={{ marginBottom: '24px', padding: '0 8px' }}>
             <p style={{ margin: 0, fontSize: '.7rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-              Dossier
+              {t('Dossier')}
             </p>
             <p style={{ margin: '.15rem 0 0', fontWeight: 600, lineHeight: 1.3 }}>
               {ouvert.nom}
@@ -375,13 +385,16 @@ function App() {
                 color: 'var(--safehill-teal)', cursor: 'pointer', font: 'inherit', fontSize: '.8rem'
               }}
             >
-              {entreprises.length > 1 ? 'Changer de dossier' : 'Ajouter une entreprise'}
+              {entreprises.length > 1 ? t('Changer de dossier') : t('Ajouter une entreprise')}
             </button>
           </div>
 
           {/* Des <button> et non des <div> : la navigation était inatteignable
               au clavier et invisible pour un lecteur d'écran. */}
-          <nav aria-label="Navigation principale" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {/* La liste défile quand la fenêtre est trop basse pour elle : à la
+              taille d'ouverture, elle poussait « Se déconnecter » sous le bas
+              du panneau, hors d'atteinte. */}
+          <nav aria-label={t('Navigation principale')} style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}>
             {vuesVisibles.map((vue) => {
               const Icone = vue.icone;
               return (
@@ -392,13 +405,13 @@ function App() {
                   aria-current={vueActive.id === vue.id ? 'page' : undefined}
                   onClick={() => naviguer(vue.id)}
                 >
-                  <Icone size={20} aria-hidden="true" /> {vue.libelle}
+                  <Icone size={20} aria-hidden="true" /> {t(vue.libelle)}
                 </button>
               );
             })}
           </nav>
 
-          <div style={{ marginTop: 'auto', padding: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ marginTop: 'auto', padding: '8px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
             <button
               type="button"
               onClick={() => setIsDarkMode(!isDarkMode)}
@@ -406,7 +419,7 @@ function App() {
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%' }}
             >
               {isDarkMode ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
-              {isDarkMode ? 'Mode clair' : 'Mode sombre'}
+              {isDarkMode ? t('Mode clair') : t('Mode sombre')}
             </button>
             <button
               type="button"
@@ -415,7 +428,7 @@ function App() {
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%' }}
             >
               <LogOut size={18} aria-hidden="true" />
-              Se déconnecter
+              {t('Se déconnecter')}
             </button>
           </div>
         </aside>
@@ -423,12 +436,15 @@ function App() {
         <main style={{ flex: 1, padding: '20px 40px 20px 20px', overflowY: 'auto' }}>
           <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px' }}>
             <div>
-              <h2 style={{ fontSize: '2.2rem', fontWeight: '700', color: 'var(--text-main)', marginBottom: '4px' }}>{vueActive.titre}</h2>
-              <p style={{ color: 'var(--text-muted)', margin: 0 }}>{vueActive.sousTitre}</p>
+              <h2 style={{ fontSize: '2.2rem', fontWeight: '700', color: 'var(--text-main)', marginBottom: '4px' }}>{t(vueActive.titre)}</h2>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }}>{t(vueActive.sousTitre)}</p>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <SelecteurLangue enregistrer />
             <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '8px 20px', borderRadius: '30px', fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
               <span aria-hidden="true" style={{ width: '8px', height: '8px', borderRadius: '50%', background: COULEUR_ROLE[user.role] || '#94a3b8' }}></span>
-              {`${user.username} (${user.role})`}
+              {`${user.username} (${t(user.role)})`}
+            </div>
             </div>
           </header>
 
@@ -439,17 +455,19 @@ function App() {
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}
             >
               <span>
-                Clora {majDisponible.derniere} est disponible. Vous utilisez la {majDisponible.courante}.
+                {t('Clora {derniere} est disponible. Vous utilisez la {courante}.', {
+                  derniere: majDisponible.derniere, courante: majDisponible.courante
+                })}
               </span>
               <span style={{ display: 'flex', gap: '12px', whiteSpace: 'nowrap' }}>
                 {/* Le lien s'ouvre dans le navigateur du système : rien n'est
                     téléchargé ni installé par l'application elle-même. */}
-                <a href={majDisponible.page} target="_blank" rel="noreferrer">Voir la version</a>
+                <a href={majDisponible.page} target="_blank" rel="noreferrer">{t('Voir la version')}</a>
                 <button
                   type="button"
                   onClick={() => setMajDisponible(null)}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0 }}
-                  aria-label="Masquer l'avis de mise à jour"
+                  aria-label={t("Masquer l'avis de mise à jour")}
                 >
                   ✕
                 </button>
@@ -458,7 +476,7 @@ function App() {
           )}
 
           <div style={{ position: 'relative', zIndex: 10 }}>
-            <Suspense fallback={<p style={{ color: 'var(--text-muted)' }}>Chargement…</p>}>
+            <Suspense fallback={<p style={{ color: 'var(--text-muted)' }}>{t('Chargement…')}</p>}>
               <ContenuActif naviguer={naviguer} {...(parametresVue || {})} />
             </Suspense>
           </div>

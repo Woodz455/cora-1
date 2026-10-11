@@ -10,7 +10,10 @@
  * @param {number} nbPages
  * @param {Function} onChange
  */
+import { useLangue } from '../i18n.js';
+
 function Pagination({ page, nbPages, onChange }) {
+  const { t } = useLangue();
   /** Rien n'est rendu tant qu'une seule page suffit. */
   if (nbPages <= 1) return null;
 
@@ -21,15 +24,15 @@ function Pagination({ page, nbPages, onChange }) {
         disabled={page === 1}
         onClick={() => onChange(page - 1)}
       >
-        Précédent
+        {t('Précédent')}
       </button>
-      <span>Page {page} sur {nbPages}</span>
+      <span>{t('Page {page} sur {total}', { page, total: nbPages })}</span>
       <button
         type="button" className="btn-secondary"
         disabled={page === nbPages}
         onClick={() => onChange(page + 1)}
       >
-        Suivant
+        {t('Suivant')}
       </button>
     </div>
   );

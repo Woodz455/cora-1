@@ -7,6 +7,8 @@
  * message. Ce module remonte systématiquement le message d'erreur du serveur.
  */
 
+import { langueCourante, traduire } from './i18n.js';
+
 /** Erreur d'API portant le code de statut HTTP. */
 export class ApiError extends Error {
   constructor(message, status) {
@@ -17,22 +19,27 @@ export class ApiError extends Error {
 }
 
 async function request(method, url, body) {
+  // La langue accompagne chaque requête : le serveur rend ses messages dans
+  // celle de l'utilisateur, y compris avant toute connexion.
+  const headers = { 'X-Clora-Langue': langueCourante() };
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+
   let response;
   try {
     response = await fetch(url, {
       method,
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      headers,
       body: body === undefined ? undefined : JSON.stringify(body)
     });
   } catch {
-    throw new ApiError('Impossible de joindre le serveur.', 0);
+    throw new ApiError(traduire('Impossible de joindre le serveur.'), 0);
   }
 
   const contenu = response.headers.get('content-type') || '';
   const data = contenu.includes('application/json') ? await response.json().catch(() => null) : null;
 
   if (!response.ok) {
-    const message = (data && data.error) || `Erreur ${response.status}`;
+    const message = (data && data.error) || traduire('Erreur {statut}', { statut: response.status });
     throw new ApiError(message, response.status);
   }
 
