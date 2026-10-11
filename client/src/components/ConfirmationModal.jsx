@@ -1,4 +1,5 @@
 import { useModale } from '../useModale';
+import { useLangue } from '../i18n.js';
 
 /**
  * Fenêtre de confirmation, à la place de `window.confirm`.
@@ -20,13 +21,14 @@ import { useModale } from '../useModale';
 function ConfirmationModal({
   titre,
   message,
-  libelleConfirmer = 'Confirmer',
-  libelleAnnuler = 'Annuler',
+  libelleConfirmer,
+  libelleAnnuler,
   danger = false,
   onConfirmer,
   onAnnuler
 }) {
   const modaleRef = useModale(onAnnuler, { onValider: onConfirmer });
+  const { t } = useLangue();
 
   return (
     <div
@@ -46,10 +48,10 @@ function ConfirmationModal({
           {/* « Annuler » d'abord dans le document : c'est lui qui reçoit le
               focus à l'ouverture, pour qu'une frappe distraite ne détruise rien. */}
           <button type="button" className="btn-secondary" onClick={onAnnuler}>
-            {libelleAnnuler}
+            {libelleAnnuler || t('Annuler')}
           </button>
           <button type="button" className={danger ? 'btn-danger' : 'btn-primary'} onClick={onConfirmer}>
-            {libelleConfirmer}
+            {libelleConfirmer || t('Confirmer')}
           </button>
         </div>
       </div>

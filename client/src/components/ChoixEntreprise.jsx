@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Building2, Plus, ArrowRight } from 'lucide-react';
 import { api } from '../api';
 import ChoixProfil from './ChoixProfil';
+import { useLangue } from '../i18n.js';
 
 /**
  * Choix du dossier d'entreprise.
@@ -17,6 +18,7 @@ function ChoixEntreprise({ entreprises, onOuvert, onAnnuler }) {
   const [nouveau, setNouveau] = useState('');
   const [profil, setProfil] = useState('');
   const [erreur, setErreur] = useState(null);
+  const { t } = useLangue();
 
   const ouvrir = async (entreprise) => {
     setEnCours(entreprise.id);
@@ -34,7 +36,7 @@ function ChoixEntreprise({ entreprises, onOuvert, onAnnuler }) {
     e.preventDefault();
     setErreur(null);
     if (!profil) {
-      setErreur('Choisissez le profil qui décrit le mieux cette entreprise.');
+      setErreur(t('Choisissez le profil qui décrit le mieux cette entreprise.'));
       return;
     }
     try {
@@ -56,9 +58,9 @@ function ChoixEntreprise({ entreprises, onOuvert, onAnnuler }) {
           style={{ height: '38px', marginBottom: '2rem' }}
         />
 
-        <h1 style={{ fontSize: '1.4rem', margin: '0 0 .4rem' }}>Quel dossier ouvrir&nbsp;?</h1>
+        <h1 style={{ fontSize: '1.4rem', margin: '0 0 .4rem' }}>{t('Quel dossier ouvrir\u00a0?')}</h1>
         <p style={{ color: 'var(--text-muted)', margin: '0 0 1.5rem', fontSize: '.9rem' }}>
-          Chaque dossier a sa propre comptabilité. Rien n'y est partagé avec les autres.
+          {t("Chaque dossier a sa propre comptabilité. Rien n'y est partagé avec les autres.")}
         </p>
 
         {erreur && (
@@ -86,11 +88,11 @@ function ChoixEntreprise({ entreprises, onOuvert, onAnnuler }) {
                       bouton grisé : on peut être administrateur chez un client
                       et simple lecteur chez un autre. */}
                   <span style={{ display: 'block', fontSize: '.8rem', color: 'var(--text-muted)' }}>
-                    {e.role}
+                    {t(e.role)}
                   </span>
                 </span>
                 {enCours === e.id
-                  ? <span style={{ fontSize: '.85rem', color: 'var(--text-muted)' }}>Ouverture…</span>
+                  ? <span style={{ fontSize: '.85rem', color: 'var(--text-muted)' }}>{t('Ouverture…')}</span>
                   : <ArrowRight size={16} style={{ opacity: .5 }} />}
               </button>
             </li>
@@ -100,13 +102,13 @@ function ChoixEntreprise({ entreprises, onOuvert, onAnnuler }) {
         {creation ? (
           <form onSubmit={creer} style={{ display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
             <input
-              className="form-control" autoFocus placeholder="Nom de l'entreprise"
-              aria-label="Nom de l'entreprise" maxLength={200}
+              className="form-control" autoFocus placeholder={t("Nom de l'entreprise")}
+              aria-label={t("Nom de l'entreprise")} maxLength={200}
               value={nouveau} onChange={(ev) => setNouveau(ev.target.value)}
             />
             <ChoixProfil valeur={profil} onChange={setProfil} />
             <button type="submit" className="btn-primary" disabled={!nouveau.trim()} style={{ alignSelf: 'flex-start' }}>
-              Créer le dossier
+              {t('Créer le dossier')}
             </button>
           </form>
         ) : (
@@ -115,7 +117,7 @@ function ChoixEntreprise({ entreprises, onOuvert, onAnnuler }) {
             style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}
             onClick={() => setCreation(true)}
           >
-            <Plus size={16} /> Nouveau dossier
+            <Plus size={16} /> {t('Nouveau dossier')}
           </button>
         )}
 
@@ -128,7 +130,7 @@ function ChoixEntreprise({ entreprises, onOuvert, onAnnuler }) {
               color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit', padding: 0
             }}
           >
-            Annuler
+            {t('Annuler')}
           </button>
         )}
       </div>

@@ -22,6 +22,10 @@ const { parseProfil } = require('../profils.js');
  */
 const MIN_PASSWORD_LENGTH = 8;
 
+/** Langues de l'interface. Toute autre valeur est ramenée au français. */
+const LANGUES = ['fr', 'en'];
+const parseLangue = (valeur) => (LANGUES.includes(valeur) ? valeur : 'fr');
+
 const SESSION_MS = () => SESSION_HOURS * 60 * 60 * 1000;
 
 /** Options du cookie de session. */
@@ -94,9 +98,11 @@ module.exports = function authRoutes(getDb) {
     const profil = parseProfil(req.body.profil);
     const hash = await bcrypt.hash(req.body.password, 12);
 
+    // La langue choisie sur l'écran de premier lancement devient celle du
+    // compte : l'administrateur n'a pas à la choisir une seconde fois.
     const result = await db.run(
-      'INSERT INTO users (username, password) VALUES (?, ?)',
-      [username, hash]
+      'INSERT INTO users (username, password, langue) VALUES (?, ?, ?)',
+      [username, hash, parseLangue(req.body.langue)]
     );
 
     // Un dossier peut déjà exister sans qu'aucun compte n'y donne accès : c'est
@@ -154,6 +160,7 @@ module.exports = function authRoutes(getDb) {
     return res.json({
       success: true,
       message: 'Connexion réussie.',
+      langue: parseLangue(user.langue),
       entreprises: dossiers.map(({ id, nom, role }) => ({ id, nom, role })),
       ouvert: unique ? { id: unique.id, nom: unique.nom, role: unique.role } : null
     });
@@ -207,14 +214,31 @@ module.exports = function authRoutes(getDb) {
     const db = getDb();
     const dossiers = await listerPourUtilisateur(db, req.user.sub);
     const ouvert = dossiers.find((d) => d.id === req.user.entreprise) || null;
+    const compte = await db.get('SELECT langue FROM users WHERE id = ?', [req.user.sub]);
 
     return res.json({
       authenticated: true,
       username: req.user.username,
+      langue: parseLangue(compte && compte.langue),
       role: ouvert ? ouvert.role : null,
       entreprises: dossiers.map(({ id, nom, role }) => ({ id, nom, role })),
       ouvert: ouvert ? { id: ouvert.id, nom: ouvert.nom, role: ouvert.role } : null
     });
+  }));
+
+  /**
+   * Langue de l'interface du compte connecté.
+   *
+   * Elle est propre à chaque compte : changer la sienne ne touche ni les autres
+   * utilisateurs du dossier, ni la langue des documents, qui suit celle de
+   * chaque client.
+   */
+  router.put('/langue', authMiddleware, asyncRoute(async (req, res) => {
+    if (!LANGUES.includes(req.body.langue)) {
+      throw httpError(400, 'Langue inconnue.');
+    }
+    await getDb().run('UPDATE users SET langue = ? WHERE id = ?', [req.body.langue, req.user.sub]);
+    res.json({ langue: req.body.langue });
   }));
 
   router.post('/logout', (req, res) => {

@@ -23,7 +23,7 @@ const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 
 const { getDataDir, getDbPath, DB_FILENAME } = require('./config.js');
-const { initDb } = require('./database.js');
+const { initDb, addColumn } = require('./database.js');
 
 /** Fichier des comptes et du registre, distinct de toute donnée comptable. */
 const COMPTES_FILENAME = 'comptes.sqlite';
@@ -89,6 +89,11 @@ async function ouvrirComptes(chemin = cheminComptes()) {
       date_max TEXT
     );
   `);
+
+  // La langue de l'interface appartient au compte, pas au dossier : une
+  // comptable anglophone travaille en anglais dans chacun de ses dossiers, et
+  // le patron du même dossier peut garder le français.
+  await addColumn(db, 'users', 'langue', "TEXT NOT NULL DEFAULT 'fr'");
 
   // L'essai commence à la création du registre, donc à la première ouverture
   // de l'application — et non à la première consultation de l'écran de

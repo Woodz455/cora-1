@@ -1,4 +1,5 @@
 import { PROFILS } from '../profils';
+import { useLangue } from '../i18n.js';
 
 /**
  * Choix du profil d'un dossier, en trois cartes.
@@ -12,10 +13,11 @@ import { PROFILS } from '../profils';
  * @param {Function} onChange reçoit la valeur du profil choisi
  */
 function ChoixProfil({ valeur, onChange, nom = 'profil' }) {
+  const { t } = useLangue();
   return (
     <fieldset style={{ border: 'none', padding: 0, margin: 0, minWidth: 0 }}>
       <legend style={{ fontSize: '0.9rem', fontWeight: 500, marginBottom: '8px', color: 'var(--text-main)', padding: 0 }}>
-        Quel profil décrit le mieux cette entreprise&nbsp;?
+        {t('Quel profil décrit le mieux cette entreprise\u00a0?')}
       </legend>
       <div style={{ display: 'grid', gap: '8px' }}>
         {PROFILS.map((p) => {
@@ -35,9 +37,9 @@ function ChoixProfil({ valeur, onChange, nom = 'profil' }) {
                 onChange={() => onChange(p.valeur)} style={{ marginTop: '2px', flexShrink: 0 }}
               />
               <span>
-                <span style={{ display: 'block', fontWeight: 600, color: 'var(--text-main)' }}>{p.libelle}</span>
+                <span style={{ display: 'block', fontWeight: 600, color: 'var(--text-main)' }}>{t(p.libelle)}</span>
                 <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  {p.description}
+                  {t(p.description)}
                 </span>
               </span>
             </label>
@@ -45,8 +47,7 @@ function ChoixProfil({ valeur, onChange, nom = 'profil' }) {
         })}
       </div>
       <p style={{ margin: '8px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'left' }}>
-        Le profil règle des valeurs de départ et l'ordre des premiers pas. Il ne retire
-        aucune fonction, et se change à tout moment dans Paramètres.
+        {t("Le profil règle des valeurs de départ et l'ordre des premiers pas. Il ne retire aucune fonction, et se change à tout moment dans Paramètres.")}
       </p>
     </fieldset>
   );

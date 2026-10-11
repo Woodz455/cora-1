@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Info } from 'lucide-react';
+import { useLangue } from '../i18n.js';
 
 /** Largeur au-delà de laquelle le texte revient à la ligne. */
 const LARGEUR_MAX = 260;
@@ -39,6 +40,7 @@ const HAUTEUR_ESTIMEE = 110;
  * `aria-modal`, ce qu'une bulle d'aide ne doit surtout pas faire.
  */
 function InfoTooltip({ text }) {
+  const { t } = useLangue();
   const [ancre, setAncre] = useState(null);
   const [fleche, setFleche] = useState(null);
   const declencheurRef = useRef(null);
@@ -101,7 +103,7 @@ function InfoTooltip({ text }) {
       <button
         ref={declencheurRef}
         type="button"
-        aria-label="Aide"
+        aria-label={t('Aide')}
         aria-expanded={ancre !== null}
         aria-describedby={ancre ? id : undefined}
         onMouseEnter={ouvrir}
