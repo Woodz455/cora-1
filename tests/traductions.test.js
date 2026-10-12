@@ -24,78 +24,30 @@ const { traduire } = require('../traductionServeur.js');
 const RACINE = path.join(__dirname, '..');
 const CLIENT = path.join(RACINE, 'client', 'src');
 
-/** Écrans dont plus aucun texte visible n'est écrit en dur. */
+/**
+ * Tous les écrans : plus aucun texte visible n'y est écrit en dur. Un écran
+ * ajouté plus tard est vérifié d'office.
+ */
 const ECRANS_TRADUITS = [
   'App.jsx',
-  'components/Login.jsx',
-  'components/Setup.jsx',
-  'components/ChoixEntreprise.jsx',
-  'components/ChoixProfil.jsx',
-  'components/ConfirmationModal.jsx',
-  'components/Notification.jsx',
-  'components/Pagination.jsx',
-  'components/InfoTooltip.jsx',
-  'components/SelecteurLangue.jsx',
-  // Étape 2 : les écrans de tous les jours.
-  'components/Dashboard.jsx',
-  'components/InvoiceList.jsx',
-  'components/InvoiceModal.jsx',
-  'components/PaymentModal.jsx',
-  'components/CreditNoteModal.jsx',
-  'components/NoteCreditChooser.jsx',
-  'components/DevisList.jsx',
-  'components/ClientList.jsx',
-  'components/ClientModal.jsx',
-  'components/CatalogueList.jsx',
-  'components/ImportModal.jsx',
-  'components/EmailModal.jsx',
-  'components/EnTeteTri.jsx',
-  'components/InvoicePrintTemplate.jsx',
-  // Étape 3 : abonnements, banque, dépenses, rapports.
-  'components/SubscriptionList.jsx',
-  'components/BankReconciliation.jsx',
-  'components/ExpenseList.jsx',
-  'components/ReportDashboard.jsx',
-  'components/RapportSommaire.jsx'
+  ...fs.readdirSync(path.join(CLIENT, 'components'))
+    .filter((nom) => nom.endsWith('.jsx'))
+    .map((nom) => `components/${nom}`)
 ];
 
-/** Fichiers du serveur dont chaque message a sa traduction anglaise. */
+/**
+ * Outils en ligne de commande, lancés par l'éditeur et jamais par
+ * l'utilisateur de l'application : leurs messages restent en français.
+ */
+const OUTILS_INTERNES = new Set(['doctor.js', 'reset_data.js']);
+
+/**
+ * Tous les fichiers du serveur : chaque message destiné à l'utilisateur a sa
+ * traduction anglaise. Un fichier ajouté plus tard est vérifié d'office.
+ */
 const SERVEUR_TRADUIT = [
-  'routes/auth.js',
-  'routes/entreprises.js',
-  'routes/licence.js',
-  'authMiddleware.js',
-  'rateLimit.js',
-  'httpUtils.js',
-  'server.js',
-  'profils.js',
-  // Étape 2.
-  'validators.js',
-  'routes/factures.js',
-  'routes/devis.js',
-  'routes/clients.js',
-  'routes/catalogue.js',
-  'routes/notesCredit.js',
-  'routes/import.js',
-  'routes/emails.js',
-  'routes/demarrage.js',
-  'invoiceService.js',
-  'devisService.js',
-  'clientService.js',
-  'catalogueService.js',
-  'noteCreditService.js',
-  'importService.js',
-  'emailService.js',
-  'xlsxReader.js',
-  // Étape 3.
-  'routes/abonnements.js',
-  'routes/banque.js',
-  'routes/depenses.js',
-  'routes/rapports.js',
-  'subscriptionService.js',
-  'bankService.js',
-  'expenseService.js',
-  'kilometrageService.js'
+  ...fs.readdirSync(RACINE).filter((nom) => nom.endsWith('.js') && !OUTILS_INTERNES.has(nom)),
+  ...fs.readdirSync(path.join(RACINE, 'routes')).filter((nom) => nom.endsWith('.js')).map((nom) => `routes/${nom}`)
 ];
 
 /**
@@ -103,7 +55,11 @@ const SERVEUR_TRADUIT = [
  * programmation, levée au démarrage, avant toute requête.
  */
 const MESSAGES_INTERNES = new Set([
-  'createApp exige un registre de dossiers (options.comptesDb).'
+  'createApp exige un registre de dossiers (options.comptesDb).',
+  // Configuration lue au démarrage : l'application ne démarre pas.
+  'JWT_SECRET est trop court : 32 caractères minimum sont requis.',
+  // Restauration appliquée au démarrage, consignée dans la console seulement.
+  'la sauvegarde demandée a disparu'
 ]);
 
 /** Lit le dictionnaire, qui ne contient que des données. */
@@ -237,6 +193,21 @@ function clesIndirectes() {
   // par le serveur.
   const factures = lire(RACINE, 'invoiceService.js');
   cles.push(...valeursDesChamps(factures, ['libelle']), 'Sans catégorie');
+
+  // Rôles des comptes (Paramètres), noms de champs et rôles du journal, et
+  // libellés des actions consignées, écrits par le serveur.
+  const settings = lire(CLIENT, 'components', 'Settings.jsx');
+  cles.push(...valeursDesChamps(settings.slice(settings.indexOf('const ROLES'), settings.indexOf('];', settings.indexOf('const ROLES'))), ['libelle']));
+  const journal = lire(CLIENT, 'components', 'AuditLog.jsx');
+  const champs = journal.slice(journal.indexOf('const LIBELLES_CHAMPS'), journal.indexOf('};', journal.indexOf('const LIBELLES_CHAMPS')));
+  for (const m of champs.matchAll(/:\s*(?=['"])/g)) cles.push(lireChaine(champs, m.index + m[0].length).valeur);
+  const valeurs = journal.slice(journal.indexOf('const VALEURS'), journal.indexOf(']);', journal.indexOf('const VALEURS')));
+  for (const m of valeurs.matchAll(/['"]/g)) {
+    if (/[[,]\s*$/.test(valeurs.slice(0, m.index))) cles.push(lireChaine(valeurs, m.index).valeur);
+  }
+  const audit = lire(RACINE, 'auditService.js');
+  const libelles = audit.slice(audit.indexOf('const LIBELLES'), audit.indexOf('};', audit.indexOf('const LIBELLES')));
+  for (const m of libelles.matchAll(/\]:\s*(?=['"])/g)) cles.push(lireChaine(libelles, m.index + m[0].length).valeur);
   return cles;
 }
 
@@ -271,7 +242,7 @@ test('une traduction garde les valeurs de son texte', () => {
 
 test('aucun texte visible n\'est écrit en dur dans un écran traduit', () => {
   // Noms propres et sigles, qui ne se traduisent pas.
-  const PERMIS = new Set(['Clora', 'FR', 'EN', 'Français', 'English', 'PDF', 'CAD', 'USD']);
+  const PERMIS = new Set(['Clora', 'FR', 'EN', 'Français', 'English', 'PDF', 'CAD', 'USD', 'CLORA-…']);
   const fautifs = [];
 
   for (const relatif of ECRANS_TRADUITS) {
@@ -335,7 +306,9 @@ function lireLitteral(source, debut) {
 /** Messages destinés à l'utilisateur dans un fichier du serveur. */
 function messagesServeur(source) {
   const messages = [];
-  const debut = /(httpError\(\s*\d+\s*,\s*|\berror:\s*|\bmessage:\s*|\bmotif:\s*|new Error\(\s*)/g;
+  // Les branches d'un choix (« cond\n ? '…'\n : '…' ») commencent une ligne :
+  // seule une phrase, qui commence par une majuscule, y est retenue.
+  const debut = /(httpError\(\s*\d+\s*,\s*|\berror:\s*|\bmessage:\s*|\bmotif:\s*|new Error\(\s*|^\s*[?:]\s*(?=['"`][A-ZÀ-Ý]))/gm;
   for (const m of source.matchAll(debut)) {
     let lu = lireLitteral(source, m.index + m[0].length);
     if (!lu) continue;
