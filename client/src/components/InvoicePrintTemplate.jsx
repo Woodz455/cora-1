@@ -3,6 +3,7 @@ import { Mail, Printer } from 'lucide-react';
 import EmailModal from './EmailModal';
 import { api, formatMontant, formatTaux } from '../api';
 import { useModale } from '../useModale';
+import { useLangue } from '../i18n.js';
 
 /**
  * Noms anglais des taxes canadiennes.
@@ -125,6 +126,9 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
   const [erreurLien, setErreurLien] = useState(null);
   const printRef = useRef(null);
   const modaleRef = useModale(() => onClose(false), { actif: !loading });
+  // Deux langues dans ce composant : celle du document suit le client
+  // (`dict`), celle de la barre de boutons et des messages suit l'utilisateur.
+  const { t } = useLangue();
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -180,17 +184,17 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
   if (loading) {
     return (
       <div ref={modaleRef} className="modal-overlay">
-        <div className="modal-content glass-panel"><p>Chargement du document…</p></div>
+        <div className="modal-content glass-panel"><p>{t('Chargement du document…')}</p></div>
       </div>
     );
   }
 
   if (error || !details) {
     return (
-      <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label="Document introuvable">
+      <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={t('Document introuvable')}>
         <div className="modal-content glass-panel">
-          <p className="alert alert-error" role="alert">{error || 'Document introuvable.'}</p>
-          <button type="button" className="btn-secondary" onClick={() => onClose(false)}>Fermer</button>
+          <p className="alert alert-error" role="alert">{error || t('Document introuvable.')}</p>
+          <button type="button" className="btn-secondary" onClick={() => onClose(false)}>{t('Fermer')}</button>
         </div>
       </div>
     );
@@ -213,7 +217,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
   const instructions = (isEn && settings.payment_instructions_en) || settings.payment_instructions;
 
   const handleSendEmail = async (emailData) => {
-    if (!printRef.current) throw new Error('Le document n\'est pas prêt.');
+    if (!printRef.current) throw new Error(t("Le document n'est pas prêt."));
 
     // Le nom de la pièce jointe est la première chose que le client lit du
     // document : il suit sa langue, comme le reste.
@@ -255,7 +259,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
     }
 
     setIsEmailModalOpen(false);
-    setMessage('Courriel envoyé avec succès.');
+    setMessage(t('Courriel envoyé avec succès.'));
   };
 
   const objetCourriel = isRelance ? dict.emailSubjRelance
@@ -278,15 +282,15 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
     + `\n\n${texteCourriel}${blocLien}${dict.signature}`;
 
   return (
-    <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={`Aperçu ${numero}`}
+    <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={t('Aperçu {numero}', { numero })}
       style={{ zIndex: 9999, padding: '20px', overflowY: 'auto', display: 'block' }}>
       <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '20px', position: 'sticky', top: '10px', zIndex: 10000, flexWrap: 'wrap' }}>
-        <button type="button" className="btn-secondary" onClick={() => onClose(false)} style={{ background: 'white' }}>Fermer</button>
+        <button type="button" className="btn-secondary" onClick={() => onClose(false)} style={{ background: 'white', color: '#1e293b' }}>{t('Fermer')}</button>
         <button type="button" className="btn-secondary" onClick={() => setIsEmailModalOpen(true)} style={{ background: 'white', color: '#0e4a9e', borderColor: '#0e4a9e' }}>
-          <Mail size={16} aria-hidden="true" /> Envoyer par courriel
+          <Mail size={16} aria-hidden="true" /> {t('Envoyer par courriel')}
         </button>
         <button type="button" className="btn-primary" onClick={() => window.print()}>
-          <Printer size={16} aria-hidden="true" /> Imprimer / sauvegarder en PDF
+          <Printer size={16} aria-hidden="true" /> {t('Imprimer / sauvegarder en PDF')}
         </button>
       </div>
 
@@ -302,7 +306,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
       {erreurLien && (
         <div className="no-print" style={{ maxWidth: '800px', margin: '0 auto 20px' }}>
           <p className="alert alert-error" role="alert">
-            Lien de paiement indisponible : {erreurLien}
+            {t('Lien de paiement indisponible : {erreur}', { erreur: erreurLien })}
           </p>
         </div>
       )}

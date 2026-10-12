@@ -1,5 +1,5 @@
-import { formatMontant } from '../api';
 import { useModale } from '../useModale';
+import { useLangue } from '../i18n.js';
 
 /**
  * Choix de la note de crédit à ouvrir, quand une facture en porte plusieurs.
@@ -10,14 +10,15 @@ import { useModale } from '../useModale';
  */
 function NoteCreditChooser({ facture, notes, onChoisir, onClose }) {
   const modaleRef = useModale(onClose);
+  const { t, montant } = useLangue();
 
   return (
     <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true"
-      aria-label={`Notes de crédit de la facture ${facture.numero_facture}`}>
+      aria-label={t('Notes de crédit de la facture {numero}', { numero: facture.numero_facture })}>
       <div className="modal-content glass-panel" style={{ maxWidth: '520px' }}>
-        <h3 style={{ marginTop: 0 }}>Notes de crédit : {facture.numero_facture}</h3>
+        <h3 style={{ marginTop: 0 }}>{t('Notes de crédit : {numero}', { numero: facture.numero_facture })}</h3>
         <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>
-          {notes.length} notes ont été émises sur cette facture. Laquelle voulez-vous ouvrir ?
+          {t('{n} notes ont été émises sur cette facture. Laquelle voulez-vous ouvrir ?', { n: notes.length })}
         </p>
 
         <ul style={{ listStyle: 'none', padding: 0, margin: '20px 0 0 0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -31,14 +32,14 @@ function NoteCreditChooser({ facture, notes, onChoisir, onClose }) {
               >
                 <span>{note.numero_note}</span>
                 <span style={{ color: 'var(--text-muted)' }}>{note.date_emission}</span>
-                <span className="numeric">{formatMontant(note.montant_total, facture.devise)}</span>
+                <span className="numeric">{montant(note.montant_total, facture.devise)}</span>
               </button>
             </li>
           ))}
         </ul>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
-          <button type="button" className="btn-secondary" onClick={onClose}>Fermer</button>
+          <button type="button" className="btn-secondary" onClick={onClose}>{t('Fermer')}</button>
         </div>
       </div>
     </div>

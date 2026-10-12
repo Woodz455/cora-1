@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { api, CONDITIONS } from '../api';
 import { useModale } from '../useModale';
+import { useLangue } from '../i18n.js';
 
 /**
  * Provinces et territoires, avec le régime de taxes appliqué aux documents
  * émis pour ce client. La liste doit rester alignée sur `getTaxRatesForProvince`
- * côté serveur, qui reste la référence.
+ * côté serveur, qui reste la référence. Les libellés sont traduits à l'affichage.
  */
 const PROVINCES = [
   { code: 'QC', libelle: 'Québec (TPS 5 % + TVQ 9,975 %)' },
@@ -25,6 +26,7 @@ const PROVINCES = [
 
 function ClientModal({ onClose, onSuccess, clientToEdit }) {
   const modaleRef = useModale(onClose);
+  const { t } = useLangue();
   const [formData, setFormData] = useState({
     nom_entreprise: clientToEdit?.nom_entreprise || '',
     nom_contact: clientToEdit?.nom_contact || '',
@@ -72,7 +74,7 @@ function ClientModal({ onClose, onSuccess, clientToEdit }) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const titre = clientToEdit ? 'Modifier le client' : 'Nouveau client';
+  const titre = clientToEdit ? t('Modifier le client') : t('Nouveau client');
 
   return (
     <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={titre}>
@@ -85,62 +87,61 @@ function ClientModal({ onClose, onSuccess, clientToEdit }) {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="client-nom">Nom de l'entreprise *</label>
+            <label htmlFor="client-nom">{t("Nom de l'entreprise *")}</label>
             <input id="client-nom" type="text" className="form-control" name="nom_entreprise" value={formData.nom_entreprise} onChange={handleChange} required autoFocus />
           </div>
           <div className="form-group">
-            <label htmlFor="client-email">Courriel *</label>
+            <label htmlFor="client-email">{t('Courriel *')}</label>
             <input id="client-email" type="email" className="form-control" name="email" value={formData.email} onChange={handleChange} required />
           </div>
           <div className="form-group">
-            <label htmlFor="client-contact">Personne de contact</label>
+            <label htmlFor="client-contact">{t('Personne de contact')}</label>
             <input id="client-contact" type="text" className="form-control" name="nom_contact" value={formData.nom_contact} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label htmlFor="client-adresse">Adresse postale</label>
+            <label htmlFor="client-adresse">{t('Adresse postale')}</label>
             <textarea id="client-adresse" className="form-control" name="adresse" value={formData.adresse} onChange={handleChange} rows="2"></textarea>
           </div>
 
           <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
             <div className="form-group" style={{ flex: 1, minWidth: '180px' }}>
-              <label htmlFor="client-langue">Langue de facturation</label>
+              <label htmlFor="client-langue">{t('Langue de facturation')}</label>
               <select id="client-langue" className="form-control" name="langue" value={formData.langue} onChange={handleChange}>
-                <option value="fr">Français</option>
-                <option value="en">Anglais</option>
+                <option value="fr">{t('Français')}</option>
+                <option value="en">{t('Anglais')}</option>
               </select>
             </div>
             <div className="form-group" style={{ flex: 1, minWidth: '220px' }}>
-              <label htmlFor="client-province">Province (détermine les taxes)</label>
+              <label htmlFor="client-province">{t('Province (détermine les taxes)')}</label>
               <select id="client-province" className="form-control" name="province" value={formData.province} onChange={handleChange}>
-                {PROVINCES.map((p) => <option key={p.code} value={p.code}>{p.libelle}</option>)}
+                {PROVINCES.map((p) => <option key={p.code} value={p.code}>{t(p.libelle)}</option>)}
               </select>
             </div>
           </div>
 
           <div className="form-group">
-            <label htmlFor="client-conditions">Conditions de paiement</label>
+            <label htmlFor="client-conditions">{t('Conditions de paiement')}</label>
             <select
               id="client-conditions" className="form-control" name="conditions_paiement"
               value={formData.conditions_paiement} onChange={handleChange}
             >
-              {CONDITIONS.map((c) => <option key={c.valeur} value={c.valeur}>{c.libelle}</option>)}
+              {CONDITIONS.map((c) => <option key={c.valeur} value={c.valeur}>{t(c.libelle)}</option>)}
             </select>
             <small style={{ color: 'var(--text-muted)' }}>
-              L'échéance des nouvelles factures se calcule à partir de ce terme.
+              {t("L'échéance des nouvelles factures se calcule à partir de ce terme.")}
             </small>
           </div>
 
           {clientToEdit && (
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-              Changer la province ou les conditions n'affecte que les futurs documents :
-              les taxes et l'échéance des factures déjà émises restent figées.
+              {t("Changer la province ou les conditions n'affecte que les futurs documents : les taxes et l'échéance des factures déjà émises restent figées.")}
             </p>
           )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px' }}>
-            <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>Annuler</button>
+            <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>{t('Annuler')}</button>
             <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Sauvegarde…' : (clientToEdit ? 'Enregistrer' : 'Créer le client')}
+              {loading ? t('Sauvegarde…') : (clientToEdit ? t('Enregistrer') : t('Créer le client'))}
             </button>
           </div>
         </form>

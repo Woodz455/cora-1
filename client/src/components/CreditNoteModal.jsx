@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { X } from 'lucide-react';
-import { api, formatMontant } from '../api';
+import { api } from '../api';
 import { useModale } from '../useModale';
+import { useLangue } from '../i18n.js';
 
 /** Identifiant local d'une ligne, stable pour la clé React. */
 let compteurLignes = 0;
@@ -13,6 +14,8 @@ const nouvelleLigne = (valeurs = {}) => ({
   ...valeurs
 });
 
+// Suggestions affichées dans la langue de l'utilisateur, qui reste libre de
+// les reprendre telles quelles ou de les réécrire.
 const MOTIFS = [
   'Remise commerciale accordée après facturation',
   'Marchandise ou service retourné',
@@ -29,6 +32,7 @@ const MOTIFS = [
  */
 function CreditNoteModal({ facture, onClose, onSuccess }) {
   const modaleRef = useModale(onClose);
+  const { t, montant } = useLangue();
   const [lignes, setLignes] = useState([nouvelleLigne()]);
   const [motif, setMotif] = useState('');
   const [dateEmission, setDateEmission] = useState(new Date().toISOString().split('T')[0]);
@@ -77,60 +81,60 @@ function CreditNoteModal({ facture, onClose, onSuccess }) {
   };
 
   return (
-    <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label="Émettre une note de crédit">
+    <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={t('Émettre une note de crédit')}>
       <div className="modal-content glass-panel" style={{ maxWidth: '720px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
         <h3 style={{ marginTop: 0, marginBottom: '8px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
-          Note de crédit
+          {t('Note de crédit')}
         </h3>
         <p style={{ marginTop: 0, color: 'var(--text-muted)' }}>
-          Sur la facture <strong style={{ color: 'var(--text-main)' }}>{facture.numero_facture}</strong>, {facture.client}
+          {t('Sur la facture')} <strong style={{ color: 'var(--text-main)' }}>{facture.numero_facture}</strong>, {facture.client}
         </p>
 
         {error && <p className="alert alert-error" role="alert">{error}</p>}
 
         <div className="alert alert-info">
-          Montant encore créditable : <strong>{formatMontant(creditable, facture.devise)}</strong>
-          {facture.montant_credite > 0 && ` (${formatMontant(facture.montant_credite, facture.devise)} déjà crédité)`}.
-          Les taxes de la note reprennent celles de la facture.
+          {t('Montant encore créditable :')} <strong>{montant(creditable, facture.devise)}</strong>
+          {facture.montant_credite > 0 && t(' ({montant} déjà crédité)', { montant: montant(facture.montant_credite, facture.devise) })}.
+          {' '}{t('Les taxes de la note reprennent celles de la facture.')}
         </div>
 
         {creditable <= 0 ? (
           <div style={{ textAlign: 'right', marginTop: '20px' }}>
-            <button type="button" className="btn-secondary" onClick={onClose}>Fermer</button>
+            <button type="button" className="btn-secondary" onClick={onClose}>{t('Fermer')}</button>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px', marginBottom: '20px' }}>
               <div className="form-group">
-                <label htmlFor="nc-date">Date d'émission *</label>
+                <label htmlFor="nc-date">{t("Date d'émission *")}</label>
                 <input
                   id="nc-date" type="date" className="form-control"
                   value={dateEmission} onChange={(e) => setDateEmission(e.target.value)} required
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="nc-motif">Motif</label>
+                <label htmlFor="nc-motif">{t('Motif')}</label>
                 <input
                   id="nc-motif" type="text" className="form-control" list="nc-motifs"
-                  placeholder="Pourquoi ce crédit est-il accordé ?"
+                  placeholder={t('Pourquoi ce crédit est-il accordé ?')}
                   value={motif} onChange={(e) => setMotif(e.target.value)}
                 />
                 <datalist id="nc-motifs">
-                  {MOTIFS.map((m) => <option key={m} value={m} />)}
+                  {MOTIFS.map((m) => <option key={m} value={t(m)} />)}
                 </datalist>
               </div>
             </div>
 
             <h4 style={{ color: 'var(--text-main)', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>
-              Lignes à créditer
+              {t('Lignes à créditer')}
             </h4>
 
             {lignes.map((ligne, index) => (
               <div key={ligne.cle} style={{ display: 'flex', gap: '16px', marginBottom: '16px', alignItems: 'flex-start' }}>
                 <div className="form-group" style={{ flex: 3, marginBottom: 0 }}>
                   <input
-                    type="text" className="form-control" placeholder="Description du crédit"
-                    aria-label={`Description de la ligne ${index + 1}`}
+                    type="text" className="form-control" placeholder={t('Description du crédit')}
+                    aria-label={t('Description de la ligne {n}', { n: index + 1 })}
                     value={ligne.description}
                     onChange={(e) => handleLigneChange(index, { description: e.target.value })}
                     required
@@ -138,8 +142,8 @@ function CreditNoteModal({ facture, onClose, onSuccess }) {
                 </div>
                 <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
                   <input
-                    type="number" className="form-control" placeholder="Qté"
-                    aria-label={`Quantité de la ligne ${index + 1}`}
+                    type="number" className="form-control" placeholder={t('Qté')}
+                    aria-label={t('Quantité de la ligne {n}', { n: index + 1 })}
                     min="0.01" step="0.01" value={ligne.quantite}
                     onChange={(e) => handleLigneChange(index, { quantite: e.target.value })}
                     required
@@ -147,8 +151,8 @@ function CreditNoteModal({ facture, onClose, onSuccess }) {
                 </div>
                 <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
                   <input
-                    type="number" className="form-control" placeholder="Montant"
-                    aria-label={`Montant unitaire de la ligne ${index + 1}`}
+                    type="number" className="form-control" placeholder={t('Montant')}
+                    aria-label={t('Montant unitaire de la ligne {n}', { n: index + 1 })}
                     min="0" step="0.01" value={ligne.prix_unitaire}
                     onChange={(e) => handleLigneChange(index, { prix_unitaire: e.target.value })}
                     required
@@ -158,7 +162,7 @@ function CreditNoteModal({ facture, onClose, onSuccess }) {
                   type="button" className="btn-icon" style={{ padding: '12px' }}
                   onClick={() => setLignes((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev))}
                   disabled={lignes.length === 1}
-                  aria-label={`Supprimer la ligne ${index + 1}`}
+                  aria-label={t('Supprimer la ligne {n}', { n: index + 1 })}
                 >
                   <X size={16} aria-hidden="true" />
                 </button>
@@ -170,41 +174,41 @@ function CreditNoteModal({ facture, onClose, onSuccess }) {
               onClick={() => setLignes((prev) => [...prev, nouvelleLigne()])}
               style={{ padding: '8px 16px', background: 'var(--glass-bg)', border: '1px dashed var(--safehill-blue)', color: 'var(--safehill-blue)', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}
             >
-              + Ajouter une ligne
+              {t('+ Ajouter une ligne')}
             </button>
 
             <div style={{ marginTop: '24px', padding: '16px 20px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
-                <span>Sous-total</span><span>{formatMontant(sousTotal, facture.devise)}</span>
+                <span>{t('Sous-total')}</span><span>{montant(sousTotal, facture.devise)}</span>
               </div>
               {facture.taux_taxe_1 > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
-                  <span>{facture.taxe_1_nom}</span><span>{formatMontant(taxe1, facture.devise)}</span>
+                  <span>{t(facture.taxe_1_nom)}</span><span>{montant(taxe1, facture.devise)}</span>
                 </div>
               )}
               {facture.taux_taxe_2 > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
-                  <span>{facture.taxe_2_nom}</span><span>{formatMontant(taxe2, facture.devise)}</span>
+                  <span>{t(facture.taxe_2_nom)}</span><span>{montant(taxe2, facture.devise)}</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed var(--border-color)', fontWeight: 'bold', fontSize: '1.2rem' }}>
-                <span>Total crédité</span>
+                <span>{t('Total crédité')}</span>
                 <span style={{ color: depasse ? 'var(--status-danger)' : 'var(--text-main)' }}>
-                  {formatMontant(total, facture.devise)}
+                  {montant(total, facture.devise)}
                 </span>
               </div>
             </div>
 
             {depasse && (
               <p className="alert alert-error" style={{ marginTop: '16px' }} role="alert">
-                Ce crédit dépasse le montant créditable de {formatMontant(total - creditable, facture.devise)}.
+                {t('Ce crédit dépasse le montant créditable de {montant}.', { montant: montant(total - creditable, facture.devise) })}
               </p>
             )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
-              <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>Annuler</button>
+              <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>{t('Annuler')}</button>
               <button type="submit" className="btn-primary" disabled={loading || depasse || total <= 0}>
-                {loading ? 'Émission…' : 'Émettre la note de crédit'}
+                {loading ? t('Émission…') : t('Émettre la note de crédit')}
               </button>
             </div>
           </form>

@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { api, formatMontant } from '../api';
+import { api } from '../api';
+import { useLangue } from '../i18n.js';
 import { useApiResource } from '../useApiResource';
 import { useHasRole } from '../UserContext';
 import { useModale } from '../useModale';
 
 function PaymentModal({ facture, onClose }) {
   const modaleRef = useModale(onClose);
+  // `montant` est déjà le montant saisi : la mise en forme prend un autre nom.
+  const { t, montant: ecrireMontant } = useLangue();
   // Le solde exact est pré-rempli pour faciliter le règlement complet.
   const [montant, setMontant] = useState(facture.solde_restant);
   const [note, setNote] = useState('');
@@ -60,25 +63,25 @@ function PaymentModal({ facture, onClose }) {
   };
 
   return (
-    <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label="Saisir un paiement">
+    <div ref={modaleRef} className="modal-overlay" role="dialog" aria-modal="true" aria-label={t('Saisir un paiement')}>
       <div className="modal-content glass-panel" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <h3 style={{ marginTop: 0, marginBottom: '24px', fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: '700' }}>
-          Saisir un paiement
+          {t('Saisir un paiement')}
         </h3>
 
         <div style={{ marginBottom: '24px', padding: '16px 20px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span style={{ color: 'var(--text-muted)' }}>Facture n°</span>
+            <span style={{ color: 'var(--text-muted)' }}>{t('Facture n°')}</span>
             <strong style={{ color: 'var(--text-main)' }}>{facture.numero_facture}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span style={{ color: 'var(--text-muted)' }}>Client</span>
+            <span style={{ color: 'var(--text-muted)' }}>{t('Client')}</span>
             <strong style={{ color: 'var(--text-main)' }}>{facture.client}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed var(--border-color)' }}>
-            <span style={{ color: 'var(--text-main)', fontWeight: '600' }}>Solde actuel</span>
+            <span style={{ color: 'var(--text-main)', fontWeight: '600' }}>{t('Solde actuel')}</span>
             <strong className="gradient-text" style={{ fontSize: '1.4rem' }}>
-              {formatMontant(solde, facture.devise)}
+              {ecrireMontant(solde, facture.devise)}
             </strong>
           </div>
         </div>
@@ -88,7 +91,7 @@ function PaymentModal({ facture, onClose }) {
         {paiements.length > 0 && (
           <div style={{ marginBottom: '24px' }}>
             <h4 style={{ margin: '0 0 12px 0', color: 'var(--text-main)', fontSize: '1rem' }}>
-              Encaissements enregistrés
+              {t('Encaissements enregistrés')}
             </h4>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, maxHeight: '240px', overflowY: 'auto' }}>
               {paiements.map((p) => (
@@ -102,17 +105,17 @@ function PaymentModal({ facture, onClose }) {
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ color: 'var(--text-main)', textDecoration: p.annule_le ? 'line-through' : 'none' }}>
-                      <strong>{formatMontant(p.montant, facture.devise)}</strong>
-                      <span style={{ color: 'var(--text-muted)' }}>, le {p.date_paiement}</span>
+                      <strong>{ecrireMontant(p.montant, facture.devise)}</strong>
+                      <span style={{ color: 'var(--text-muted)' }}>{t(', le {date}', { date: p.date_paiement })}</span>
                     </div>
                     {p.note && (
                       <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{p.note}</div>
                     )}
                     {p.annule_le && (
                       <div style={{ fontSize: '0.85rem', color: 'var(--status-warning)' }}>
-                        Annulé le {p.annule_le}
-                        {p.annule_par && ` par ${p.annule_par}`}
-                        {p.motif_annulation && ` : ${p.motif_annulation}`}
+                        {t('Annulé le {date}', { date: p.annule_le })}
+                        {p.annule_par && t(' par {nom}', { nom: p.annule_par })}
+                        {p.motif_annulation && t(' : {motif}', { motif: p.motif_annulation })}
                       </div>
                     )}
                   </div>
@@ -120,9 +123,9 @@ function PaymentModal({ facture, onClose }) {
                     <button
                       type="button" className="btn-icon"
                       onClick={() => { setPaiementAAnnuler(p); setMotifAnnulation(''); }}
-                      title="Annuler cet encaissement, en conservant sa trace"
+                      title={t('Annuler cet encaissement, en conservant sa trace')}
                     >
-                      Annuler l'encaissement
+                      {t("Annuler l'encaissement")}
                     </button>
                   )}
                 </li>
@@ -134,26 +137,26 @@ function PaymentModal({ facture, onClose }) {
             {paiementAAnnuler && (
               <form onSubmit={handleAnnuler} style={{ marginTop: '16px' }}>
                 <label htmlFor="motif-annulation" style={{ display: 'block', marginBottom: '4px', color: 'var(--text-main)' }}>
-                  Motif de l'annulation de {formatMontant(paiementAAnnuler.montant, facture.devise)}
+                  {t("Motif de l'annulation de {montant}", { montant: ecrireMontant(paiementAAnnuler.montant, facture.devise) })}
                 </label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input
                     id="motif-annulation" type="text" className="form-control"
-                    placeholder="Ex. : chèque sans provision, saisie en double…"
+                    placeholder={t('Ex. : chèque sans provision, saisie en double…')}
                     value={motifAnnulation}
                     onChange={(e) => setMotifAnnulation(e.target.value)}
                     autoFocus required
                   />
-                  <button type="submit" className="btn-danger">Confirmer</button>
+                  <button type="submit" className="btn-danger">{t('Confirmer')}</button>
                   <button
                     type="button" className="btn-secondary"
                     onClick={() => { setPaiementAAnnuler(null); setMotifAnnulation(''); }}
                   >
-                    Renoncer
+                    {t('Renoncer')}
                   </button>
                 </div>
                 <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Le paiement restera visible, marqué annulé, avec ce motif.
+                  {t('Le paiement restera visible, marqué annulé, avec ce motif.')}
                 </p>
               </form>
             )}
@@ -163,17 +166,17 @@ function PaymentModal({ facture, onClose }) {
         {solde <= 0 ? (
           <div>
             <p className="alert alert-info">
-              Cette facture est soldée. Pour revenir sur un encaissement, annulez-le ci-dessus.
+              {t('Cette facture est soldée. Pour revenir sur un encaissement, annulez-le ci-dessus.')}
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
-              <button type="button" className="btn-secondary" onClick={onClose}>Fermer</button>
+              <button type="button" className="btn-secondary" onClick={onClose}>{t('Fermer')}</button>
             </div>
           </div>
         ) : (
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="paiement-montant">
-              Montant du paiement ({facture.devise})
+              {t('Montant du paiement ({devise})', { devise: facture.devise })}
             </label>
             <input
               id="paiement-montant"
@@ -189,13 +192,13 @@ function PaymentModal({ facture, onClose }) {
             />
             {facture.devise !== 'CAD' && (
               <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Le montant s'exprime dans la devise de la facture ({facture.devise}).
+                {t("Le montant s'exprime dans la devise de la facture ({devise}).", { devise: facture.devise })}
               </p>
             )}
           </div>
 
           <div className="form-group">
-            <label htmlFor="paiement-date">Date du paiement</label>
+            <label htmlFor="paiement-date">{t('Date du paiement')}</label>
             <input
               id="paiement-date"
               type="date"
@@ -207,21 +210,21 @@ function PaymentModal({ facture, onClose }) {
           </div>
 
           <div className="form-group">
-            <label htmlFor="paiement-note">Note (facultatif)</label>
+            <label htmlFor="paiement-note">{t('Note (facultatif)')}</label>
             <input
               id="paiement-note"
               type="text"
               className="form-control"
-              placeholder="Ex. : virement Interac, chèque n° 123…"
+              placeholder={t('Ex. : virement Interac, chèque n° 123…')}
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px' }}>
-            <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>Annuler</button>
+            <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>{t('Annuler')}</button>
             <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Enregistrement…' : 'Confirmer le paiement'}
+              {loading ? t('Enregistrement…') : t('Confirmer le paiement')}
             </button>
           </div>
         </form>

@@ -56,9 +56,18 @@ function remplir(texte, valeurs) {
   return texte.replace(/\{(\w+)\}/g, (tout, cle) => (cle in valeurs ? String(valeurs[cle]) : tout));
 }
 
-/** Traduit un texte français dans la langue donnée. */
+/**
+ * Traduit un texte français dans la langue donnée.
+ *
+ * Une clé peut porter un contexte, un mot en minuscules collé après une
+ * barre verticale en fin de clé : « {n} devis en attente de réponse|pluriel ». Il départage deux textes que le français écrit
+ * pareil et que l'anglais distingue (« 1 quote », « 2 quotes »), et n'est
+ * jamais affiché.
+ */
 export function traduire(texte, valeurs, langue = courante) {
-  const base = langue === 'en' ? (EN[texte] ?? texte) : texte;
+  // Seul un mot collé en fin de clé est un contexte : « | Émise le … » commence
+  // par une barre, et doit s'afficher tel quel.
+  const base = langue === 'en' && texte in EN ? EN[texte] : texte.replace(/\|[a-z]+$/, '');
   return remplir(base, valeurs);
 }
 
@@ -74,7 +83,7 @@ export function traduirePluriel(n, singulier, pluriel, valeurs, langue = courant
 export const LangueContext = createContext(null);
 
 /**
- * @returns {{langue: string, changerLangue: Function, t: Function, tp: Function}}
+ * @returns {{langue: string, changerLangue: Function, t: Function, tp: Function, montant: Function}}
  */
 export function useLangue() {
   const contexte = useContext(LangueContext);

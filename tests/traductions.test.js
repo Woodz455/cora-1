@@ -35,7 +35,22 @@ const ECRANS_TRADUITS = [
   'components/Notification.jsx',
   'components/Pagination.jsx',
   'components/InfoTooltip.jsx',
-  'components/SelecteurLangue.jsx'
+  'components/SelecteurLangue.jsx',
+  // Étape 2 : les écrans de tous les jours.
+  'components/Dashboard.jsx',
+  'components/InvoiceList.jsx',
+  'components/InvoiceModal.jsx',
+  'components/PaymentModal.jsx',
+  'components/CreditNoteModal.jsx',
+  'components/NoteCreditChooser.jsx',
+  'components/DevisList.jsx',
+  'components/ClientList.jsx',
+  'components/ClientModal.jsx',
+  'components/CatalogueList.jsx',
+  'components/ImportModal.jsx',
+  'components/EmailModal.jsx',
+  'components/EnTeteTri.jsx',
+  'components/InvoicePrintTemplate.jsx'
 ];
 
 /** Fichiers du serveur dont chaque message a sa traduction anglaise. */
@@ -47,7 +62,25 @@ const SERVEUR_TRADUIT = [
   'rateLimit.js',
   'httpUtils.js',
   'server.js',
-  'profils.js'
+  'profils.js',
+  // Étape 2.
+  'validators.js',
+  'routes/factures.js',
+  'routes/devis.js',
+  'routes/clients.js',
+  'routes/catalogue.js',
+  'routes/notesCredit.js',
+  'routes/import.js',
+  'routes/emails.js',
+  'routes/demarrage.js',
+  'invoiceService.js',
+  'devisService.js',
+  'clientService.js',
+  'catalogueService.js',
+  'noteCreditService.js',
+  'importService.js',
+  'emailService.js',
+  'xlsxReader.js'
 ];
 
 /**
@@ -113,23 +146,58 @@ function fichiersInterface(dossier = CLIENT) {
   return liste;
 }
 
+/** Chaînes d'un tableau déclaré `const NOM = [ ... ];` dans un fichier. */
+function chainesDuTableau(source, nom) {
+  const debut = source.indexOf(`const ${nom} = [`);
+  assert.ok(debut >= 0, `tableau ${nom} introuvable`);
+  const bloc = source.slice(debut, source.indexOf('];', debut));
+  const chaines = [];
+  for (const m of bloc.matchAll(/['"]/g)) {
+    // Seules les chaînes qui commencent un élément : après `[`, `,` ou un retour.
+    const avant = bloc.slice(0, m.index).trimEnd();
+    if (!/[[,]$/.test(avant)) continue;
+    const lue = lireChaine(bloc, m.index);
+    if (lue) chaines.push(lue.valeur);
+  }
+  return chaines;
+}
+
+/** Valeurs des champs nommés, dans tout un fichier ou dans un bloc. */
+function valeursDesChamps(source, champs) {
+  const valeurs = [];
+  for (const m of source.matchAll(new RegExp(`\\b(?:${champs.join('|')}):\\s*`, 'g'))) {
+    const lue = lireChaine(source, m.index + m[0].length);
+    if (lue) valeurs.push(lue.valeur);
+  }
+  return valeurs;
+}
+
 /**
- * Textes traduits sans passer par un appel `t` littéral : les libellés de la
- * navigation, déclarés en données dans `App.jsx`, les profils et les rôles.
+ * Textes traduits sans passer par un appel `t` littéral : déclarés en données,
+ * ou écrits par le serveur, puis passés à `t(variable)` à l'affichage.
  */
 function clesIndirectes() {
-  const cles = ['admin', 'comptable', 'employe', 'Non précisé'];
-  const app = fs.readFileSync(path.join(CLIENT, 'App.jsx'), 'utf8');
-  const vues = app.slice(app.indexOf('const VUES'), app.indexOf('];', app.indexOf('const VUES')));
-  for (const m of vues.matchAll(/\b(?:libelle|titre|sousTitre):\s*/g)) {
-    const lue = lireChaine(vues, m.index + m[0].length);
-    if (lue) cles.push(lue.valeur);
-  }
-  const profils = fs.readFileSync(path.join(CLIENT, 'profils.js'), 'utf8');
-  for (const m of profils.matchAll(/\b(?:libelle|description):\s*/g)) {
-    const lue = lireChaine(profils, m.index + m[0].length);
-    if (lue) cles.push(lue.valeur);
-  }
+  const lire = (...chemin) => fs.readFileSync(path.join(...chemin), 'utf8');
+  const cles = ['admin', 'comptable', 'employe', 'Non précisé', 'TPS', 'TVQ', 'TVH', 'TVP'];
+
+  // Navigation (App.jsx) et profils (client/src/profils.js).
+  const app = lire(CLIENT, 'App.jsx');
+  cles.push(...valeursDesChamps(app.slice(app.indexOf('const VUES'), app.indexOf('];', app.indexOf('const VUES'))),
+    ['libelle', 'titre', 'sousTitre']));
+  cles.push(...valeursDesChamps(lire(CLIENT, 'profils.js'), ['libelle', 'description']));
+
+  // Statuts des factures et des devis, conditions de paiement, provinces,
+  // motifs suggérés pour une note de crédit.
+  const statuts = lire(CLIENT, 'statuts.js');
+  cles.push(...chainesDuTableau(statuts, 'STATUTS_FACTURE'), ...chainesDuTableau(statuts, 'STATUTS_DEVIS'));
+  const api = lire(CLIENT, 'api.js');
+  cles.push(...valeursDesChamps(api.slice(api.indexOf('const CONDITIONS'), api.indexOf('];', api.indexOf('const CONDITIONS'))), ['libelle']));
+  const clientModal = lire(CLIENT, 'components', 'ClientModal.jsx');
+  cles.push(...valeursDesChamps(clientModal.slice(clientModal.indexOf('const PROVINCES')), ['libelle']));
+  cles.push(...chainesDuTableau(lire(CLIENT, 'components', 'CreditNoteModal.jsx'), 'MOTIFS'));
+
+  // Premiers pas et profils, écrits par le serveur et traduits à l'affichage.
+  cles.push(...valeursDesChamps(lire(RACINE, 'profils.js'), ['titre', 'detail', 'libelle']));
   return cles;
 }
 
@@ -164,7 +232,7 @@ test('une traduction garde les valeurs de son texte', () => {
 
 test('aucun texte visible n\'est écrit en dur dans un écran traduit', () => {
   // Noms propres et sigles, qui ne se traduisent pas.
-  const PERMIS = new Set(['Clora', 'FR', 'EN', 'Français', 'English']);
+  const PERMIS = new Set(['Clora', 'FR', 'EN', 'Français', 'English', 'PDF']);
   const fautifs = [];
 
   for (const relatif of ECRANS_TRADUITS) {
@@ -176,9 +244,10 @@ test('aucun texte visible n\'est écrit en dur dans un écran traduit', () => {
       .replace(/^\s*\/\/.*$/gm, '');
 
     const signaler = (texte) => {
-      const net = texte.replace(/\s+/g, ' ').trim();
-      // Du code pris entre deux balises (« ); return ( »), pas du texte.
-      if (/;|\breturn\b|=>|&&|\|\|/.test(net)) return;
+      // Les valeurs insérées dans un gabarit de chaîne ne sont pas du texte.
+      const net = texte.replace(/\$\{[^}]*\}/g, '').replace(/\s+/g, ' ').trim();
+      // Du code pris entre deux balises (« ); return ( », « ) : x === 0 ? ( »).
+      if (/;|\breturn\b|=>|&&|\|\||===|\?\s*\(|^\)/.test(net)) return;
       if (/[A-Za-zÀ-ÿ]{2,}/.test(net) && !PERMIS.has(net)) fautifs.push(`${relatif} : « ${net} »`);
     };
 
@@ -194,32 +263,49 @@ test('aucun texte visible n\'est écrit en dur dans un écran traduit', () => {
     `Ces textes s'affichent en français quelle que soit la langue. Les passer par t().\n    ${fautifs.join('\n    ')}`);
 });
 
+/**
+ * Lit un littéral de chaîne à la position donnée. Une expression `${…}` d'un
+ * gabarit est remplacée par « 1 », une valeur plausible que le motif de
+ * traduction doit reconnaître.
+ */
+function lireLitteral(source, debut) {
+  const quote = source[debut];
+  if (!`'"\``.includes(quote)) return null;
+  let i = debut + 1;
+  let texte = '';
+  while (i < source.length && source[i] !== quote) {
+    if (source[i] === '\\') { texte += source[i + 1]; i += 2; continue; }
+    if (quote === '`' && source[i] === '$' && source[i + 1] === '{') {
+      let profondeur = 1;
+      i += 2;
+      while (profondeur) {
+        if (source[i] === '{') profondeur += 1;
+        if (source[i] === '}') profondeur -= 1;
+        i += 1;
+      }
+      texte += '1';
+      continue;
+    }
+    texte += source[i];
+    i += 1;
+  }
+  return { texte, fin: i + 1 };
+}
+
 /** Messages destinés à l'utilisateur dans un fichier du serveur. */
 function messagesServeur(source) {
   const messages = [];
-  const debut = /(httpError\(\s*\d+\s*,\s*|\berror:\s*|\bmessage:\s*|new Error\(\s*)/g;
+  const debut = /(httpError\(\s*\d+\s*,\s*|\berror:\s*|\bmessage:\s*|\bmotif:\s*|new Error\(\s*)/g;
   for (const m of source.matchAll(debut)) {
-    let i = m.index + m[0].length;
-    const quote = source[i];
-    if (!`'"\``.includes(quote)) continue;
-    let texte = '';
-    i += 1;
-    while (i < source.length && source[i] !== quote) {
-      if (source[i] === '\\') { texte += source[i + 1]; i += 2; continue; }
-      if (quote === '`' && source[i] === '$' && source[i + 1] === '{') {
-        let profondeur = 1;
-        i += 2;
-        while (profondeur) {
-          if (source[i] === '{') profondeur += 1;
-          if (source[i] === '}') profondeur -= 1;
-          i += 1;
-        }
-        // Une valeur plausible à la place de l'expression : le motif doit la reconnaître.
-        texte += '1';
-        continue;
-      }
-      texte += source[i];
-      i += 1;
+    let lu = lireLitteral(source, m.index + m[0].length);
+    if (!lu) continue;
+    let texte = lu.texte;
+    // Un message écrit en plusieurs morceaux (`'…' + '…'`) se lit en entier.
+    for (let suite = source.slice(lu.fin).match(/^\s*\+\s*/); suite; suite = source.slice(lu.fin).match(/^\s*\+\s*/)) {
+      const morceau = lireLitteral(source, lu.fin + suite[0].length);
+      if (!morceau) break;
+      texte += morceau.texte;
+      lu = morceau;
     }
     if (/[a-zà-ü]/.test(texte)) messages.push(texte);
   }
@@ -238,6 +324,16 @@ test('chaque message du serveur déjà traduit a son équivalent anglais', () =>
   assert.deepEqual(manquants, [],
     `Ces messages partiraient en français vers un utilisateur anglophone. Les ajouter à `
     + `traductionServeur.js.\n    ${manquants.join('\n    ')}`);
+});
+
+test('les colonnes d\'un import portent leur libellé anglais', () => {
+  // Ils partent vers l'écran d'import hors de `error` et de `message`, et sont
+  // traduits par la route d'import elle-même.
+  const { MODELES } = require('../importService.js');
+  const manquants = Object.values(MODELES).flat()
+    .map((champ) => champ.libelle)
+    .filter((libelle) => traduire(libelle, 'en') === libelle && !['Province', 'Description'].includes(libelle));
+  assert.deepEqual(manquants, [], 'colonnes d\'import sans libellé anglais');
 });
 
 test('chaque compte garde sa langue, et le serveur répond dans celle de l\'interface', async (t) => {
@@ -271,4 +367,24 @@ test('chaque compte garde sa langue, et le serveur répond dans celle de l\'inte
   const refusEn = await api.post('/api/auth/login', { username: 'patron', password: 'mauvais-mot-de-passe' },
     { headers: { 'X-Clora-Langue': 'en' } });
   assert.equal(refusEn.data.error, 'Invalid username or password.');
+});
+
+test('le contexte d\'une clé ne s\'affiche jamais, et une barre en tête de texte reste', () => {
+  // `{n} devis en attente de réponse|pluriel` départage deux clés que le
+  // français écrit pareil. Une première version coupait la clé à la première
+  // barre : « | Émise le … » disparaissait des factures en français.
+  const source = fs.readFileSync(path.join(CLIENT, 'i18n.js'), 'utf8');
+  const extraire = (debut) => {
+    const i = source.indexOf(debut);
+    assert.ok(i >= 0, `introuvable dans i18n.js : ${debut}`);
+    return source.slice(i, source.indexOf('\n}\n', i) + 2).replace(/^export /, '');
+  };
+  const traduireTest = new Function('EN', 'courante',
+    `${extraire('function remplir')}\n${extraire('export function traduire(')}\nreturn traduire;`)(
+    { '{n} devis|pluriel': '{n} quotes' }, 'fr');
+
+  assert.equal(traduireTest('{n} devis|pluriel', { n: 2 }, 'fr'), '2 devis');
+  assert.equal(traduireTest('{n} devis|pluriel', { n: 2 }, 'en'), '2 quotes');
+  assert.equal(traduireTest('| Émise le {date}', { date: '2026-10-01' }, 'fr'), '| Émise le 2026-10-01');
+  assert.equal(traduireTest('Texte absent', undefined, 'en'), 'Texte absent', 'absent : le français, jamais vide');
 });

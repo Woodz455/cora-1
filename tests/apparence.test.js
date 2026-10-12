@@ -505,17 +505,29 @@ test('le texte indicatif des champs de recherche tient dans le champ', () => {
   assert.ok(minimum, 'la largeur minimale des champs de recherche doit être trouvée');
   const parDefaut = Number(minimum[1]) / TAILLE;
 
+  // Le texte anglais doit tenir aussi : il est lu dans le dictionnaire de
+  // l'interface, qui ne contient que des données.
+  const sourceEn = fs.readFileSync(path.join(__dirname, '..', 'client', 'src', 'traductions', 'en.js'), 'utf8');
+  const EN = new Function(`return (${sourceEn.slice(sourceEn.indexOf('export default') + 14).trim().replace(/;\s*$/, '')});`)();
+
   const champs = [];
   for (const fichier of fs.readdirSync(COMPOSANTS).filter((f) => f.endsWith('.jsx'))) {
     const source = fs.readFileSync(path.join(COMPOSANTS, fichier), 'utf8');
     for (const [, element] of source.matchAll(/type="search"([\s\S]*?)\/>/g)) {
-      const texte = element.match(/placeholder="([^"]+)"/);
+      // Écrit tel quel, ou passé par t('…') depuis la traduction de l'interface.
+      const texte = element.match(/placeholder=(?:"([^"]+)"|\{t\('([^']+)'\)\})/);
       if (!texte) continue;
+      const francais = texte[1] || texte[2];
       const propre = element.match(/width:\s*'([\d.]+)em'/);
-      champs.push({ fichier, texte: texte[1], largeur: propre ? Number(propre[1]) : parDefaut });
+      const largeur = propre ? Number(propre[1]) : parDefaut;
+      champs.push({ fichier, texte: francais, largeur });
+      if (texte[2] && EN[francais]) champs.push({ fichier, texte: EN[francais], largeur, anglais: true });
     }
   }
   assert.ok(champs.length >= 6, `les six champs de recherche doivent être trouvés (${champs.length})`);
+  // Ceux qui sont déjà traduits comptent deux fois : le français, puis l'anglais.
+  assert.ok(champs.filter((c) => c.anglais).length >= 4,
+    'les textes anglais des champs traduits doivent être vérifiés aussi');
 
   const coupes = champs
     .filter(({ texte, largeur }) => [...texte].length * CHASSE + BORDS > largeur)

@@ -2,18 +2,20 @@ import { useState, useMemo } from 'react';
 import { Printer, Pencil, Ban, Receipt } from 'lucide-react';
 import InvoiceModal from './InvoiceModal';
 import InvoicePrintTemplate from './InvoicePrintTemplate';
-import { api, formatMontant } from '../api';
+import { api } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useUser } from '../UserContext';
 import { usePagination } from '../usePagination';
 import Pagination from './Pagination';
 import { useFeedback } from '../FeedbackContext';
+import { useLangue } from '../i18n.js';
 
 function DevisList() {
   const user = useUser();
   const peutConvertir = user?.role === 'admin' || user?.role === 'comptable';
 
   const { notifier, confirmer } = useFeedback();
+  const { t, montant } = useLangue();
 
   const { data: devisList, loading, error, setError, refresh: fetchDevis } = useApiResource('/api/devis', []);
 
@@ -33,17 +35,17 @@ function DevisList() {
 
   const handleCancelDevis = async (devis) => {
     const accepte = await confirmer({
-      titre: `Marquer le devis ${devis.numero_devis} comme refusé ?`,
-      message: 'Le devis reste consultable, mais ne pourra plus être modifié ni converti en facture.',
-      libelleConfirmer: 'Marquer refusé',
-      libelleAnnuler: 'Ne rien faire',
+      titre: t('Marquer le devis {numero} comme refusé ?', { numero: devis.numero_devis }),
+      message: t('Le devis reste consultable, mais ne pourra plus être modifié ni converti en facture.'),
+      libelleConfirmer: t('Marquer refusé'),
+      libelleAnnuler: t('Ne rien faire'),
       danger: true
     });
     if (!accepte) return;
     try {
       setError(null);
       await api.put(`/api/devis/${devis.id}/cancel`);
-      notifier(`Devis ${devis.numero_devis} marqué refusé.`);
+      notifier(t('Devis {numero} marqué refusé.', { numero: devis.numero_devis }));
       fetchDevis();
     } catch (err) {
       notifier(err.message, 'erreur');
@@ -52,10 +54,9 @@ function DevisList() {
 
   const handleConvert = async (devis) => {
     const accepte = await confirmer({
-      titre: `Convertir le devis ${devis.numero_devis} en facture ?`,
-      message: 'Une facture définitive sera émise avec un nouveau numéro, et le devis '
-        + 'passera au statut « Converti ».',
-      libelleConfirmer: 'Convertir'
+      titre: t('Convertir le devis {numero} en facture ?', { numero: devis.numero_devis }),
+      message: t('Une facture définitive sera émise avec un nouveau numéro, et le devis passera au statut « Converti ».'),
+      libelleConfirmer: t('Convertir')
     });
     if (!accepte) return;
     try {
@@ -63,14 +64,14 @@ function DevisList() {
       const facture = await api.post(`/api/devis/${devis.id}/convert`);
       // Le numéro réellement attribué est affiché : la conversion échouait
       // silencieusement avant, en laissant une facture orpheline en base.
-      notifier(`Devis converti en facture ${facture.numero_facture}. Retrouvez-la dans l'onglet Factures.`);
+      notifier(t("Devis converti en facture {numero}. Retrouvez-la dans l'onglet Factures.", { numero: facture.numero_facture }));
       fetchDevis();
     } catch (err) {
       notifier(err.message, 'erreur');
     }
   };
 
-  if (loading) return <p style={{ color: 'var(--text-muted)' }}>Chargement des devis…</p>;
+  if (loading) return <p style={{ color: 'var(--text-muted)' }}>{t('Chargement des devis…')}</p>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -81,19 +82,19 @@ function DevisList() {
           type="search"
           className="search-input"
           style={{ width: '20em' }}
-          placeholder="Rechercher un numéro ou un client…"
-          aria-label="Rechercher un devis"
+          placeholder={t('Rechercher un numéro ou un client…')}
+          aria-label={t('Rechercher un devis')}
           value={recherche}
           onChange={(e) => setRecherche(e.target.value)}
         />
         <button type="button" className="btn-primary" onClick={() => setIsCreateModalOpen(true)}>
-          + Nouveau devis
+          {t('+ Nouveau devis')}
         </button>
       </div>
 
       {devisFiltres.length === 0 ? (
         <div className="glass-panel empty-state">
-          {devisList.length === 0 ? 'Aucun devis pour le moment.' : 'Aucun devis ne correspond à votre recherche.'}
+          {devisList.length === 0 ? t('Aucun devis pour le moment.') : t('Aucun devis ne correspond à votre recherche.')}
         </div>
       ) : (
         devisAffiches.map((devis) => {
@@ -117,19 +118,19 @@ function DevisList() {
                   <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '600', textDecoration: devis.statut === 'Refusé' ? 'line-through' : 'none' }}>
                     {devis.numero_devis}
                   </h3>
-                  <span className={`status-badge ${classeStatut}`}>{devis.statut}</span>
+                  <span className={`status-badge ${classeStatut}`}>{t(devis.statut)}</span>
                 </div>
                 <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                  Client : <strong style={{ color: 'var(--text-main)' }}>{devis.client}</strong>
-                  {' '}| Émis le {devis.date_emission} | Valide jusqu'au {devis.date_validite}
+                  {t('Client :')} <strong style={{ color: 'var(--text-main)' }}>{devis.client}</strong>
+                  {' '}{t("| Émis le {emission} | Valide jusqu'au {validite}", { emission: devis.date_emission, validite: devis.date_validite })}
                 </p>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <div className="numeric">
-                  <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total estimé</p>
+                  <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Total estimé')}</p>
                   <p style={{ margin: 0, fontWeight: '700', fontSize: '1.2rem', color: 'var(--text-main)' }}>
-                    {formatMontant(devis.montant_total, devis.devise)}
+                    {montant(devis.montant_total, devis.devise)}
                   </p>
                 </div>
 
@@ -139,20 +140,20 @@ function DevisList() {
 
                 {!estTermine && (
                   <button type="button" className="btn-icon" onClick={() => setDevisIdToEdit(devis.id)}>
-                    <Pencil size={16} aria-hidden="true" /> Modifier
+                    <Pencil size={16} aria-hidden="true" /> {t('Modifier')}
                   </button>
                 )}
 
                 {!estTermine && (
                   <button type="button" className="btn-danger" onClick={() => handleCancelDevis(devis)}>
-                    <Ban size={16} aria-hidden="true" /> Refuser
+                    <Ban size={16} aria-hidden="true" /> {t('Refuser')}
                   </button>
                 )}
 
                 {/* L'icône de la vue Factures, qui dit ce que le devis devient. */}
                 {!estTermine && peutConvertir && (
                   <button type="button" className="btn-primary" onClick={() => handleConvert(devis)} style={{ width: '190px' }}>
-                    <Receipt size={16} aria-hidden="true" /> Convertir en facture
+                    <Receipt size={16} aria-hidden="true" /> {t('Convertir en facture')}
                   </button>
                 )}
               </div>

@@ -5,14 +5,16 @@ import InvoiceModal from './InvoiceModal';
 import InvoicePrintTemplate from './InvoicePrintTemplate';
 import CreditNoteModal from './CreditNoteModal';
 import NoteCreditChooser from './NoteCreditChooser';
-import { api, formatMontant } from '../api';
+import { api } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useUser } from '../UserContext';
 import { usePagination } from '../usePagination';
 import Pagination from './Pagination';
 import { useFeedback } from '../FeedbackContext';
+import { useLangue } from '../i18n.js';
+import { STATUTS_FACTURE } from '../statuts.js';
 
-const STATUTS = ['Tous', 'En attente', 'Partiellement payée', 'Payée', 'Créditée', 'Annulée'];
+const STATUTS = ['Tous', ...STATUTS_FACTURE];
 const AUJOURDHUI = new Date().toISOString().split('T')[0];
 const PAR_PAGE = 15;
 
@@ -24,6 +26,7 @@ const PAR_PAGE = 15;
 function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = false }) {
   const user = useUser();
   const { notifier, confirmer } = useFeedback();
+  const { t, tp, montant } = useLangue();
   const estAdmin = user?.role === 'admin';
   const gereTresorerie = user?.role === 'admin' || user?.role === 'comptable';
 
@@ -81,29 +84,27 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
 
   const handleCancelFacture = async (facture) => {
     const accepte = await confirmer({
-      titre: `Annuler la facture ${facture.numero_facture} ?`,
-      message: 'La facture reste dans vos registres, marquée annulée, et son montant '
-        + "cesse d'être attendu. Les encaissements déjà saisis sont conservés.",
-      libelleConfirmer: 'Annuler la facture',
-      libelleAnnuler: 'Ne rien faire',
+      titre: t('Annuler la facture {numero} ?', { numero: facture.numero_facture }),
+      message: t("La facture reste dans vos registres, marquée annulée, et son montant cesse d'être attendu. Les encaissements déjà saisis sont conservés."),
+      libelleConfirmer: t('Annuler la facture'),
+      libelleAnnuler: t('Ne rien faire'),
       danger: true
     });
     if (!accepte) return;
-    executer(() => api.put(`/api/factures/${facture.id}/cancel`), "L'annulation a échoué.",
-      `Facture ${facture.numero_facture} annulée.`);
+    executer(() => api.put(`/api/factures/${facture.id}/cancel`), t("L'annulation a échoué."),
+      t('Facture {numero} annulée.', { numero: facture.numero_facture }));
   };
 
   const handleDeleteFacture = async (facture) => {
     const accepte = await confirmer({
-      titre: `Supprimer définitivement la facture ${facture.numero_facture} ?`,
-      message: 'Cette action est irréversible. Une facture déjà réglée, même partiellement, '
-        + 'ne peut pas être supprimée : annulez-la ou émettez une note de crédit.',
-      libelleConfirmer: 'Supprimer',
+      titre: t('Supprimer définitivement la facture {numero} ?', { numero: facture.numero_facture }),
+      message: t('Cette action est irréversible. Une facture déjà réglée, même partiellement, ne peut pas être supprimée : annulez-la ou émettez une note de crédit.'),
+      libelleConfirmer: t('Supprimer'),
       danger: true
     });
     if (!accepte) return;
-    executer(() => api.del(`/api/factures/${facture.id}`), 'La suppression a échoué.',
-      `Facture ${facture.numero_facture} supprimée.`);
+    executer(() => api.del(`/api/factures/${facture.id}`), t('La suppression a échoué.'),
+      t('Facture {numero} supprimée.', { numero: facture.numero_facture }));
   };
 
   const closeAndRefresh = () => {
@@ -117,7 +118,7 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
       const details = await api.get(`/api/factures/${facture.id}/details`);
       const notes = details.notes_credit || [];
       if (notes.length === 0) {
-        notifier('Aucune note de crédit sur cette facture.', 'info');
+        notifier(t('Aucune note de crédit sur cette facture.'), 'info');
       } else if (notes.length === 1) {
         setPrintingNoteId(notes[0].id);
       } else {
@@ -128,7 +129,7 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
     }
   };
 
-  if (loading) return <p style={{ color: 'var(--text-muted)' }}>Chargement des données financières…</p>;
+  if (loading) return <p style={{ color: 'var(--text-muted)' }}>{t('Chargement des données financières…')}</p>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -137,14 +138,14 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
       <div className="toolbar">
         <div className="toolbar-group">
           <label htmlFor="recherche-facture" className="sr-only" style={{ position: 'absolute', left: '-9999px' }}>
-            Rechercher une facture
+            {t('Rechercher une facture')}
           </label>
           <input
             id="recherche-facture"
             type="search"
             className="search-input"
             style={{ width: '20em' }}
-            placeholder="Rechercher un numéro ou un client…"
+            placeholder={t('Rechercher un numéro ou un client…')}
             value={recherche}
             onChange={(e) => changerFiltre(setRecherche)(e.target.value)}
           />
@@ -153,9 +154,9 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
             style={{ minWidth: '180px' }}
             value={filtreStatut}
             onChange={(e) => changerFiltre(setFiltreStatut)(e.target.value)}
-            aria-label="Filtrer par statut"
+            aria-label={t('Filtrer par statut')}
           >
-            {STATUTS.map((s) => <option key={s} value={s}>{s === 'Tous' ? 'Tous les statuts' : s}</option>)}
+            {STATUTS.map((s) => <option key={s} value={s}>{s === 'Tous' ? t('Tous les statuts') : t(s)}</option>)}
           </select>
           {/* Rendu visible et réversible : arrivé depuis le tableau de bord,
               on doit comprendre pourquoi la liste est réduite. */}
@@ -164,22 +165,22 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
             className={filtreEchues ? 'btn-danger' : 'btn-icon'}
             aria-pressed={filtreEchues}
             onClick={() => changerFiltre(setFiltreEchues)(!filtreEchues)}
-            title="N'afficher que les factures dont l'échéance est dépassée"
+            title={t("N'afficher que les factures dont l'échéance est dépassée")}
           >
-            Échues seulement
+            {t('Échues seulement')}
           </button>
           <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            {facturesFiltrees.length} facture{facturesFiltrees.length > 1 ? 's' : ''}
+            {tp(facturesFiltrees.length, '{n} facture', '{n} factures')}
           </span>
         </div>
         <button type="button" className="btn-primary" onClick={() => setIsCreateModalOpen(true)}>
-          + Nouvelle facture
+          {t('+ Nouvelle facture')}
         </button>
       </div>
 
       {facturesAffichees.length === 0 ? (
         <div className="glass-panel empty-state">
-          {factures.length === 0 ? 'Aucune facture pour le moment.' : 'Aucune facture ne correspond à votre recherche.'}
+          {factures.length === 0 ? t('Aucune facture pour le moment.') : t('Aucune facture ne correspond à votre recherche.')}
         </div>
       ) : (
         facturesAffichees.map((facture) => {
@@ -204,33 +205,33 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                   <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '600', textDecoration: isAnnulee ? 'line-through' : 'none' }}>
                     {facture.numero_facture}
                   </h3>
-                  <span className={`status-badge ${classeStatut}`}>{facture.statut}</span>
+                  <span className={`status-badge ${classeStatut}`}>{t(facture.statut)}</span>
                   {facture.devise !== 'CAD' && (
                     <span className="status-badge pending">{facture.devise}</span>
                   )}
                 </div>
                 <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                  Client : <strong style={{ color: 'var(--text-main)' }}>{facture.client}</strong>
-                  {' '}| Émise le {facture.date_emission} | Échéance {facture.date_echeance}
+                  {t('Client :')} <strong style={{ color: 'var(--text-main)' }}>{facture.client}</strong>
+                  {' '}{t('| Émise le {emission} | Échéance {echeance}', { emission: facture.date_emission, echeance: facture.date_echeance })}
                 </p>
                 {facture.montant_credite > 0 && (
                   <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem', color: 'var(--status-warning)' }}>
-                    Note(s) de crédit : − {formatMontant(facture.montant_credite, facture.devise)}
+                    {t('Note(s) de crédit : − {montant}', { montant: montant(facture.montant_credite, facture.devise) })}
                     {facture.montant_a_rembourser > 0
-                      && `, ${formatMontant(facture.montant_a_rembourser, facture.devise)} à rembourser au client`}
+                      && t(', {montant} à rembourser au client', { montant: montant(facture.montant_a_rembourser, facture.devise) })}
                   </p>
                 )}
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <div className="numeric">
-                  <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total</p>
-                  <p style={{ margin: 0, fontWeight: '600', fontSize: '1.1rem' }}>{formatMontant(facture.montant_total, facture.devise)}</p>
+                  <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Total')}</p>
+                  <p style={{ margin: 0, fontWeight: '600', fontSize: '1.1rem' }}>{montant(facture.montant_total, facture.devise)}</p>
                 </div>
                 <div className="numeric">
-                  <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Reste à payer</p>
+                  <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Reste à payer')}</p>
                   <p style={{ margin: 0, fontWeight: '700', fontSize: '1.4rem', color: facture.solde_restant > 0 ? 'var(--status-partial)' : 'var(--status-paid)' }}>
-                    {formatMontant(facture.solde_restant, facture.devise)}
+                    {montant(facture.solde_restant, facture.devise)}
                   </p>
                 </div>
 
@@ -244,17 +245,17 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                     className="btn-warning"
                     onClick={() => { setPrintingFactureId(facture.id); setIsRelance(true); }}
                     title={facture.relances_envoyees > 0
-                      ? `Déjà relancé ${facture.relances_envoyees} fois (dernière : ${facture.date_derniere_relance})`
-                      : 'Envoyer un rappel de paiement'}
+                      ? t('Déjà relancé {n} fois (dernière : {date})', { n: facture.relances_envoyees, date: facture.date_derniere_relance })
+                      : t('Envoyer un rappel de paiement')}
                   >
                     <Bell size={16} aria-hidden="true" />
-                    Relancer {facture.relances_envoyees > 0 && `(${facture.relances_envoyees})`}
+                    {t('Relancer')} {facture.relances_envoyees > 0 && `(${facture.relances_envoyees})`}
                   </button>
                 )}
 
                 {!isAnnulee && facture.statut === 'En attente' && (
                   <button type="button" className="btn-icon" onClick={() => setFactureIdToEdit(facture.id)}>
-                    <Pencil size={16} aria-hidden="true" /> Modifier
+                    <Pencil size={16} aria-hidden="true" /> {t('Modifier')}
                   </button>
                 )}
 
@@ -263,13 +264,13 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                     le refus n'arrivait qu'après le clic. */}
                 {gereTresorerie && !isAnnulee && facture.montant_paye === 0 && (
                   <button type="button" className="btn-danger" onClick={() => handleCancelFacture(facture)}>
-                    <Ban size={16} aria-hidden="true" /> Annuler
+                    <Ban size={16} aria-hidden="true" /> {t('Annuler')}
                   </button>
                 )}
 
                 {estAdmin && facture.montant_paye === 0 && (
-                  <button type="button" className="btn-danger" onClick={() => handleDeleteFacture(facture)} title="Supprimer définitivement">
-                    <Trash2 size={16} aria-hidden="true" /> Supprimer
+                  <button type="button" className="btn-danger" onClick={() => handleDeleteFacture(facture)} title={t('Supprimer définitivement')}>
+                    <Trash2 size={16} aria-hidden="true" /> {t('Supprimer')}
                   </button>
                 )}
 
@@ -278,10 +279,10 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                     type="button"
                     className="btn-icon"
                     onClick={() => setFactureACrediter(facture)}
-                    title="Corriger cette facture par une note de crédit"
+                    title={t('Corriger cette facture par une note de crédit')}
                   >
                     {/* Une pièce qui retranche. */}
-                    <FileMinus size={16} aria-hidden="true" /> Note de crédit
+                    <FileMinus size={16} aria-hidden="true" /> {t('Note de crédit')}
                   </button>
                 )}
 
@@ -293,9 +294,9 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                     type="button"
                     className="btn-icon"
                     onClick={() => ouvrirNotesCredit(facture)}
-                    title="Imprimer ou envoyer la note de crédit"
+                    title={t('Imprimer ou envoyer la note de crédit')}
                   >
-                    <Printer size={16} aria-hidden="true" /> PDF de la note
+                    <Printer size={16} aria-hidden="true" /> {t('PDF de la note')}
                   </button>
                 )}
 
@@ -312,8 +313,8 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                     style={{ width: '180px' }}
                   >
                     {facture.solde_restant > 0
-                      ? '+ Ajouter paiement'
-                      : facture.montant_paye > 0 ? '✓ Voir les encaissements' : '✓ Facture soldée'}
+                      ? t('+ Ajouter paiement')
+                      : facture.montant_paye > 0 ? t('✓ Voir les encaissements') : t('✓ Facture soldée')}
                   </button>
                 )}
               </div>
@@ -334,7 +335,7 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
           onClose={() => setFactureACrediter(null)}
           onSuccess={(note) => {
             setFactureACrediter(null);
-            notifier(`Note de crédit ${note.numero_note} émise.`);
+            notifier(t('Note de crédit {numero} émise.', { numero: note.numero_note }));
             // La pièce s'ouvre aussitôt : c'est le moment où on l'envoie au client.
             setPrintingNoteId(note.id);
             fetchFactures();
