@@ -38,7 +38,7 @@ dans [INSTALLATION.md](INSTALLATION.md).
 et dépose le fichier sur la page des publications :
 
 ```bash
-git tag v1.7.5 && git push origin v1.7.5
+git tag v1.8.0 && git push origin v1.8.0
 ```
 
 L'étiquette doit correspondre au champ `version` de `package.json` : c'est lui
@@ -230,6 +230,49 @@ s'appelait « Votre entreprise » sur ses factures jusqu'à ce qu'on retape son
 nom. La ligne semée est désormais mise à jour, et un test vérifie qu'il n'en
 existe qu'une.
 
+## Langue de l'interface
+
+Chaque utilisateur travaille en français ou en anglais, au choix, et toute
+l'interface le suit : écrans, fenêtres, messages du serveur, montants
+(« 1 149,75 $ » ou « $1,149.75 »), compte rendu de la période et registres CSV.
+Le sélecteur FR | EN figure sur l'écran de premier lancement, sur l'écran de
+connexion, sur l'écran d'activation de licence et dans l'en-tête de
+l'application.
+
+**La langue appartient au compte** (`users.langue`, dans le registre des
+comptes partagé par tous les dossiers) : elle suit l'utilisateur d'un poste à
+l'autre. Un compte neuf est en français ; un choix fait à l'écran de connexion
+est enregistré sur le compte, et le sélecteur de l'en-tête l'enregistre aussi
+(`PUT /api/auth/langue`). Avant toute connexion, la langue est celle employée
+en dernier sur ce poste, sinon celle du système.
+
+**La langue des documents ne change pas** : une facture, un devis, une note de
+crédit, leurs courriels, les relances et la page de paiement suivent toujours
+la langue du client. Un utilisateur anglophone peut donc facturer un client
+francophone en français.
+
+Le mécanisme :
+
+- **Le texte français est la clé.** `t('Nouvelle facture')` rend « Nouvelle
+  facture » en français et « New invoice » en anglais (`client/src/i18n.js`,
+  dictionnaire `client/src/traductions/en.js`). Le code se lit donc tel
+  qu'avant, et un texte absent du dictionnaire s'affiche en français plutôt
+  que vide. `tp()` choisit le pluriel selon la règle de chaque langue (« 0
+  facture », « 0 invoices »).
+- **Les valeurs enregistrées restent en français** (statuts, cycles, catégories
+  proposées, rôles) et ne sont traduites qu'à l'affichage : les filtres et le
+  serveur continuent de les comparer telles quelles.
+- **Les messages du serveur restent écrits en français** là où ils sont levés,
+  et sont traduits à la sortie (`traductionServeur.js`) quand l'interface
+  annonce l'anglais par l'en-tête `X-Clora-Langue`. Un téléchargement CSV, qui
+  part d'un lien et non d'un appel à l'API, porte la langue dans son adresse
+  (`?langue=en`).
+- **Un test garde le tout** (`tests/traductions.test.js`) : chaque texte passé
+  à `t()` a sa traduction, aucun texte visible n'est écrit en dur dans un écran,
+  et chaque message du serveur a son équivalent anglais. Il porte sur tous les
+  écrans et tous les fichiers du serveur : un écran ou un message ajouté sans
+  traduction le fait échouer.
+
 ## Organisation du code
 
 ```
@@ -245,6 +288,7 @@ licenceService.js  Vérification Ed25519 des clés, essai, maintenance
 kilometrageService.js  Indemnité kilométrique : paliers et recalcul de l'année
 companyStore.js    Registre des dossiers d'entreprise et comptes partagés
 bankService.js     Rapprochement bancaire et imputation des dépôts
+traductionServeur.js  Messages du serveur traduits en anglais à la sortie
 *Service.js        Logique métier par domaine
 routes/            Points d'entrée HTTP, avec leurs contraintes de rôle
 tests/             Tests exécutés par `npm test`
@@ -585,6 +629,12 @@ BOM UTF-8 (sans quoi Excel affiche « BÃ©langer »), séparateur point-virgule
 décimale sur les montants. L'échappement suit la RFC 4180 : un client nommé
 « Ateliers Bélanger; Cie » ressort intact.
 
+**Le fichier d'un utilisateur anglophone est en anglais** : titres de colonnes,
+statuts, origine des paiements, noms de taxes (GST, QST, HST, PST) et nom du
+fichier (`sales-register-2026.csv`). Il suit alors l'usage de l'Excel
+anglophone, pour la même raison : virgule entre les colonnes et point décimal.
+Sans langue demandée, le fichier est celui d'avant, à l'octet près.
+
 ## Compte rendu de la période
 
 Écran Rapports : un sommaire de gestion d'un mois, d'un trimestre ou d'une
@@ -662,4 +712,5 @@ JavaScript et SQL sur plusieurs milliers de montants), le cycle de vie des
 factures, les encaissements et leur annulation, les notes de crédit, les
 relances automatiques, la conversion des devis, la facturation récurrente, le
 rapprochement bancaire (y compris la répartition d'un dépôt sur plusieurs
-factures) et le cloisonnement des rôles.
+factures), le cloisonnement des rôles et la traduction anglaise de chaque écran
+et de chaque message.

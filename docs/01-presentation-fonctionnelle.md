@@ -1,6 +1,6 @@
 # Clora : ce que fait l'application
 
-*Document de présentation fonctionnelle. Version 1.7.5, septembre 2026.*
+*Document de présentation fonctionnelle. Version 1.8.0, octobre 2026.*
 
 Ce document décrit ce que Clora fait, du point de vue de la personne qui s'en
 sert. Il ne suppose aucune connaissance technique. Pour l'architecture, la
@@ -32,6 +32,24 @@ toujours.
 **Il est écrit pour le Canada.** TPS, TVQ, TVH, TVP selon la province du client ;
 factures bilingues ; registres exportés au format qu'attend l'Excel
 francophone ; conditions de paiement Net 15/30/60.
+
+**Il se lit en français ou en anglais.** Chaque utilisateur choisit sa langue,
+et toute l'application la suit. Les documents, eux, suivent toujours la langue
+du client : une équipe anglophone facture un client francophone en français.
+
+### La langue de chacun
+
+Le choix FR | EN figure sur l'écran de premier lancement, sur l'écran de
+connexion et dans l'en-tête de l'application. Il est gardé par compte, et non
+par poste ni par dossier : une comptable anglophone et un patron francophone
+travaillent dans le même dossier, chacun dans sa langue, et chacun retrouve la
+sienne sur un autre ordinateur. Un compte neuf est en français.
+
+La langue de l'utilisateur gouverne tout ce qu'il lit : les écrans, les
+messages, les montants (« 1 149,75 $ » ou « $1,149.75 »), le compte rendu de la
+période et les registres CSV. La langue du client gouverne tout ce que le client
+reçoit : factures, devis, notes de crédit, leurs courriels, les relances et la
+page de paiement. Les deux ne se mélangent jamais.
 
 ---
 
@@ -267,6 +285,12 @@ registres et le rapport de taxes.
 Les fichiers CSV sont produits pour être ouverts sans manipulation dans un Excel
 francophone : marque d'encodage UTF-8, séparateur point-virgule, virgule
 décimale. Un client nommé « Ateliers Bélanger; Cie » en ressort intact.
+
+Pour un utilisateur qui travaille en anglais, les fichiers sont entièrement en
+anglais (titres de colonnes, statuts, noms de taxes, nom du fichier) et suivent
+l'usage de l'Excel anglophone : virgule entre les colonnes, point décimal
+(« 1149.75 »). Le compte rendu de la période suit, lui aussi, la langue de
+l'utilisateur.
 
 ### Journal
 *Administrateur et comptable*

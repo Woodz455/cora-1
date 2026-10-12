@@ -1,7 +1,7 @@
 # Clora : état du projet
 
-*Ce qui a été fait, ce qui reste à faire. Arrêté au 27 septembre 2026,
-version 1.7.5.*
+*Ce qui a été fait, ce qui reste à faire. Arrêté au 12 octobre 2026,
+version 1.8.0.*
 
 ---
 
@@ -9,11 +9,12 @@ version 1.7.5.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.7.5, le 27 septembre 2026 |
-| **Publications** | 13 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 63 commits, 26 demandes de fusion, toutes fusionnées |
-| **Tests** | 377, tous au vert, exécutés à chaque fusion |
-| **Durée** | 9 semaines, du 24 juillet au 27 septembre 2026 |
+| **Version publiée** | 1.8.0, le 12 octobre 2026 |
+| **Publications** | 14 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 69 commits, 30 demandes de fusion, toutes fusionnées |
+| **Tests** | 387, tous au vert, exécutés à chaque fusion |
+| **Durée** | 11 semaines, du 24 juillet au 12 octobre 2026 |
+| **Langues** | Interface en français ou en anglais, au choix de chaque utilisateur |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
 | **Ventes** | Aucune : les tests utilisateurs sont en cours |
 
@@ -303,6 +304,46 @@ anglophone en a montré d'autres, présents depuis le début.
   sur l'ancien code et y échoue, sauf celui du lien Stripe conservé, qui protège
   une décision et non un défaut.
 
+### Phase 14 : l'interface anglaise
+*11 et 12 octobre · publié en 1.8.0 · demandes de fusion #28, #29 et #30*
+
+La 1.7.5 avait mis les documents dans la langue du client ; l'interface, elle,
+restait en français. Un utilisateur anglophone ne pouvait donc pas travailler
+dans Clora. C'est la première fonction nouvelle depuis la 1.7.0, d'où le
+numéro mineur.
+
+- **Chaque utilisateur choisit sa langue**, FR ou EN, sur l'écran de premier
+  lancement, à la connexion ou dans l'en-tête. Elle est gardée par compte, et
+  suit donc l'utilisateur d'un dossier et d'un poste à l'autre. Un compte neuf
+  est en français.
+- **Toute l'application suit** : les écrans et leurs fenêtres, les messages du
+  serveur, les montants (« $1,149.75 »), le compte rendu de la période, l'écran
+  d'activation de licence, et jusqu'à l'alerte de démarrage de l'application
+  de bureau, qui suit la langue du système faute de compte connu à ce moment.
+- **Les registres CSV d'un anglophone sont en anglais** et suivent l'usage de
+  l'Excel anglophone : virgule entre les colonnes, point décimal. Le fichier
+  d'un francophone n'a pas changé d'un octet.
+- **Les documents ne changent pas** : ils suivent toujours la langue du client.
+  Une équipe anglophone facture un client francophone en français.
+- **Aucune reprise de données.** Les valeurs enregistrées (statuts, cycles,
+  catégories, rôles) restent en français et ne sont traduites qu'à
+  l'affichage ; seule une colonne de langue s'ajoute aux comptes, d'elle-même.
+- **Le français n'a pas bougé d'un mot.** Le travail s'est fait en quatre
+  étapes, et à chacune le texte de chaque écran a été relevé avant et après, puis
+  comparé : identique. Cette comparaison a rattrapé une erreur en cours de
+  route, la barre de « | Émise le … » effacée dans les listes de factures et de
+  devis, avant qu'elle ne soit livrée.
+- **Un test garde la traduction** sur tous les écrans et tous les fichiers du
+  serveur : un texte sans traduction anglaise, un texte écrit en dur dans un
+  écran ou un message du serveur sans équivalent le fait échouer. Dix tests de
+  plus en tout.
+
+Trois défauts corrigés en passant, tous antérieurs à cette version : les
+boutons « Fermer » de l'aperçu d'une facture et du compte rendu, ainsi que
+« Imprimer » du compte rendu, avaient un texte blanc sur fond blanc en mode
+sombre ; et un « 0 » s'affichait sous la case « Ajouter un lien de paiement sur
+mes factures » quand le paiement en ligne est désactivé.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
@@ -413,8 +454,8 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.7.5 en offre l'occasion sur toute installation restée en
-  1.7.4.
+  annoncer. La 1.8.0 en offre l'occasion sur toute installation restée en
+  1.7.5.
 - **Le redémarrage après restauration d'une sauvegarde.**
 
 Ce sont deux choses à regarder pendant les tests utilisateurs.
@@ -487,7 +528,7 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.7.5 par les testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.8.0 par les testeurs et écouter ce qu'ils disent.**
 
 Leurs trois premières demandes sont livrées : le compte rendu de la période, le
 profil du dossier, et le sérieux du design. Le reste (la clé de licence, le
@@ -498,18 +539,20 @@ retour, et devrait être priorisé par lui.
 embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la
 dernière fenêtre non conforme en 1.7.4.
 
-En 1.7.4, ce document affirmait qu'il ne restait aucun défaut identifié, et que
-la liste de ce qu'une relecture pouvait trouver était épuisée. La 1.7.5 prouve
-le contraire. Ses défauts étaient là depuis le début, mais ne se voyaient que sur
-le document d'un client anglophone, ou dans un champ dont le texte était assez
-long pour être coupé. Aucun testeur ne les a signalés, sans doute parce qu'ils
-facturent en français.
+En 1.7.4, ce document affirmait qu'il ne restait aucun défaut identifié. La
+1.7.5 a prouvé le contraire : ses défauts ne se voyaient que sur le document
+d'un client anglophone, et aucun testeur ne les avait signalés, sans doute parce
+qu'ils facturent en français.
 
-**Si un testeur a des clients anglophones, c'est à lui qu'il faut demander de
-regarder une facture anglaise**, un courriel d'envoi et la page de paiement.
-C'est là que le prochain défaut de ce genre se cachera.
+La 1.8.0 déplace la question. **Il faut maintenant qu'un testeur travaille en
+anglais**, idéalement quelqu'un dont c'est la langue : une traduction relue par
+son auteur dit ce qu'il voulait dire, pas forcément ce qu'un comptable
+anglophone attend de lire. Les écrans les plus denses (Paramètres, Rapports, le
+compte rendu) sont ceux où un terme mal choisi se remarquera d'abord. Un testeur
+qui ouvre un registre CSV anglais dans son Excel dira aussi si le format tient
+chez lui.
 
 ---
 
 *Document maintenu par Safehill Technologies. Dernière mise à jour :
-27 septembre 2026.*
+12 octobre 2026.*
