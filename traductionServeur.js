@@ -155,7 +155,110 @@ const EXACTS = new Map([
   ['Conditions de paiement', 'Payment terms'],
   ['Nom', 'Name'],
   ['Prix unitaire', 'Unit price'],
-  ['Description', 'Description']
+  ['Description', 'Description'],
+
+  // Abonnements
+  ["Identifiant d'abonnement invalide.", 'Invalid subscription ID.'],
+  ["Le titre de l'abonnement est requis.", 'The subscription title is required.'],
+  ['La date de prochaine génération est requise (format AAAA-MM-JJ).',
+    'The next generation date is required (format YYYY-MM-DD).'],
+  ['La date de prochaine génération est invalide (format AAAA-MM-JJ).',
+    'The next generation date is invalid (format YYYY-MM-DD).'],
+  ['Vérification des abonnements effectuée.', 'Subscriptions checked.'],
+  ["Les lignes de l'abonnement sont illisibles.", 'The subscription lines cannot be read.'],
+  ['Abonnement non trouvé.', 'Subscription not found.'],
+
+  // Banque
+  ['Le corps de la requête doit être un tableau de transactions.', 'The request body must be a list of transactions.'],
+  ['Identifiant de transaction invalide.', 'Invalid transaction ID.'],
+  ['Transaction non trouvée.', 'Transaction not found.'],
+  ['Une facture doit être sélectionnée.', 'An invoice must be selected.'],
+  ['Le montant à imputer est invalide.', 'The amount to allocate is invalid.'],
+  ['Cette transaction a été ignorée.', 'This transaction was ignored.'],
+  ['Ce dépôt est déjà entièrement imputé.', 'This deposit is already fully allocated.'],
+  ['Le montant à imputer doit être strictement positif.', 'The amount to allocate must be greater than zero.'],
+  ["Ce dépôt est déjà imputé sur une facture : annulez d'abord les encaissements correspondants.",
+    'This deposit is already allocated to an invoice: cancel the matching payments first.'],
+  ['Dépôt entièrement imputé.', 'Deposit fully allocated.'],
+  ['Imputation enregistrée ; ce dépôt garde un reste à affecter.',
+    'Allocation saved; this deposit still has an amount left to allocate.'],
+
+  // Dépenses et déplacements
+  ['Identifiant de dépense invalide.', 'Invalid expense ID.'],
+  ['La date de la dépense est requise (format AAAA-MM-JJ).', 'The expense date is required (format YYYY-MM-DD).'],
+  ['La distance parcourue doit être un nombre de kilomètres supérieur à zéro.',
+    'The distance travelled must be a number of kilometres greater than zero.'],
+  ['Le montant hors taxes doit être un nombre positif.', 'The amount before tax must be a positive number.'],
+  ['Les montants de taxes ne peuvent pas être négatifs.', 'Tax amounts cannot be negative.'],
+  ['Dépense introuvable.', 'Expense not found.'],
+  ['Dépense supprimée.', 'Expense deleted.'],
+
+  // Rapports
+  ["L'année doit être au format AAAA.", 'The year must be in the format YYYY.'],
+  ['Le mois doit être un nombre entre 1 et 12.', 'The month must be a number between 1 and 12.'],
+  ['Le trimestre doit être un nombre entre 1 et 4.', 'The quarter must be a number between 1 and 4.'],
+  ['Indiquez un mois ou un trimestre, pas les deux.', 'Enter a month or a quarter, not both.'],
+  ["Le compte rendu porte sur une année, un trimestre ou un mois : indiquez l'année.",
+    'The summary report covers a year, a quarter or a month: enter the year.'],
+
+  // Paramètres
+  ["L'année doit être un nombre entre 2000 et 2100.", 'The year must be a number between 2000 and 2100.'],
+  ['Indiquez au moins un palier de relance, en jours après échéance (par exemple 7, 15, 30).',
+    'Enter at least one reminder step, in days after the due date (for example 7, 15, 30).'],
+  ['Le nombre de sauvegardes conservées doit être un entier entre 1 et 365.',
+    'The number of backups kept must be a whole number between 1 and 365.'],
+  ["Le port du serveur d'envoi doit être un entier entre 1 et 65535.",
+    'The outgoing server port must be a whole number between 1 and 65535.'],
+  ["Le logo doit être une image (data-URI 'data:image/...').", "The logo must be an image (data URI 'data:image/...')."],
+  ['Le logo dépasse la taille maximale de 2 Mo.', 'The logo exceeds the maximum size of 2 MB.'],
+  ['Cette clé Stripe n\'est pas reconnue. Elle commence par « rk_live_ », « rk_test_ », « sk_live_ » ou « sk_test_ ».',
+    'This Stripe key is not recognized. It starts with “rk_live_”, “rk_test_”, “sk_live_” or “sk_test_”.'],
+  ["Renseignez votre clé Stripe avant d'activer le paiement en ligne.", 'Enter your Stripe key before turning on online payment.'],
+  ['Paramètres mis à jour.', 'Settings updated.'],
+  ['Indiquez une adresse de destination valide pour le courriel de test.', 'Enter a valid destination address for the test email.'],
+  ['Le seuil doit être un nombre de kilomètres supérieur à zéro.', 'The threshold must be a number of kilometres greater than zero.'],
+  ["La clé enregistrée n'est plus déchiffrable sur cette machine. Saisissez-la de nouveau.",
+    'The saved key can no longer be decrypted on this computer. Enter it again.'],
+  ["Aucune clé Stripe n'est enregistrée.", 'No Stripe key is saved.'],
+  ['Connexion établie avec Stripe, en mode test : aucun paiement réel ne sera encaissé.',
+    'Connected to Stripe, in test mode: no real payment will be collected.'],
+  // Libellés insérés dans les messages de taux.
+  ['Le taux de la taxe 1', 'The tax 1 rate'],
+  ['Le taux de la taxe 2', 'The tax 2 rate'],
+  ['Le taux du premier palier', 'The first-tier rate'],
+  ['Le taux au-delà du seuil', 'The rate beyond the threshold'],
+  ['La date de début', 'The start date'],
+  ['La date de fin', 'The end date'],
+
+  // Stripe
+  ['La clé Stripe est absente ou mal formée. Ouvrez Paramètres → Paiement en ligne.',
+    'The Stripe key is missing or malformed. Open Settings → Online payment.'],
+  ['Réponse de Stripe anormalement volumineuse.', 'Unusually large response from Stripe.'],
+  ["Stripe n'a pas répondu dans le délai imparti.", 'Stripe did not respond in time.'],
+  ['Le montant à payer est invalide.', 'The amount to pay is invalid.'],
+
+  // Comptes
+  ['Identifiant invalide.', 'Invalid ID.'],
+  ['Le dernier administrateur ne peut pas changer de rôle.', 'The last administrator cannot change role.'],
+  ['Vous ne pouvez pas supprimer votre propre compte.', 'You cannot delete your own account.'],
+  ['Impossible de supprimer le dernier administrateur.', 'The last administrator cannot be deleted.'],
+
+  // Sauvegardes et relances
+  ['Sauvegarde créée.', 'Backup created.'],
+  ['Indiquez la sauvegarde à restaurer.', 'Choose the backup to restore.'],
+  ['Cette sauvegarde est introuvable.', 'This backup cannot be found.'],
+  ["La restauration s'appliquera au redémarrage. La base actuelle sera conservée à côté, au cas où.",
+    'The restore will apply at the next restart. The current database will be kept alongside, just in case.'],
+  ['ce fichier ne contient pas de comptabilité Clora', 'this file does not contain Clora bookkeeping'],
+  ['Les relances automatiques sont désactivées dans les paramètres.', 'Automatic reminders are turned off in the settings.'],
+
+  // Licence et dossier
+  ["Aucune clé publique n'est configurée.", 'No public key is configured.'],
+  ["Cette clé n'a pas le format attendu.", 'This key does not have the expected format.'],
+  ['Cette clé est incomplète.', 'This key is incomplete.'],
+  ["Cette clé n'est pas authentique.", 'This key is not genuine.'],
+  ['Cette clé est illisible.', 'This key cannot be read.'],
+  ["Aucun dossier d'entreprise n'est ouvert pour cette requête.", 'No company file is open for this request.']
 ]);
 
 /**
@@ -206,7 +309,38 @@ const MOTIFS = [
     (m) => `${m[1]} client${m[1] === '1' ? '' : 's'} imported.`],
   [/^(\d+) article\(s\) importé\(s\)\.$/,
     (m) => `${m[1]} item${m[1] === '1' ? '' : 's'} imported.`],
-  [/^Prix illisible ou négatif : « (.*) »\.$/s, (m) => `Unreadable or negative price: “${m[1]}”.`]
+  [/^Prix illisible ou négatif : « (.*) »\.$/s, (m) => `Unreadable or negative price: “${m[1]}”.`],
+  [/^Un relevé ne peut pas comporter plus de (\d+) lignes\.$/,
+    (m) => `A statement cannot have more than ${m[1]} rows.`],
+  [/^La facture (\S+) est libellée en (\S+) : saisissez le paiement manuellement dans sa devise\.$/,
+    (m) => `Invoice ${m[1]} is in ${m[2]}: enter the payment manually in its currency.`],
+  [/^Le montant imputé \((.+)\) dépasse ce qui reste de ce dépôt \((.+)\)\.$/,
+    (m) => `The amount allocated (${montantEn(m[1])}) exceeds what is left of this deposit (${montantEn(m[2])}).`],
+  [/^Aucun taux kilométrique n'est réglé pour (\d+)\. Renseignez-le dans Paramètres avant d'inscrire un déplacement\.$/,
+    (m) => `No mileage rate is set for ${m[1]}. Enter it in Settings before recording a trip.`],
+  [/^Aucun taux kilométrique n'est réglé pour (\d+)\.$/, (m) => `No mileage rate is set for ${m[1]}.`],
+  [/^(.+) doit être au format AAAA-MM-JJ\.$/,
+    (m) => `${traduire(m[1], 'en')} must be in the format YYYY-MM-DD.`],
+  [/^Action inconnue : (.*)\.$/, (m) => `Unknown action: ${m[1]}.`],
+  [/^Conditions de paiement inconnues : (.*)\.$/, (m) => `Unknown payment terms: ${m[1]}.`],
+  [/^(.+) doit être une fraction entre 0 et 1 \(0\.05 pour 5 %\)\.$/,
+    (m) => `${traduire(m[1], 'en')} must be a fraction between 0 and 1 (0.05 for 5%).`],
+  [/^(.+) doit être un montant en dollars par kilomètre \(0\.70 pour 70 ¢\)\.$/,
+    (m) => `${traduire(m[1], 'en')} must be an amount in dollars per kilometre (0.70 for 70¢).`],
+  [/^Courriel de test envoyé à (.+)\.$/, (m) => `Test email sent to ${m[1]}.`],
+  [/^Taux kilométriques de (\d+) enregistrés\.$/, (m) => `Mileage rates for ${m[1]} saved.`],
+  [/^Connexion établie avec Stripe(.*)\.$/, (m) => `Connected to Stripe${m[1]}.`],
+  [/^Impossible de joindre Stripe : (.*)$/s, (m) => `Cannot reach Stripe: ${m[1]}`],
+  [/^Stripe n'accepte pas les paiements inférieurs à (.+)\.$/,
+    // Le français écrit ce montant avec un point (`toFixed`) : il est relu tel quel.
+    (m) => `Stripe does not accept payments under ${montantEn(m[1].replace('.', ','))}.`],
+  [/^Rôle inconnu : (.*)\.$/, (m) => `Unknown role: ${m[1]}.`],
+  [/^La sauvegarde a échoué : (.*)$/s, (m) => `The backup failed: ${traduire(m[1], 'en')}`],
+  [/^contrôle d'intégrité : (.*)$/s, (m) => `integrity check: ${m[1]}`],
+  [/^Cette sauvegarde est inutilisable \((.*)\)\. Rien n'a été modifié\.$/s,
+    (m) => `This backup cannot be used (${traduire(m[1], 'en')}). Nothing was changed.`],
+  [/^Cette clé couvre la maintenance jusqu'au (\S+), et cette version date du (\S+)\. Renouvelez la maintenance, ou installez une version antérieure : vos données restent intactes\.$/,
+    (m) => `This key covers maintenance until ${m[1]}, and this version is dated ${m[2]}. Renew your maintenance, or install an earlier version: your data stays intact.`]
 ];
 
 /** Statuts cités dans un message, traduits comme à l'écran. */
@@ -259,4 +393,4 @@ function traductionDesReponses(req, res, next) {
   return next();
 }
 
-module.exports = { traduire, langueDeRequete, traductionDesReponses, montantEn, EXACTS, MOTIFS };
+module.exports = { traduire, traduireStatut, langueDeRequete, traductionDesReponses, montantEn, EXACTS, MOTIFS };

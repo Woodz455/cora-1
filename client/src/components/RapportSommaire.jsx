@@ -1,8 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { Download, Printer } from 'lucide-react';
-import { api, formatMontant } from '../api';
+import { api } from '../api';
 import { useModale } from '../useModale';
 import { libellePeriode, dateLongue, moisLong, suffixePeriode } from '../periodes';
+import { useLangue } from '../i18n.js';
+import { CATEGORIES_DEPENSE } from '../statuts.js';
 
 /** Nombre de catégories de dépenses détaillées ; le reste est regroupé. */
 const CATEGORIES_DETAILLEES = 8;
@@ -13,13 +15,13 @@ const SEUIL_CONCENTRATION = 50;
 /** Délai d'encaissement au-delà duquel le document le relève, en jours. */
 const SEUIL_DELAI_JOURS = 30;
 
-const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
-
-/** « 65,3 % » : virgule décimale, comme les montants. */
-const pourcent = (v) => `${Number(v).toLocaleString('fr-CA', { maximumFractionDigits: 1 })} %`;
+/** « 65,3 % » : virgule décimale, comme les montants ; « 65.3% » en anglais. */
+const pourcentDans = (langue) => (v) => (langue === 'en'
+  ? `${Number(v).toLocaleString('en-CA', { maximumFractionDigits: 1 })}%`
+  : `${Number(v).toLocaleString('fr-CA', { maximumFractionDigits: 1 })} %`);
 
 /** Part d'un montant dans un total, ou un tiret quand le total est nul. */
-const part = (montant, total) => (total > 0 ? pourcent((montant / total) * 100) : '-');
+const partDans = (pourcent) => (montant, total) => (total > 0 ? pourcent((montant / total) * 100) : '-');
 
 /**
  * Ce qui mérite d'être lu en premier, déduit des chiffres eux-mêmes.
@@ -27,41 +29,45 @@ const part = (montant, total) => (total > 0 ? pourcent((montant / total) * 100) 
  * Des constats, pas des conseils : le document dit ce qu'il voit et laisse le
  * lecteur, ou son comptable, en tirer la conclusion.
  */
-function pointsDAttention(s) {
+function pointsDAttention(s, { t, tp, m, pourcent }) {
   const points = [];
-  const m = (v) => formatMontant(v);
 
   if (s.facturation.nb_factures === 0) {
-    points.push('Aucune facture n\'a été émise sur la période.');
+    points.push(t("Aucune facture n'a été émise sur la période."));
   }
   if (s.resultat.benefice_net < 0) {
-    points.push(`Les dépenses hors taxes de la période (${m(s.depenses.total_ht)}) dépassent `
-      + `les encaissements (${m(s.encaissements.total_encaisse)}).`);
+    points.push(t('Les dépenses hors taxes de la période ({depenses}) dépassent les encaissements ({encaisse}).',
+      { depenses: m(s.depenses.total_ht), encaisse: m(s.encaissements.total_encaisse) }));
   }
   if (s.creances.en_retard > 0) {
     const anciennes = s.creances.balance.totaux.jours_91_plus;
-    points.push(`${pluriel(s.creances.nb_factures_en_retard, 'facture')} en retard de paiement `
-      + `pour ${m(s.creances.en_retard)}`
-      + (anciennes > 0 ? `, dont ${m(anciennes)} depuis plus de 90 jours.` : '.'));
+    const valeurs = { montant: m(s.creances.en_retard), anciennes: m(anciennes) };
+    points.push(anciennes > 0
+      ? tp(s.creances.nb_factures_en_retard,
+        '{n} facture en retard de paiement pour {montant}, dont {anciennes} depuis plus de 90 jours.',
+        '{n} factures en retard de paiement pour {montant}, dont {anciennes} depuis plus de 90 jours.', valeurs)
+      : tp(s.creances.nb_factures_en_retard,
+        '{n} facture en retard de paiement pour {montant}.',
+        '{n} factures en retard de paiement pour {montant}.', valeurs));
   }
   if (s.clients.part_premier_client !== null && s.clients.part_premier_client >= SEUIL_CONCENTRATION) {
-    points.push(`Votre premier client, ${s.clients.principaux[0].client}, représente `
-      + `${pourcent(s.clients.part_premier_client)} du facturé de la période.`);
+    points.push(t('Votre premier client, {client}, représente {part} du facturé de la période.',
+      { client: s.clients.principaux[0].client, part: pourcent(s.clients.part_premier_client) }));
   }
   if (s.encaissements.delai_moyen_jours !== null && s.encaissements.delai_moyen_jours > SEUIL_DELAI_JOURS) {
-    points.push(`Vos clients ont payé en moyenne ${s.encaissements.delai_moyen_jours} jours `
-      + 'après l\'émission de la facture.');
+    points.push(t("Vos clients ont payé en moyenne {n} jours après l'émission de la facture.",
+      { n: s.encaissements.delai_moyen_jours }));
   }
   return points;
 }
 
 /** Regroupe les petites catégories de dépenses en une ligne « Autres ». */
-function categoriesResumees(parCategorie) {
+function categoriesResumees(parCategorie, tp) {
   if (parCategorie.length <= CATEGORIES_DETAILLEES) return parCategorie;
   const gardees = parCategorie.slice(0, CATEGORIES_DETAILLEES - 1);
   const reste = parCategorie.slice(CATEGORIES_DETAILLEES - 1);
   return [...gardees, {
-    categorie: `Autres (${pluriel(reste.length, 'catégorie')})`,
+    categorie: tp(reste.length, 'Autres ({n} catégorie)', 'Autres ({n} catégories)'),
     nombre: reste.reduce((t, c) => t + c.nombre, 0),
     montant_ht: Math.round(reste.reduce((t, c) => t + c.montant_ht, 0) * 100) / 100
   }];
@@ -144,6 +150,7 @@ function Barre({ valeur, max, couleur }) {
  * @param {Function} onClose
  */
 function RapportSommaire({ periode, onClose }) {
+  const { langue, t, tp, montant } = useLangue();
   const [sommaire, setSommaire] = useState(null);
   const [erreur, setErreur] = useState(null);
   const [enCours, setEnCours] = useState(false);
@@ -182,7 +189,7 @@ function RapportSommaire({ periode, onClose }) {
         .from(printRef.current)
         .set({
           margin: [10, 10, 12, 10],
-          filename: `Compte_rendu_${suffixePeriode(periode)}.pdf`,
+          filename: `${t('Compte_rendu')}_${suffixePeriode(periode, langue)}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
           html2canvas: { scale: 2 },
           jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
@@ -191,13 +198,13 @@ function RapportSommaire({ periode, onClose }) {
         })
         .save();
     } catch (err) {
-      setErreurPdf(err.message || 'La production du PDF a échoué.');
+      setErreurPdf(err.message || t('La production du PDF a échoué.'));
     } finally {
       setEnCours(false);
     }
   };
 
-  const titre = `Compte rendu, ${libellePeriode(periode)}`;
+  const titre = t('Compte rendu, {periode}', { periode: libellePeriode(periode, langue) });
 
   if (erreur || !sommaire) {
     return (
@@ -205,8 +212,8 @@ function RapportSommaire({ periode, onClose }) {
         <div className="modal-content glass-panel">
           {erreur
             ? <p className="alert alert-error" role="alert">{erreur}</p>
-            : <p>Préparation du compte rendu…</p>}
-          <button type="button" className="btn-secondary" onClick={onClose}>Fermer</button>
+            : <p>{t('Préparation du compte rendu…')}</p>}
+          <button type="button" className="btn-secondary" onClick={onClose}>{t('Fermer')}</button>
         </div>
       </div>
     );
@@ -214,11 +221,16 @@ function RapportSommaire({ periode, onClose }) {
 
   const s = sommaire;
   const e = s.entreprise || {};
-  const m = (v) => formatMontant(v);
-  const points = pointsDAttention(s);
+  const m = (v) => montant(v);
+  const pourcent = pourcentDans(langue);
+  const part = partDans(pourcent);
+  const date = (iso) => dateLongue(iso, langue);
+  // Une catégorie proposée se traduit ; celle qu'on a saisie reste telle quelle.
+  const libelleCategorie = (c) => (CATEGORIES_DEPENSE.includes(c) || c === 'Sans catégorie' ? t(c) : c);
+  const points = pointsDAttention(s, { t, tp, m, pourcent });
   const plusieursMois = s.par_mois.length > 1;
   const maxMensuel = Math.max(0, ...s.par_mois.flatMap((x) => [x.facture, x.encaisse]));
-  const categories = categoriesResumees(s.depenses.par_categorie);
+  const categories = categoriesResumees(s.depenses.par_categorie.map((c) => ({ ...c, categorie: libelleCategorie(c.categorie) })), tp);
   const balance = s.creances.balance;
   const clientsMasques = balance.nb_clients - balance.clients.length;
 
@@ -228,7 +240,7 @@ function RapportSommaire({ periode, onClose }) {
       style={{ zIndex: 9999, padding: '20px', overflowY: 'auto', display: 'block' }}
     >
       <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '20px', position: 'sticky', top: '10px', zIndex: 10000, flexWrap: 'wrap' }}>
-        <button type="button" className="btn-secondary" onClick={onClose} style={{ background: 'white' }}>Fermer</button>
+        <button type="button" className="btn-secondary" onClick={onClose} style={{ background: 'white', color: '#1e293b' }}>{t('Fermer')}</button>
         {/* Des icônes dessinées, comme sur les autres boutons de
             l'application, et non des émojis rendus par la police du système.
             L'icône reste pendant la production du PDF : seul le libellé change,
@@ -238,14 +250,14 @@ function RapportSommaire({ periode, onClose }) {
           style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}
         >
           <Download size={16} aria-hidden="true" />
-          {enCours ? 'Production du PDF…' : 'Télécharger le PDF'}
+          {enCours ? t('Production du PDF…') : t('Télécharger le PDF')}
         </button>
         <button
           type="button" className="btn-secondary" onClick={() => window.print()}
-          style={{ background: 'white', display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}
+          style={{ background: 'white', color: '#1e293b', display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}
         >
           <Printer size={16} aria-hidden="true" />
-          Imprimer
+          {t('Imprimer')}
         </button>
       </div>
 
@@ -267,7 +279,7 @@ function RapportSommaire({ periode, onClose }) {
               <img src={e.entreprise_logo} alt="" style={{ maxHeight: '70px', maxWidth: '220px', marginBottom: '12px', display: 'block' }} />
             )}
             <p style={{ margin: '0 0 4px 0', fontSize: '1.1rem', color: COULEURS.bleu, fontWeight: 'bold' }}>
-              {e.entreprise_nom || 'Votre entreprise'}
+              {e.entreprise_nom || t('Votre entreprise')}
             </p>
             {e.entreprise_adresse && (
               <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem', color: COULEURS.gris, whiteSpace: 'pre-line' }}>{e.entreprise_adresse}</p>
@@ -277,49 +289,55 @@ function RapportSommaire({ periode, onClose }) {
             )}
           </div>
           <div style={{ textAlign: 'right' }}>
-            <h2 style={{ margin: '0 0 4px 0', fontSize: '1.7rem', color: COULEURS.encre, letterSpacing: '0.02em' }}>COMPTE RENDU</h2>
-            <p style={{ margin: '0 0 4px 0', fontWeight: 'bold', fontSize: '1.05rem' }}>{libellePeriode(s.periode)}</p>
+            <h2 style={{ margin: '0 0 4px 0', fontSize: '1.7rem', color: COULEURS.encre, letterSpacing: '0.02em' }}>{t('COMPTE RENDU')}</h2>
+            <p style={{ margin: '0 0 4px 0', fontWeight: 'bold', fontSize: '1.05rem' }}>{libellePeriode(s.periode, langue)}</p>
             <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: COULEURS.gris }}>
-              Du {dateLongue(s.periode.debut)} au {dateLongue(s.periode.fin)}
+              {t('Du {debut} au {fin}', { debut: date(s.periode.debut), fin: date(s.periode.fin) })}
             </p>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: COULEURS.gris }}>Produit le {dateLongue(s.date_reference)}</p>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: COULEURS.gris }}>{t('Produit le {date}', { date: date(s.date_reference) })}</p>
           </div>
         </header>
 
         <p style={{ margin: '16px 0 0 0', fontSize: '0.85rem', color: COULEURS.gris }}>
-          Sommaire de gestion établi à partir des factures, encaissements et dépenses inscrits dans Clora.
-          Tous les montants sont en dollars canadiens.
+          {t('Sommaire de gestion établi à partir des factures, encaissements et dépenses inscrits dans Clora. '
+            + 'Tous les montants sont en dollars canadiens.')}
         </p>
 
         {/* --- En un coup d'œil --- */}
-        <Section titre="En un coup d'œil">
+        <Section titre={t("En un coup d'œil")}>
           <div style={grille(4)}>
             <Tuile
-              titre="Facturé" valeur={m(s.facturation.facture_net)} couleur={COULEURS.bleu}
-              detail={`${pluriel(s.facturation.nb_factures, 'facture')} à ${pluriel(s.facturation.nb_clients, 'client')}`
-                + (s.facturation.total_credite > 0 ? `, net de ${m(s.facturation.total_credite)} de crédits` : '')}
+              titre={t('Facturé')} valeur={m(s.facturation.facture_net)} couleur={COULEURS.bleu}
+              detail={t('{factures} à {clients}', {
+                factures: tp(s.facturation.nb_factures, '{n} facture', '{n} factures'),
+                clients: tp(s.facturation.nb_clients, '{n} client', '{n} clients')
+              })
+                + (s.facturation.total_credite > 0 ? t(', net de {montant} de crédits', { montant: m(s.facturation.total_credite) }) : '')}
             />
             <Tuile
-              titre="Encaissé" valeur={m(s.encaissements.total_encaisse)} couleur={COULEURS.vert}
-              detail={pluriel(s.encaissements.nb_paiements, 'paiement')
+              titre={t('Encaissé')} valeur={m(s.encaissements.total_encaisse)} couleur={COULEURS.vert}
+              detail={tp(s.encaissements.nb_paiements, '{n} paiement', '{n} paiements')
                 + (s.encaissements.delai_moyen_jours !== null
-                  ? `, reçus en moyenne ${s.encaissements.delai_moyen_jours} jours après émission` : '')}
+                  ? t(', reçus en moyenne {n} jours après émission', { n: s.encaissements.delai_moyen_jours }) : '')}
             />
             <Tuile
-              titre="Dépenses hors taxes" valeur={m(s.depenses.total_ht)} couleur={COULEURS.rouge}
-              detail={`${pluriel(s.depenses.nb_depenses, 'dépense')}, ${m(s.depenses.taxes_recuperables)} de taxes récupérables`}
+              titre={t('Dépenses hors taxes')} valeur={m(s.depenses.total_ht)} couleur={COULEURS.rouge}
+              detail={t('{depenses}, {montant} de taxes récupérables', {
+                depenses: tp(s.depenses.nb_depenses, '{n} dépense', '{n} dépenses'),
+                montant: m(s.depenses.taxes_recuperables)
+              })}
             />
             <Tuile
-              titre="Bénéfice net" valeur={m(s.resultat.benefice_net)} couleur={COULEURS.violet}
+              titre={t('Bénéfice net')} valeur={m(s.resultat.benefice_net)} couleur={COULEURS.violet}
               detail={s.resultat.marge !== null
-                ? `${pourcent(s.resultat.marge)} de l'encaissé, moins les dépenses hors taxes`
-                : 'Encaissé moins dépenses hors taxes'}
+                ? t("{part} de l'encaissé, moins les dépenses hors taxes", { part: pourcent(s.resultat.marge) })
+                : t('Encaissé moins dépenses hors taxes')}
             />
           </div>
         </Section>
 
         {points.length > 0 && (
-          <Section titre="Points d'attention">
+          <Section titre={t("Points d'attention")}>
             <ul style={{ margin: 0, paddingLeft: '20px', color: COULEURS.encre, fontSize: '0.92rem', lineHeight: 1.6 }}>
               {points.map((p) => <li key={p}>{p}</li>)}
             </ul>
@@ -328,21 +346,21 @@ function RapportSommaire({ periode, onClose }) {
 
         {/* --- Évolution mensuelle : inutile pour un mois seul --- */}
         {plusieursMois && (
-          <Section titre="Évolution mensuelle" sousTitre="Facturé net des crédits par mois d'émission, encaissé par mois de paiement, dépenses hors taxes par date de dépense.">
+          <Section titre={t('Évolution mensuelle')} sousTitre={t("Facturé net des crédits par mois d'émission, encaissé par mois de paiement, dépenses hors taxes par date de dépense.")}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={th()}>Mois</th>
-                  <th style={th('right')}>Facturé</th>
-                  <th style={th('right')}>Encaissé</th>
-                  <th style={th()}>Encaissé, en proportion</th>
-                  <th style={th('right')}>Dépenses HT</th>
+                  <th style={th()}>{t('Mois')}</th>
+                  <th style={th('right')}>{t('Facturé')}</th>
+                  <th style={th('right')}>{t('Encaissé')}</th>
+                  <th style={th()}>{t('Encaissé, en proportion')}</th>
+                  <th style={th('right')}>{t('Dépenses HT')}</th>
                 </tr>
               </thead>
               <tbody>
                 {s.par_mois.map((x) => (
                   <tr key={x.mois}>
-                    <td style={td()}>{moisLong(x.mois)}</td>
+                    <td style={td()}>{moisLong(x.mois, langue)}</td>
                     <td style={td('right')}>{m(x.facture)}</td>
                     <td style={td('right')}>{m(x.encaisse)}</td>
                     <td style={td()}><Barre valeur={x.encaisse} max={maxMensuel} couleur={COULEURS.vert} /></td>
@@ -352,7 +370,7 @@ function RapportSommaire({ periode, onClose }) {
               </tbody>
               <tfoot>
                 <tr>
-                  <td style={tdTotal()}>Total</td>
+                  <td style={tdTotal()}>{t('Total')}</td>
                   <td style={tdTotal('right')}>{m(s.facturation.facture_net)}</td>
                   <td style={tdTotal('right')}>{m(s.encaissements.total_encaisse)}</td>
                   <td style={tdTotal()} />
@@ -365,25 +383,25 @@ function RapportSommaire({ periode, onClose }) {
 
         {/* --- Créances : un état au jour du rapport --- */}
         <Section
-          titre={`Ce qui vous est dû au ${dateLongue(s.date_reference)}`}
-          sousTitre="État des comptes clients au jour où ce document est produit, toutes périodes confondues."
+          titre={t('Ce qui vous est dû au {date}', { date: date(s.date_reference) })}
+          sousTitre={t('État des comptes clients au jour où ce document est produit, toutes périodes confondues.')}
         >
           {balance.totaux.total > 0 ? (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={th('left', { ...SERRE, minWidth: '150px' })}>Client</th>
-                  {balance.tranches.map((t) => <th key={t.cle} style={th('right', SERRE)}>{t.libelle}</th>)}
-                  <th style={th('right', SERRE)}>Total dû</th>
+                  <th style={th('left', { ...SERRE, minWidth: '150px' })}>{t('Client')}</th>
+                  {balance.tranches.map((tr) => <th key={tr.cle} style={th('right', SERRE)}>{t(tr.libelle)}</th>)}
+                  <th style={th('right', SERRE)}>{t('Total dû')}</th>
                 </tr>
               </thead>
               <tbody>
                 {balance.clients.map((c) => (
                   <tr key={c.client_id}>
                     <td style={td('left', SERRE)}>{c.client}</td>
-                    {balance.tranches.map((t) => (
-                      <td key={t.cle} style={td('right', { ...SERRE, color: t.cle === 'jours_91_plus' && c[t.cle] > 0 ? COULEURS.rouge : COULEURS.encre })}>
-                        {c[t.cle] > 0 ? m(c[t.cle]) : '-'}
+                    {balance.tranches.map((tr) => (
+                      <td key={tr.cle} style={td('right', { ...SERRE, color: tr.cle === 'jours_91_plus' && c[tr.cle] > 0 ? COULEURS.rouge : COULEURS.encre })}>
+                        {c[tr.cle] > 0 ? m(c[tr.cle]) : '-'}
                       </td>
                     ))}
                     <td style={td('right', { ...SERRE, fontWeight: 600 })}>{m(c.total)}</td>
@@ -392,34 +410,36 @@ function RapportSommaire({ periode, onClose }) {
                 {clientsMasques > 0 && (
                   <tr>
                     <td style={td('left', { ...SERRE, color: COULEURS.clair, fontStyle: 'italic' })} colSpan={balance.tranches.length + 2}>
-                      et {pluriel(clientsMasques, 'autre client')} : le détail complet figure dans la balance âgée de l'écran Rapports.
+                      {tp(clientsMasques,
+                        "et {n} autre client : le détail complet figure dans la balance âgée de l'écran Rapports.",
+                        "et {n} autres clients : le détail complet figure dans la balance âgée de l'écran Rapports.")}
                     </td>
                   </tr>
                 )}
               </tbody>
               <tfoot>
                 <tr>
-                  <td style={tdTotal('left', SERRE)}>Total</td>
-                  {balance.tranches.map((t) => <td key={t.cle} style={tdTotal('right', SERRE)}>{m(balance.totaux[t.cle])}</td>)}
+                  <td style={tdTotal('left', SERRE)}>{t('Total')}</td>
+                  {balance.tranches.map((tr) => <td key={tr.cle} style={tdTotal('right', SERRE)}>{m(balance.totaux[tr.cle])}</td>)}
                   <td style={tdTotal('right', SERRE)}>{m(balance.totaux.total)}</td>
                 </tr>
               </tfoot>
             </table>
           ) : (
-            <p style={{ margin: 0, fontSize: '0.92rem', color: COULEURS.gris }}>Aucune somme n'est due : toutes les factures sont réglées.</p>
+            <p style={{ margin: 0, fontSize: '0.92rem', color: COULEURS.gris }}>{t("Aucune somme n'est due : toutes les factures sont réglées.")}</p>
           )}
         </Section>
 
         {/* --- Clients --- */}
-        <Section titre="Vos principaux clients sur la période" sousTitre="Classés sur le facturé net des notes de crédit.">
+        <Section titre={t('Vos principaux clients sur la période')} sousTitre={t('Classés sur le facturé net des notes de crédit.')}>
           {s.clients.principaux.length > 0 ? (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={th()}>Client</th>
-                  <th style={th('right')}>Factures</th>
-                  <th style={th('right')}>Facturé</th>
-                  <th style={th('right')}>Part</th>
+                  <th style={th()}>{t('Client')}</th>
+                  <th style={th('right')}>{t('Factures')}</th>
+                  <th style={th('right')}>{t('Facturé')}</th>
+                  <th style={th('right')}>{t('Part')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -434,20 +454,20 @@ function RapportSommaire({ periode, onClose }) {
               </tbody>
             </table>
           ) : (
-            <p style={{ margin: 0, fontSize: '0.92rem', color: COULEURS.gris }}>Aucune facture sur la période.</p>
+            <p style={{ margin: 0, fontSize: '0.92rem', color: COULEURS.gris }}>{t('Aucune facture sur la période.')}</p>
           )}
         </Section>
 
         {/* --- Dépenses --- */}
-        <Section titre="Vos dépenses sur la période" sousTitre="Montants hors taxes, par catégorie.">
+        <Section titre={t('Vos dépenses sur la période')} sousTitre={t('Montants hors taxes, par catégorie.')}>
           {categories.length > 0 ? (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={th()}>Catégorie</th>
-                  <th style={th('right')}>Dépenses</th>
-                  <th style={th('right')}>Hors taxes</th>
-                  <th style={th('right')}>Part</th>
+                  <th style={th()}>{t('Catégorie')}</th>
+                  <th style={th('right')}>{t('Dépenses')}</th>
+                  <th style={th('right')}>{t('Hors taxes')}</th>
+                  <th style={th('right')}>{t('Part')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -462,7 +482,7 @@ function RapportSommaire({ periode, onClose }) {
               </tbody>
               <tfoot>
                 <tr>
-                  <td style={tdTotal()}>Total hors taxes</td>
+                  <td style={tdTotal()}>{t('Total hors taxes')}</td>
                   <td style={tdTotal('right')}>{s.depenses.nb_depenses}</td>
                   <td style={tdTotal('right')}>{m(s.depenses.total_ht)}</td>
                   <td style={tdTotal('right')} />
@@ -470,40 +490,42 @@ function RapportSommaire({ periode, onClose }) {
               </tfoot>
             </table>
           ) : (
-            <p style={{ margin: 0, fontSize: '0.92rem', color: COULEURS.gris }}>Aucune dépense sur la période.</p>
+            <p style={{ margin: 0, fontSize: '0.92rem', color: COULEURS.gris }}>{t('Aucune dépense sur la période.')}</p>
           )}
           {s.depenses.kilometres > 0 && (
             <p style={{ margin: '12px 0 0 0', fontSize: '0.88rem', color: COULEURS.gris }}>
-              Dont déplacements : {s.depenses.kilometres.toLocaleString('fr-CA')} km parcourus,
-              pour une indemnité de {m(s.depenses.indemnite_kilometrique)}.
+              {t('Dont déplacements : {km} km parcourus, pour une indemnité de {montant}.', {
+                km: s.depenses.kilometres.toLocaleString(langue === 'en' ? 'en-CA' : 'fr-CA'),
+                montant: m(s.depenses.indemnite_kilometrique)
+              })}
             </p>
           )}
         </Section>
 
         {/* --- Taxes --- */}
-        <Section titre="Taxes de la période" sousTitre="Taxes facturées à vos clients, moins celles payées sur vos achats. Un montant net négatif correspond à un remboursement attendu.">
+        <Section titre={t('Taxes de la période')} sousTitre={t('Taxes facturées à vos clients, moins celles payées sur vos achats. Un montant net négatif correspond à un remboursement attendu.')}>
           <div style={grille(3)}>
-            <Tuile titre="Taxes facturées" valeur={m(s.taxes.taxes_facturees)} couleur={COULEURS.bleu} />
-            <Tuile titre="Taxes payées" valeur={m(s.taxes.taxes_payees)} couleur={COULEURS.ambre} />
-            <Tuile titre="Taxes nettes à remettre" valeur={m(s.taxes.taxes_nettes)} couleur={s.taxes.taxes_nettes < 0 ? COULEURS.vert : COULEURS.encre} />
+            <Tuile titre={t('Taxes facturées')} valeur={m(s.taxes.taxes_facturees)} couleur={COULEURS.bleu} />
+            <Tuile titre={t('Taxes payées')} valeur={m(s.taxes.taxes_payees)} couleur={COULEURS.ambre} />
+            <Tuile titre={t('Taxes nettes à remettre')} valeur={m(s.taxes.taxes_nettes)} couleur={s.taxes.taxes_nettes < 0 ? COULEURS.vert : COULEURS.encre} />
           </div>
           {s.taxes.parRegime.length > 0 && (
             <p style={{ margin: '12px 0 0 0', fontSize: '0.88rem', color: COULEURS.gris }}>
-              Facturé par régime : {s.taxes.parRegime.map((r) => `${r.nom} ${m(r.montant)}`).join(', ')}.
+              {t('Facturé par régime : {liste}.', { liste: s.taxes.parRegime.map((r) => `${t(r.nom)} ${m(r.montant)}`).join(', ') })}
             </p>
           )}
         </Section>
 
         <footer style={{ marginTop: '48px', paddingTop: '16px', borderTop: `1px solid ${COULEURS.filet}`, fontSize: '0.78rem', color: COULEURS.clair, textAlign: 'center', lineHeight: 1.5 }}>
           <p style={{ margin: '0 0 4px 0' }}>
-            Ce document est un sommaire de gestion produit par Clora. Il ne constitue pas des états financiers
-            et ne remplace ni un bilan ni un état des résultats préparés par un comptable.
+            {t('Ce document est un sommaire de gestion produit par Clora. Il ne constitue pas des états financiers '
+              + 'et ne remplace ni un bilan ni un état des résultats préparés par un comptable.')}
           </p>
           {(e.taxe_1_numero || e.taxe_2_numero) && (
             <p style={{ margin: 0 }}>
               {[
-                e.taxe_1_numero && `${e.taxe_1_nom} : ${e.taxe_1_numero}`,
-                e.taxe_2_numero && `${e.taxe_2_nom} : ${e.taxe_2_numero}`
+                e.taxe_1_numero && t('{taxe} : {numero}', { taxe: t(e.taxe_1_nom), numero: e.taxe_1_numero }),
+                e.taxe_2_numero && t('{taxe} : {numero}', { taxe: t(e.taxe_2_nom), numero: e.taxe_2_numero })
               ].filter(Boolean).join(' | ')}
             </p>
           )}

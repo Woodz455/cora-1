@@ -10,6 +10,7 @@ const path = require('path');
 const { startServer } = require('./server.js');
 const { sauvegardeSiNecessaire } = require('./backupService.js');
 const { connexionsOuvertes, fermerTout } = require('./companyStore.js');
+const { traduire } = require('./traductionServeur.js');
 
 /**
  * `CLORA_UI_COMPILEE=1` force le chemin de production sur une application non
@@ -35,6 +36,18 @@ const cheminImage = (nom) => (app.isPackaged
 
 let mainWindow = null;
 let serverInstance = null;
+
+/**
+ * L'alerte de démarrage s'affiche avant l'interface, donc avant que la langue
+ * du compte soit connue : elle suit celle du système, comme le premier écran
+ * de connexion.
+ */
+function alerteDeDemarrage(message) {
+  const anglais = String(app.getLocale() || '').toLowerCase().startsWith('en');
+  return anglais
+    ? ['Clora cannot start', `The internal service could not be started.\n\n${traduire(message, 'en')}`]
+    : ['Clora ne peut pas démarrer', `Le service interne n'a pas pu être lancé.\n\n${message}`];
+}
 
 async function createWindow() {
   mainWindow = new BrowserWindow({
@@ -95,10 +108,7 @@ async function createWindow() {
     // Sans cette alerte, un échec de démarrage se traduisait par une fenêtre
     // blanche sans explication.
     console.error('[Electron] Erreur au démarrage du serveur :', error);
-    dialog.showErrorBox(
-      'Clora ne peut pas démarrer',
-      `Le service interne n'a pas pu être lancé.\n\n${error.message}`
-    );
+    dialog.showErrorBox(...alerteDeDemarrage(error.message));
     app.quit();
   }
 

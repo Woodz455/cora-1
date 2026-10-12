@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
 import InfoTooltip from './InfoTooltip';
-import { api, formatMontant } from '../api';
+import { api } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useModale } from '../useModale';
 import { usePagination } from '../usePagination';
@@ -9,16 +9,8 @@ import Pagination from './Pagination';
 import { useTri } from '../useTri';
 import { useFeedback } from '../FeedbackContext';
 import EnTeteTri from './EnTeteTri';
-
-const CATEGORIES = [
-  'Matériel',
-  'Logiciels et abonnements',
-  'Sous-traitance',
-  "Repas d'affaires",
-  'Frais de déplacement',
-  'Fournitures de bureau',
-  'Autres dépenses'
-];
+import { useLangue } from '../i18n.js';
+import { CATEGORIES_DEPENSE as CATEGORIES } from '../statuts.js';
 
 const AUTRES = 'Autres dépenses';
 
@@ -70,14 +62,18 @@ function deplacementVide() {
 }
 
 /** Formate un nombre de kilomètres, sans décimale inutile. */
-function formatKm(km) {
+function formatKm(km, langue = 'fr') {
   const n = Number(km);
   if (!Number.isFinite(n)) return '';
-  return `${n.toLocaleString('fr-CA', { maximumFractionDigits: 1 })} km`;
+  return `${n.toLocaleString(langue === 'en' ? 'en-CA' : 'fr-CA', { maximumFractionDigits: 1 })} km`;
 }
 
 function ExpenseList() {
   const { notifier, confirmer } = useFeedback();
+  const { langue, t, tp, montant: formatMontant } = useLangue();
+  const km = (valeur) => formatKm(valeur, langue);
+  // Une catégorie proposée se traduit ; celle qu'on a saisie reste telle quelle.
+  const libelleCategorie = (categorie) => (CATEGORIES.includes(categorie) ? t(categorie) : categorie);
   const { data: expenses, loading, error, setError, refresh } = useApiResource('/api/depenses', []);
   const { data: vehicules, refresh: refreshVehicules } = useApiResource('/api/depenses/vehicules', []);
   const { data: tauxKm } = useApiResource('/api/settings/taux-kilometriques', []);
@@ -166,17 +162,17 @@ function ExpenseList() {
   const handleDelete = async (depense) => {
     const libelle = depense.fournisseur || depense.description;
     const accepte = await confirmer({
-      titre: `Supprimer la dépense « ${libelle} » ?`,
-      message: 'Elle ne comptera plus dans vos charges ni dans les taxes réclamées '
-        + 'au titre des intrants. Cette action est irréversible.',
-      libelleConfirmer: 'Supprimer',
+      titre: t('Supprimer la dépense « {nom} » ?', { nom: libelle }),
+      message: t('Elle ne comptera plus dans vos charges ni dans les taxes réclamées '
+        + 'au titre des intrants. Cette action est irréversible.'),
+      libelleConfirmer: t('Supprimer'),
       danger: true
     });
     if (!accepte) return;
     try {
       setError(null);
       await api.del(`/api/depenses/${depense.id}`);
-      notifier(`Dépense « ${libelle} » supprimée.`);
+      notifier(t('Dépense « {nom} » supprimée.', { nom: libelle }));
       refresh();
     } catch (err) {
       notifier(err.message, 'erreur');
@@ -210,8 +206,8 @@ function ExpenseList() {
     + (parseFloat(currentExpense.tvq) || 0);
 
   const titreModale = estDeplacement
-    ? (currentExpense.id ? 'Modifier le déplacement' : 'Inscrire un déplacement')
-    : (currentExpense.id ? 'Modifier la dépense' : 'Ajouter une dépense');
+    ? (currentExpense.id ? t('Modifier le déplacement') : t('Inscrire un déplacement'))
+    : (currentExpense.id ? t('Modifier la dépense') : t('Ajouter une dépense'));
 
   return (
     <div className="glass-panel" style={{ padding: '20px' }}>
@@ -222,15 +218,15 @@ function ExpenseList() {
           <input
             type="search"
             className="search-input"
-            placeholder="Rechercher une dépense…"
-            aria-label="Rechercher une dépense"
+            placeholder={t('Rechercher une dépense…')}
+            aria-label={t('Rechercher une dépense')}
             value={recherche}
             onChange={(e) => setRecherche(e.target.value)}
           />
         </div>
         <div className="toolbar-group">
-          <button type="button" className="btn-secondary" onClick={openDeplacement}>+ Déplacement</button>
-          <button type="button" className="btn-primary" onClick={() => openModal()}>+ Nouvelle dépense</button>
+          <button type="button" className="btn-secondary" onClick={openDeplacement}>{t('+ Déplacement')}</button>
+          <button type="button" className="btn-primary" onClick={() => openModal()}>{t('+ Nouvelle dépense')}</button>
         </div>
       </div>
 
@@ -238,46 +234,46 @@ function ExpenseList() {
         <table className="data-table">
           <thead>
             <tr>
-              <EnTeteTri colonne="date_depense" tri={tri} onTrier={basculer}>Date</EnTeteTri>
-              <EnTeteTri colonne="fournisseur" tri={tri} onTrier={basculer}>Fournisseur</EnTeteTri>
-              <EnTeteTri colonne="description" tri={tri} onTrier={basculer}>Description</EnTeteTri>
-              <EnTeteTri colonne="categorie" tri={tri} onTrier={basculer}>Catégorie</EnTeteTri>
+              <EnTeteTri colonne="date_depense" tri={tri} onTrier={basculer}>{t('Date')}</EnTeteTri>
+              <EnTeteTri colonne="fournisseur" tri={tri} onTrier={basculer}>{t('Fournisseur')}</EnTeteTri>
+              <EnTeteTri colonne="description" tri={tri} onTrier={basculer}>{t('Description')}</EnTeteTri>
+              <EnTeteTri colonne="categorie" tri={tri} onTrier={basculer}>{t('Catégorie')}</EnTeteTri>
               <EnTeteTri
                 colonne="kilometres" tri={tri} onTrier={basculer} className="numeric"
-                suffixe={<InfoTooltip text="Distance parcourue, pour les déplacements. Le montant en découle au taux de l'année." />}
+                suffixe={<InfoTooltip text={t("Distance parcourue, pour les déplacements. Le montant en découle au taux de l'année.")} />}
               >
-                Distance
+                {t('Distance')}
               </EnTeteTri>
               {/* La bulle d'aide reste hors du bouton : elle alourdirait le nom
                   annoncé de la colonne, et se déclenche au survol. */}
               <EnTeteTri
                 colonne="montant_ht" tri={tri} onTrier={basculer} className="numeric"
-                suffixe={<InfoTooltip text="Hors taxes : le montant avant application des taxes." />}
+                suffixe={<InfoTooltip text={t('Hors taxes : le montant avant application des taxes.')} />}
               >
-                Montant HT
+                {t('Montant HT')}
               </EnTeteTri>
               <EnTeteTri
                 colonne="taxes" tri={tri} onTrier={basculer} className="numeric"
-                suffixe={<InfoTooltip text="Les taxes payées sur vos achats, que vous pouvez réclamer (crédit ou remboursement de la taxe sur les intrants)." />}
+                suffixe={<InfoTooltip text={t('Les taxes payées sur vos achats, que vous pouvez réclamer (crédit ou remboursement de la taxe sur les intrants).')} />}
               >
-                Taxes (CTI/RTI)
+                {t('Taxes (CTI/RTI)')}
               </EnTeteTri>
               <EnTeteTri
                 colonne="montant_ttc" tri={tri} onTrier={basculer} className="numeric"
-                suffixe={<InfoTooltip text="Toutes taxes comprises : le montant final payé." />}
+                suffixe={<InfoTooltip text={t('Toutes taxes comprises : le montant final payé.')} />}
               >
-                Total TTC
+                {t('Total TTC')}
               </EnTeteTri>
-              <th style={{ textAlign: 'right' }}>Actions</th>
+              <th style={{ textAlign: 'right' }}>{t('Actions')}</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="9" className="empty-state">Chargement…</td></tr>
+              <tr><td colSpan="9" className="empty-state">{t('Chargement…')}</td></tr>
             ) : depensesFiltrees.length === 0 ? (
               <tr>
                 <td colSpan="9" className="empty-state">
-                  {expenses.length === 0 ? 'Aucune dépense enregistrée.' : 'Aucune dépense ne correspond à votre recherche.'}
+                  {expenses.length === 0 ? t('Aucune dépense enregistrée.') : t('Aucune dépense ne correspond à votre recherche.')}
                 </td>
               </tr>
             ) : depensesAffichees.map((expense) => (
@@ -285,10 +281,10 @@ function ExpenseList() {
                 <td style={{ color: 'var(--text-muted)' }}>{expense.date_depense}</td>
                 <td style={{ fontWeight: '500' }}>{expense.fournisseur}</td>
                 <td style={{ color: 'var(--text-muted)' }}>{expense.description}</td>
-                <td><span className="status-badge">{expense.categorie}</span></td>
+                <td><span className="status-badge">{libelleCategorie(expense.categorie)}</span></td>
                 <td className="numeric" style={{ color: 'var(--text-muted)' }}>
                   {expense.kilometres !== null && expense.kilometres !== undefined
-                    ? formatKm(expense.kilometres)
+                    ? km(expense.kilometres)
                     : '-'}
                 </td>
                 <td className="numeric">{formatMontant(expense.montant_ht)}</td>
@@ -302,8 +298,8 @@ function ExpenseList() {
                 </td>
                 <td className="numeric" style={{ fontWeight: 'bold' }}>{formatMontant(expense.montant_ttc)}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <button type="button" className="btn-icon" onClick={() => openModal(expense)} aria-label="Modifier la dépense" style={{ marginRight: '4px' }}><Pencil size={16} aria-hidden="true" /></button>
-                  <button type="button" className="btn-danger" onClick={() => handleDelete(expense)} aria-label="Supprimer la dépense"><Trash2 size={16} aria-hidden="true" /></button>
+                  <button type="button" className="btn-icon" onClick={() => openModal(expense)} aria-label={t('Modifier la dépense')} style={{ marginRight: '4px' }}><Pencil size={16} aria-hidden="true" /></button>
+                  <button type="button" className="btn-danger" onClick={() => handleDelete(expense)} aria-label={t('Supprimer la dépense')}><Trash2 size={16} aria-hidden="true" /></button>
                 </td>
               </tr>
             ))}
@@ -311,9 +307,9 @@ function ExpenseList() {
           {depensesFiltrees.length > 0 && (
             <tfoot>
               <tr style={{ fontWeight: 'bold' }}>
-                <td colSpan="4" style={{ paddingTop: '12px' }}>Total ({depensesFiltrees.length} dépense{depensesFiltrees.length > 1 ? 's' : ''})</td>
+                <td colSpan="4" style={{ paddingTop: '12px' }}>{tp(depensesFiltrees.length, 'Total ({n} dépense)', 'Total ({n} dépenses)')}</td>
                 <td className="numeric" style={{ paddingTop: '12px', color: 'var(--text-muted)' }}>
-                  {totaux.km > 0 ? formatKm(totaux.km) : ''}
+                  {totaux.km > 0 ? km(totaux.km) : ''}
                 </td>
                 <td className="numeric" style={{ paddingTop: '12px' }}>{formatMontant(totaux.ht)}</td>
                 <td className="numeric" style={{ paddingTop: '12px' }}>{formatMontant(totaux.taxes)}</td>
@@ -337,12 +333,12 @@ function ExpenseList() {
             <form onSubmit={handleSave}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div className="form-group">
-                  <label htmlFor="depense-date">{estDeplacement ? 'Date du déplacement *' : 'Date de la dépense *'}</label>
+                  <label htmlFor="depense-date">{estDeplacement ? t('Date du déplacement *') : t('Date de la dépense *')}</label>
                   <input id="depense-date" type="date" className="form-control" value={currentExpense.date_depense} onChange={(e) => setCurrentExpense({ ...currentExpense, date_depense: e.target.value })} required />
                 </div>
                 {!estDeplacement && (
                   <div className="form-group">
-                    <label htmlFor="depense-fournisseur">Fournisseur *</label>
+                    <label htmlFor="depense-fournisseur">{t('Fournisseur *')}</label>
                     <input id="depense-fournisseur" type="text" className="form-control" value={currentExpense.fournisseur} onChange={(e) => setCurrentExpense({ ...currentExpense, fournisseur: e.target.value })} required />
                   </div>
                 )}
@@ -351,10 +347,10 @@ function ExpenseList() {
                     {/* La bulle est hors du libellé : son bouton porte un nom
                         accessible, qui entrerait sinon dans celui du champ. */}
                     <span style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
-                      <label htmlFor="depense-vehicule" style={{ marginBottom: 0 }}>Véhicule ou transport</label>
-                      <InfoTooltip text="Le véhicule employé, ou le mode de transport. Les valeurs déjà saisies vous sont proposées." />
+                      <label htmlFor="depense-vehicule" style={{ marginBottom: 0 }}>{t('Véhicule ou transport')}</label>
+                      <InfoTooltip text={t('Le véhicule employé, ou le mode de transport. Les valeurs déjà saisies vous sont proposées.')} />
                     </span>
-                    <input id="depense-vehicule" type="text" className="form-control" list="vehicules-connus" placeholder="Toyota Corolla 2022" value={currentExpense.vehicule || ''} onChange={(e) => setCurrentExpense({ ...currentExpense, vehicule: e.target.value })} />
+                    <input id="depense-vehicule" type="text" className="form-control" list="vehicules-connus" placeholder={t('Toyota Corolla 2022')} value={currentExpense.vehicule || ''} onChange={(e) => setCurrentExpense({ ...currentExpense, vehicule: e.target.value })} />
                     <datalist id="vehicules-connus">
                       {vehicules.map((v) => <option key={v} value={v} />)}
                     </datalist>
@@ -363,20 +359,20 @@ function ExpenseList() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="depense-description">{estDeplacement ? 'Motif du déplacement *' : 'Description'}</label>
-                <input id="depense-description" type="text" className="form-control" placeholder={estDeplacement ? 'Audition à Montréal' : ''} value={currentExpense.description || ''} onChange={(e) => setCurrentExpense({ ...currentExpense, description: e.target.value })} required={estDeplacement} />
+                <label htmlFor="depense-description">{estDeplacement ? t('Motif du déplacement *') : t('Description')}</label>
+                <input id="depense-description" type="text" className="form-control" placeholder={estDeplacement ? t('Audition à Montréal') : ''} value={currentExpense.description || ''} onChange={(e) => setCurrentExpense({ ...currentExpense, description: e.target.value })} required={estDeplacement} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div className="form-group">
-                  <label htmlFor="depense-categorie">Catégorie</label>
+                  <label htmlFor="depense-categorie">{t('Catégorie')}</label>
                   <select id="depense-categorie" className="form-control" value={currentExpense.categorie} onChange={(e) => setCurrentExpense({ ...currentExpense, categorie: e.target.value })}>
-                    {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                    {CATEGORIES.map((cat) => <option key={cat} value={cat}>{t(cat)}</option>)}
                   </select>
                 </div>
                 {currentExpense.categorie === AUTRES && (
                   <div className="form-group">
-                    <label htmlFor="depense-autre">Précisez la catégorie *</label>
+                    <label htmlFor="depense-autre">{t('Précisez la catégorie *')}</label>
                     <input id="depense-autre" type="text" className="form-control" value={currentExpense.autre_categorie} onChange={(e) => setCurrentExpense({ ...currentExpense, autre_categorie: e.target.value })} required />
                   </div>
                 )}
@@ -385,34 +381,38 @@ function ExpenseList() {
               {estDeplacement && (
                 <>
                   <h4 style={{ marginTop: '20px', marginBottom: '8px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '4px' }}>
-                    Distance parcourue
+                    {t('Distance parcourue')}
                   </h4>
 
                   <div className="form-group">
-                    <label htmlFor="depense-km">Kilomètres *</label>
+                    <label htmlFor="depense-km">{t('Kilomètres *')}</label>
                     <input id="depense-km" type="number" step="0.1" min="0.1" className="form-control" value={currentExpense.kilometres} onChange={(e) => setCurrentExpense({ ...currentExpense, kilometres: e.target.value })} required />
                   </div>
 
                   {tauxDeLAnnee ? (
                     <div style={{ padding: '16px', background: 'var(--glass-bg)', borderRadius: '8px', marginTop: '8px' }}>
-                      <strong>Indemnité kilométrique {tauxDeLAnnee.annee}</strong>
+                      <strong>{t('Indemnité kilométrique {annee}', { annee: tauxDeLAnnee.annee })}</strong>
                       <p style={{ margin: '4px 0 0', color: 'var(--text-muted)' }}>
-                        {formatMontant(tauxDeLAnnee.taux_1)} du kilomètre jusqu'à {formatKm(tauxDeLAnnee.seuil_km)} dans l'année,
-                        puis {formatMontant(tauxDeLAnnee.taux_2)}.
+                        {t("{taux_1} du kilomètre jusqu'à {seuil} dans l'année, puis {taux_2}.", {
+                          taux_1: formatMontant(tauxDeLAnnee.taux_1),
+                          seuil: km(tauxDeLAnnee.seuil_km),
+                          taux_2: formatMontant(tauxDeLAnnee.taux_2)
+                        })}
                       </p>
                       {/* Le montant n'est pas prévisualisé ici : il dépend des
                           kilomètres déjà parcourus dans l'année, et le calculer
                           une seconde fois au navigateur ouvrirait la porte à ce
                           qu'il diverge de celui du serveur. */}
                       <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                        Le montant est calculé à l'enregistrement, selon les kilomètres
-                        déjà parcourus cette année-là.
+                        {t("Le montant est calculé à l'enregistrement, selon les kilomètres "
+                          + 'déjà parcourus cette année-là.')}
                       </p>
                     </div>
                   ) : (
                     <p className="alert alert-error" role="alert" style={{ marginTop: '8px' }}>
-                      Aucun taux kilométrique n'est réglé pour {String(currentExpense.date_depense || '').slice(0, 4)}.
-                      Un administrateur doit le renseigner dans Paramètres avant que ce déplacement puisse être inscrit.
+                      {t("Aucun taux kilométrique n'est réglé pour {annee}. "
+                        + 'Un administrateur doit le renseigner dans Paramètres avant que ce déplacement puisse être inscrit.',
+                      { annee: String(currentExpense.date_depense || '').slice(0, 4) })}
                     </p>
                   )}
                 </>
@@ -421,32 +421,32 @@ function ExpenseList() {
               {!estDeplacement && (
               <>
               <h4 style={{ marginTop: '20px', marginBottom: '8px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '4px' }}>
-                Montants (reprenez les taxes exactes du reçu)
+                {t('Montants (reprenez les taxes exactes du reçu)')}
               </h4>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
                 <div className="form-group">
                   <span style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
-                    <label htmlFor="depense-ht" style={{ marginBottom: 0 }}>Montant HT ($) *</label>
-                    <InfoTooltip text="Hors taxes : le montant avant application des taxes." />
+                    <label htmlFor="depense-ht" style={{ marginBottom: 0 }}>{t('Montant HT ($) *')}</label>
+                    <InfoTooltip text={t('Hors taxes : le montant avant application des taxes.')} />
                   </span>
                   <input id="depense-ht" type="number" step="0.01" min="0" className="form-control" value={currentExpense.montant_ht} onChange={(e) => setCurrentExpense({ ...currentExpense, montant_ht: e.target.value })} required />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="depense-tps">TPS / TVH ($)</label>
+                  <label htmlFor="depense-tps">{t('TPS / TVH ($)')}</label>
                   <input id="depense-tps" type="number" step="0.01" min="0" className="form-control" value={currentExpense.tps} onChange={(e) => setCurrentExpense({ ...currentExpense, tps: e.target.value })} />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="depense-tvq">TVQ / TVP ($)</label>
+                  <label htmlFor="depense-tvq">{t('TVQ / TVP ($)')}</label>
                   <input id="depense-tvq" type="number" step="0.01" min="0" className="form-control" value={currentExpense.tvq} onChange={(e) => setCurrentExpense({ ...currentExpense, tvq: e.target.value })} />
                 </div>
               </div>
 
               <div style={{ padding: '16px', background: 'var(--glass-bg)', borderRadius: '8px', marginTop: '8px', textAlign: 'right' }}>
                 <strong>
-                  Total TTC
-                  <InfoTooltip text="Toutes taxes comprises : le montant final payé." />
-                  {' : '}
+                  {t('Total TTC')}
+                  <InfoTooltip text={t('Toutes taxes comprises : le montant final payé.')} />
+                  {t(' : ')}
                 </strong>
                 <span style={{ fontSize: '1.2rem', color: 'var(--text-main)', fontWeight: 'bold' }}>
                   {formatMontant(totalModale)}
@@ -456,8 +456,8 @@ function ExpenseList() {
               )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
-                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)} disabled={saving}>Annuler</button>
-                <button type="submit" className="btn-primary" disabled={saving || (estDeplacement && !tauxDeLAnnee)}>{saving ? 'Enregistrement…' : 'Enregistrer'}</button>
+                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)} disabled={saving}>{t('Annuler')}</button>
+                <button type="submit" className="btn-primary" disabled={saving || (estDeplacement && !tauxDeLAnnee)}>{saving ? t('Enregistrement…') : t('Enregistrer')}</button>
               </div>
             </form>
           </div>

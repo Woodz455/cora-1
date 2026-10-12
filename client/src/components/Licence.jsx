@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { KeyRound, ShieldCheck } from 'lucide-react';
 import { api } from '../api';
+import { useLangue } from '../i18n.js';
+import SelecteurLangue from './SelecteurLangue';
 
 /**
  * Écran d'activation, affiché quand l'installation n'est plus utilisable.
@@ -14,6 +16,7 @@ import { api } from '../api';
  * sa comptabilité lui barre la route.
  */
 function Licence({ etat, onActive }) {
+  const { t } = useLangue();
   const [cle, setCle] = useState('');
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState(null);
@@ -38,22 +41,27 @@ function Licence({ etat, onActive }) {
       padding: '2rem', color: 'var(--text-main)'
     }}>
       <div style={{ width: '100%', maxWidth: '32rem' }}>
-        <img src="/images/logotype.png" alt="Clora" style={{ height: '38px', marginBottom: '2rem' }} />
+        {/* L'écran passe avant la connexion : la langue se choisit ici, comme à
+            l'écran de connexion, faute de compte qui la porterait. */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+          <img src="/images/logotype.png" alt="Clora" style={{ height: '38px' }} />
+          <SelecteurLangue />
+        </div>
 
         <h1 style={{ fontSize: '1.4rem', margin: '0 0 .5rem' }}>
-          {maintenanceExpiree ? 'Cette version dépasse votre maintenance' : "Votre période d'essai est terminée"}
+          {maintenanceExpiree ? t('Cette version dépasse votre maintenance') : t("Votre période d'essai est terminée")}
         </h1>
 
         {maintenanceExpiree ? (
           <p style={{ color: 'var(--text-muted)', margin: '0 0 1.5rem', lineHeight: 1.6 }}>
-            Votre licence couvre la maintenance jusqu'au <strong>{etat.maintenance_jusqu_au}</strong>,
-            et cette version date du <strong>{etat.version_date}</strong>. Renouvelez la maintenance
-            pour continuer ici, ou réinstallez une version antérieure :{' '}
-            <strong>votre licence y reste valable pour toujours.</strong>
+            {t("Votre licence couvre la maintenance jusqu'au ")}<strong>{etat.maintenance_jusqu_au}</strong>
+            {t(', et cette version date du ')}<strong>{etat.version_date}</strong>
+            {t('. Renouvelez la maintenance pour continuer ici, ou réinstallez une version antérieure : ')}
+            <strong>{t('votre licence y reste valable pour toujours.')}</strong>
           </p>
         ) : (
           <p style={{ color: 'var(--text-muted)', margin: '0 0 1.5rem', lineHeight: 1.6 }}>
-            Saisissez votre clé de licence pour continuer.
+            {t('Saisissez votre clé de licence pour continuer.')}
           </p>
         )}
 
@@ -67,14 +75,14 @@ function Licence({ etat, onActive }) {
         }}>
           <ShieldCheck size={18} style={{ flexShrink: 0, marginTop: '.1rem' }} />
           <span>
-            Vos factures, vos clients et vos écritures sont intacts, à leur place habituelle.
-            Rien n'a été effacé ni verrouillé.
+            {t("Vos factures, vos clients et vos écritures sont intacts, à leur place habituelle. "
+              + "Rien n'a été effacé ni verrouillé.")}
           </span>
         </p>
 
         <form onSubmit={activer}>
           <div className="form-group">
-            <label htmlFor="cle-licence">Clé de licence</label>
+            <label htmlFor="cle-licence">{t('Clé de licence')}</label>
             <textarea
               id="cle-licence" className="form-control" rows={3} autoFocus
               value={cle} onChange={(ev) => setCle(ev.target.value)}
@@ -82,7 +90,7 @@ function Licence({ etat, onActive }) {
               style={{ fontFamily: 'ui-monospace, monospace', fontSize: '.8rem', resize: 'vertical' }}
             />
             <small style={{ color: 'var(--text-muted)' }}>
-              Collez la clé reçue par courriel, en entier.
+              {t('Collez la clé reçue par courriel, en entier.')}
             </small>
           </div>
 
@@ -95,7 +103,7 @@ function Licence({ etat, onActive }) {
             style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}
           >
             <KeyRound size={16} />
-            {enCours ? 'Vérification…' : 'Activer'}
+            {enCours ? t('Vérification…') : t('Activer')}
           </button>
         </form>
       </div>

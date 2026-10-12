@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useApiResource } from '../useApiResource';
 import Pagination from './Pagination';
+import { useLangue } from '../i18n.js';
 
 const PAR_PAGE = 25;
 
@@ -33,27 +34,42 @@ const LIBELLES_CHAMPS = {
   username: 'Identifiant', role: 'Rôle', numero: 'Numéro', nom: 'Nom',
   montant_total: 'Montant', motif: 'Motif', facture: 'Facture',
   mot_de_passe_change: 'Mot de passe changé', sauvegarde: 'Sauvegarde',
-  datee_du: 'Datée du'
+  datee_du: 'Datée du',
+  // Ces champs s'affichaient sous leur nom de colonne, sans libellé. Le
+  // français les garde tels quels ; l'anglais leur donne un vrai nom.
+  verifier_maj: 'verifier maj', profil: 'profil', conditions_defaut: 'conditions defaut',
+  smtp_host: 'smtp host', smtp_port: 'smtp port', smtp_user: 'smtp user',
+  stripe_actif: 'stripe actif',
+  conditions_paiement: 'conditions paiement', fichier: 'fichier', inseres: 'inseres',
+  ignores: 'ignores', rejetes: 'rejetes', annee: 'annee', taux_1: 'taux 1', taux_2: 'taux 2',
+  seuil_km: 'seuil km', facture_id: 'facture id', devise: 'devise', mode: 'mode', session: 'session'
 };
 
-const nommer = (champ) => LIBELLES_CHAMPS[champ] || champ.replace(/_/g, ' ');
-
-/** Une valeur vide se lit mieux « vide » que par un blanc. */
-const afficher = (valeur) => (
-  valeur === null || valeur === undefined || valeur === '' ? 'vide' : String(valeur)
-);
+/** Rôles et auteur automatique, enregistrés en français. */
+const VALEURS = new Set(['admin', 'comptable', 'employe', 'automatique', '[non journalisé]']);
 
 /**
  * Rend lisible le détail d'une entrée.
  *
  * Le journal stocke du JSON pour rester exploitable ; l'afficher brut à un
- * comptable ne l'aiderait pas.
+ * comptable ne l'aiderait pas. Les valeurs consignées (un nom, un motif) restent
+ * telles qu'elles ont été saisies ; seuls les noms de champs et les rôles se
+ * traduisent.
  */
-function decrire(details) {
+function decrire(details, t) {
+  // Un rôle se traduit ; toute autre valeur reste telle que consignée.
+  const traduireValeur = (valeur) => (VALEURS.has(valeur) ? t(valeur) : String(valeur));
+  const nommer = (champ) => (LIBELLES_CHAMPS[champ] ? t(LIBELLES_CHAMPS[champ]) : champ.replace(/_/g, ' '));
+  /** Une valeur vide se lit mieux « vide » que par un blanc. */
+  const afficher = (valeur) => {
+    if (valeur === null || valeur === undefined || valeur === '') return t('vide');
+    return traduireValeur(valeur);
+  };
+
   if (!details) return '-';
 
   const transition = (champ, { avant, apres }) => (
-    `${nommer(champ)} : « ${afficher(avant)} » → « ${afficher(apres)} »`
+    t('{champ} : « {avant} » → « {apres} »', { champ: nommer(champ), avant: afficher(avant), apres: afficher(apres) })
   );
 
   if (details.changements) {
@@ -65,7 +81,7 @@ function decrire(details) {
     .map(([cle, valeur]) => {
       if (valeur && typeof valeur === 'object' && 'avant' in valeur) return transition(cle, valeur);
       if (typeof valeur === 'boolean') return valeur ? nommer(cle) : null;
-      return `${nommer(cle)} : ${valeur}`;
+      return t('{champ} : {valeur}', { champ: nommer(cle), valeur: traduireValeur(valeur) });
     })
     .filter(Boolean)
     .join(' · ') || '-';
@@ -79,6 +95,7 @@ function decrire(details) {
  * table qui ne fait que croître et n'est jamais purgée.
  */
 function AuditLog() {
+  const { langue, t, tp } = useLangue();
   const [filtres, setFiltres] = useState(FILTRES_VIDES);
   const [page, setPage] = useState(1);
 
@@ -107,36 +124,36 @@ function AuditLog() {
   return (
     <div className="glass-panel" style={{ padding: '24px' }}>
       <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>
-        Chaque action sensible est consignée ici : annulation d'un encaissement, suppression
-        d'une facture, changement d'un taux de taxe, modification d'un compte. Le journal ne
-        peut être ni modifié ni vidé, y compris depuis la base.
+        {t("Chaque action sensible est consignée ici : annulation d'un encaissement, suppression "
+          + "d'une facture, changement d'un taux de taxe, modification d'un compte. Le journal ne "
+          + 'peut être ni modifié ni vidé, y compris depuis la base.')}
       </p>
 
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '20px' }}>
         <div className="form-group" style={{ margin: 0, minWidth: '200px' }}>
-          <label htmlFor="filtre-action">Action</label>
+          <label htmlFor="filtre-action">{t('Action')}</label>
           <select
             id="filtre-action" className="form-control"
             value={filtres.action} onChange={(e) => changerFiltre('action', e.target.value)}
           >
-            <option value="">Toutes</option>
-            {options.actions.map((a) => <option key={a.valeur} value={a.valeur}>{a.libelle}</option>)}
+            <option value="">{t('Toutes')}</option>
+            {options.actions.map((a) => <option key={a.valeur} value={a.valeur}>{t(a.libelle)}</option>)}
           </select>
         </div>
 
         <div className="form-group" style={{ margin: 0, minWidth: '160px' }}>
-          <label htmlFor="filtre-auteur">Auteur</label>
+          <label htmlFor="filtre-auteur">{t('Auteur')}</label>
           <select
             id="filtre-auteur" className="form-control"
             value={filtres.utilisateur} onChange={(e) => changerFiltre('utilisateur', e.target.value)}
           >
-            <option value="">Tous</option>
+            <option value="">{t('Tous')}</option>
             {options.auteurs.map((a) => <option key={a} value={a}>{a}</option>)}
           </select>
         </div>
 
         <div className="form-group" style={{ margin: 0 }}>
-          <label htmlFor="filtre-depuis">Du</label>
+          <label htmlFor="filtre-depuis">{t('Du')}</label>
           <input
             id="filtre-depuis" type="date" className="form-control"
             value={filtres.depuis} onChange={(e) => changerFiltre('depuis', e.target.value)}
@@ -144,7 +161,7 @@ function AuditLog() {
         </div>
 
         <div className="form-group" style={{ margin: 0 }}>
-          <label htmlFor="filtre-jusqu">Au</label>
+          <label htmlFor="filtre-jusqu">{t('Au')}</label>
           <input
             id="filtre-jusqu" type="date" className="form-control"
             value={filtres.jusqu} onChange={(e) => changerFiltre('jusqu', e.target.value)}
@@ -156,7 +173,7 @@ function AuditLog() {
             type="button" className="btn-secondary"
             onClick={() => { setPage(1); setFiltres(FILTRES_VIDES); }}
           >
-            Effacer les filtres
+            {t('Effacer les filtres')}
           </button>
         )}
       </div>
@@ -164,42 +181,42 @@ function AuditLog() {
       {erreur && <p className="alert alert-error" role="alert">{erreur}</p>}
 
       {chargement ? (
-        <p style={{ color: 'var(--text-muted)' }}>Chargement…</p>
+        <p style={{ color: 'var(--text-muted)' }}>{t('Chargement…')}</p>
       ) : donnees.lignes.length === 0 ? (
         <p style={{ color: 'var(--text-muted)' }}>
           {filtreActif
-            ? 'Aucune entrée ne correspond à ces critères.'
-            : 'Aucune action sensible n\'a encore été consignée.'}
+            ? t('Aucune entrée ne correspond à ces critères.')
+            : t("Aucune action sensible n'a encore été consignée.")}
         </p>
       ) : (
         <>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            {donnees.total} entrée(s).
+            {tp(donnees.total, '{n} entrée(s).', '{n} entrée(s).|pluriel')}
           </p>
           <div className="table-scroll">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Auteur</th>
-                  <th>Action</th>
-                  <th>Détail</th>
+                  <th>{t('Date')}</th>
+                  <th>{t('Auteur')}</th>
+                  <th>{t('Action')}</th>
+                  <th>{t('Détail')}</th>
                 </tr>
               </thead>
               <tbody>
                 {donnees.lignes.map((l) => (
                   <tr key={l.id}>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      {new Date(l.date_heure).toLocaleString('fr-CA')}
+                      {new Date(l.date_heure).toLocaleString(langue === 'en' ? 'en-CA' : 'fr-CA')}
                     </td>
                     <td>
                       {l.utilisateur || '-'}
                       {l.role && (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}> ({l.role})</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}> ({VALEURS.has(l.role) ? t(l.role) : l.role})</span>
                       )}
                     </td>
-                    <td>{l.libelle}</td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{decrire(l.details)}</td>
+                    <td>{t(l.libelle)}</td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{decrire(l.details, t)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -198,6 +198,69 @@ test('l\'origine du paiement est indiquée', async (t) => {
   assert.ok(texte.includes('Saisie manuelle'));
 });
 
+/* --- Le fichier d'un utilisateur anglophone --- */
+
+test('en anglais, virgule entre les colonnes et point décimal', () => {
+  // Ce qu'attend un Excel réglé en anglais ; le format français, lu par lui,
+  // tiendrait sur une seule colonne.
+  assert.equal(montant(1234.5, 'en'), '1234.50');
+  assert.equal(montant(null, 'en'), '');
+  assert.equal(echapper('Smith, Jones & Co', ','), '"Smith, Jones & Co"');
+  // Le point-virgule n'est plus le séparateur : il reste tel quel.
+  assert.equal(echapper('Bélanger; Cie', ','), 'Bélanger; Cie');
+
+  const csv = versCSV(
+    [{ cle: 'nom', titre: 'Nom', titreEn: 'Name' }, { cle: 'total', titre: 'Total', type: 'montant' }],
+    [{ nom: 'Smith, Jones & Co', total: 12.3 }],
+    'en'
+  );
+  assert.equal(csv, `${BOM}Name,Total\r\n"Smith, Jones & Co",12.30\r\n`);
+  assert.equal(nomFichier('sales-register', { annee: '2026', trimestre: '3' }, 'en'), 'sales-register-2026-Q3.csv');
+});
+
+test('le registre des ventes d\'un anglophone est en anglais', async (t) => {
+  const api = await avecAdmin(t);
+  const clientId = await insertClient(api.db, { nom: 'Client Test', province: 'QC' });
+  const facture = await creerFacture(api, clientId, { prix: 100 });
+
+  const { entetes, texte } = await telecharger(api, '/api/rapports/export/ventes?annee=2026&langue=en');
+
+  assert.match(entetes.get('content-disposition'), /filename="sales-register-2026\.csv"/);
+  const lignes = texte.replace(/^﻿/, '').trim().split('\r\n').map((l) => l.split(','));
+  assert.equal(lignes[0][0], 'Number');
+  assert.equal(lignes[0][4], 'Status');
+
+  const ligne = lignes[1];
+  assert.equal(ligne[0], facture.numero_facture);
+  assert.equal(ligne[4], 'Pending');
+  assert.equal(ligne[6], 'GST');
+  assert.equal(ligne[8], 'QST');
+  assert.equal(ligne[10], montant(facture.montant_total, 'en'));
+  assert.match(ligne[10], /^\d+\.\d{2}$/);
+});
+
+test('les autres fichiers d\'un anglophone sont en anglais, et le français ne change pas', async (t) => {
+  const api = await avecAdmin(t);
+  const clientId = await insertClient(api.db, { nom: 'Client' });
+  const facture = await creerFacture(api, clientId, { prix: 100 });
+  await api.post(`/api/factures/${facture.id}/paiements`, { montant: 10 });
+
+  const encaissements = await telecharger(api, '/api/rapports/export/encaissements?langue=en');
+  assert.match(encaissements.entetes.get('content-disposition'), /filename="payments-received-register\.csv"/);
+  assert.ok(encaissements.texte.includes('Manual entry'));
+  assert.ok(!encaissements.texte.includes('Saisie manuelle'));
+
+  const balance = await telecharger(api, '/api/rapports/export/balance-agee?langue=en');
+  assert.match(balance.entetes.get('content-disposition'), /filename="aged-receivables\.csv"/);
+  // `fetch` retire le BOM au décodage : le test du format s'assure qu'il est là.
+  assert.ok(balance.texte.replace(/^\uFEFF/, '').startsWith('Client,Not yet due,1 to 30 days'));
+
+  // Sans langue, le fichier est celui d'avant, au point-virgule et en français.
+  const francais = await telecharger(api, '/api/rapports/export/balance-agee');
+  assert.match(francais.entetes.get('content-disposition'), /filename="balance-agee\.csv"/);
+  assert.ok(francais.texte.replace(/^\uFEFF/, '').startsWith('Client;Non échu;1 à 30 jours'));
+});
+
 /* --- Accès --- */
 
 test('les registres sont réservés à l\'administration et à la comptabilité', async (t) => {
