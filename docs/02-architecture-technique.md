@@ -1,6 +1,6 @@
 # Clora : architecture, sécurité et licence
 
-*Document technique. Version 1.7.5, septembre 2026.*
+*Document technique. Version 1.8.0, octobre 2026.*
 
 Ce document décrit comment Clora est construit, ce qui protège les données, et
 comment fonctionne le modèle de licence. Pour la description fonctionnelle, voir
@@ -88,10 +88,12 @@ licenceService.js  Vérification Ed25519 des clés, essai, maintenance
 kilometrageService.js  Indemnité kilométrique : paliers et recalcul de l'année
 secretStorage.js   Chiffrement des secrets au repos
 companyStore.js    Registre des dossiers d'entreprise et comptes partagés
-*Service.js        Logique métier par domaine (17 services)
+traductionServeur.js  Messages du serveur traduits en anglais à la sortie
+*Service.js        Logique métier par domaine (19 services)
 routes/            21 modules de points d'entrée HTTP
-client/src/        Interface React (31 composants, 11 crochets et modules)
-tests/             26 fichiers, 377 tests
+client/src/        Interface React (33 composants, 13 crochets et modules,
+                   dictionnaire anglais dans traductions/en.js)
+tests/             27 fichiers, 387 tests
 ```
 
 Le découpage est strict : **`server.js` ne fait que câbler**. Il ne contient
@@ -104,19 +106,63 @@ L'ordre est significatif et chaque position est justifiée :
 
 ```
 1. securityHeaders          En-têtes de sécurité
-2. express.json             1 Mo, ou 25 Mo pour courriel et import
-3. cookieParser
-4. /api/licence             AVANT le contrôle de licence : sinon, un essai
+2. traductionDesReponses    AVANT toute route : un message d'erreur part dans
+                            la langue de l'interface, connexion comprise
+3. express.json             1 Mo, ou 25 Mo pour courriel et import
+4. cookieParser
+5. /api/licence             AVANT le contrôle de licence : sinon, un essai
                             expiré empêcherait de saisir la clé qui le débloque
-5. licenceMiddleware        402 si l'installation n'est plus utilisable
-6. /api/auth                AVANT l'authentification, évidemment
-7. authMiddleware           401 sans jeton valide
-8. dossierMiddleware        Ouvre le dossier de la session, résout le rôle
-9. Les 20 routeurs métier   Chacun avec ses contraintes de rôle
-10. apiNotFound             Une route d'API inconnue répond en JSON
-11. Fichiers statiques      L'interface React compilée
-12. errorHandler
+6. licenceMiddleware        402 si l'installation n'est plus utilisable
+7. /api/auth                AVANT l'authentification, évidemment
+8. authMiddleware           401 sans jeton valide
+9. dossierMiddleware        Ouvre le dossier de la session, résout le rôle
+10. Les 20 routeurs métier  Chacun avec ses contraintes de rôle
+11. apiNotFound             Une route d'API inconnue répond en JSON
+12. Fichiers statiques      L'interface React compilée
+13. errorHandler
 ```
+
+### La langue de l'interface
+
+Depuis la 1.8.0, chaque utilisateur travaille en français ou en anglais. Deux
+langues distinctes coexistent, et ne se confondent jamais :
+
+| | Suit | Porte |
+| --- | --- | --- |
+| **Langue de l'interface** | L'utilisateur (`users.langue`, registre des comptes) | Écrans, messages, compte rendu de la période, registres CSV |
+| **Langue des documents** | Le client (`clients.langue`, dossier d'entreprise) | Factures, devis, notes de crédit, leurs courriels, relances, page de paiement |
+
+**Côté interface**, le texte français est la clé : `t('Nouvelle facture')`
+(`client/src/i18n.js`) rend « New invoice » en anglais d'après le dictionnaire
+`client/src/traductions/en.js`, qui ne contient que des données. Un texte absent
+du dictionnaire s'affiche en français plutôt que vide. Trois compléments :
+`tp()` pour le pluriel, dont la règle diffère (« 0 facture », « 0 invoices ») ;
+un suffixe de contexte (`|pluriel`) pour départager deux textes que le français
+écrit pareil et que l'anglais distingue ; `montant()` pour les sommes, en
+« 1 149,75 $ » ou « $1,149.75 ».
+
+**Les valeurs enregistrées ne se traduisent pas** : statuts, cycles
+d'abonnement, catégories de dépenses proposées et rôles restent en français en
+base, et ne sont traduits qu'à l'affichage. Les filtres et le serveur les
+comparent donc tels quels, et une base n'a aucune reprise à subir.
+
+**Côté serveur**, les messages restent écrits en français là où ils sont levés,
+puisque c'est là qu'on les lit. L'interface annonce sa langue par l'en-tête
+`X-Clora-Langue` à chaque appel ; le middleware `traductionDesReponses` traduit
+alors les champs `error` et `message` de la réponse (`traductionServeur.js` :
+une table pour les messages fixes, des motifs pour ceux qui portent une valeur,
+dont les montants, réécrits à l'anglaise). L'en-tête plutôt que la session :
+l'écran de connexion doit pouvoir répondre « Invalid username or password » à
+quelqu'un qui n'en a pas encore. Un registre CSV se télécharge par un lien, qui
+ne porte pas d'en-tête : sa langue part dans l'adresse (`?langue=en`), et sans
+elle le fichier reste celui d'avant, à l'octet près.
+
+**Le test des traductions** (`traductions.test.js`) porte sur tous les écrans et
+tous les fichiers du serveur, et non sur une liste : chaque clé employée a sa
+traduction et garde ses valeurs (`{n}`), aucun texte visible n'est écrit en dur
+dans un écran, et chaque message du serveur a son équivalent anglais. Un écran
+ou un message ajouté sans traduction le fait échouer. Seuls deux outils en ligne
+de commande, que l'utilisateur ne lance jamais, en sont exclus.
 
 ---
 
@@ -554,7 +600,7 @@ facture émise), donc une vérification fréquente est sans risque.
 
 ## 10. Tests et intégration continue
 
-**377 tests**, exécutés par `node --test`. Répartition :
+**387 tests**, exécutés par `node --test`. Répartition :
 
 | Domaine | Tests |
 | --- | --- |
@@ -569,7 +615,7 @@ facture émise), donc une vérification fréquente est sans risque.
 | Envoi de courriels | 16 |
 | Compte rendu de gestion | 16 |
 | Licence et maintenance | 15 |
-| Exports CSV | 15 |
+| Exports CSV | 18 |
 | Conditions de paiement | 15 |
 | Journal d'audit | 15 |
 | Encaissements et annulations | 14 |
@@ -583,6 +629,7 @@ facture émise), donc une vérification fréquente est sans risque.
 | Abonnements | 8 |
 | Apparence de l'interface | 10 |
 | Arithmétique monétaire | 8 |
+| Traduction de l'interface | 7 |
 | Documents dans la langue du client | 4 |
 
 Deux partis pris méritent d'être signalés :
@@ -719,7 +766,7 @@ Trois corrections peuvent être demandées explicitement :
 | **Volume du rapprochement** | Plafond de 5 000 lignes ; le relevé transite en JSON sous une limite de corps de 1 Mo |
 | **Retraits bancaires** | Ignorés : frais et sorties sont hors périmètre |
 | **Windows seul** | Aucune cible macOS ou Linux |
-| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.7.5 en offre l'occasion sur toute installation restée en 1.7.4 |
+| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.8.0 en offre l'occasion sur toute installation restée en 1.7.5 |
 | **Redémarrage après restauration** | `app.relaunch()` non vérifié sur un vrai Windows |
 
 ---
