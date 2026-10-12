@@ -12,49 +12,93 @@ const { anyRole, adminOrAccountant } = require('../authMiddleware.js');
 const { verifierMiseAJour } = require('../updateService.js');
 const { versCSV, nomFichier } = require('../exportService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
+const { langueDeRequete, traduireStatut } = require('../traductionServeur.js');
 
-/** Colonnes du registre des ventes, dans l'ordre attendu par un comptable. */
+/**
+ * Colonnes du registre des ventes, dans l'ordre attendu par un comptable.
+ * `titreEn` est le titre du fichier d'un utilisateur anglophone.
+ */
 const COLONNES_VENTES = [
-  { cle: 'numero_facture', titre: 'Numéro' },
-  { cle: 'date_emission', titre: 'Date d\'émission' },
-  { cle: 'date_echeance', titre: 'Échéance' },
-  { cle: 'client', titre: 'Client' },
-  { cle: 'statut', titre: 'Statut' },
-  { cle: 'sous_total', titre: 'Sous-total', type: 'montant' },
-  { cle: 'taxe_1_nom', titre: 'Taxe 1' },
-  { cle: 'montant_taxe_1', titre: 'Montant taxe 1', type: 'montant' },
-  { cle: 'taxe_2_nom', titre: 'Taxe 2' },
-  { cle: 'montant_taxe_2', titre: 'Montant taxe 2', type: 'montant' },
-  { cle: 'montant_total', titre: 'Total', type: 'montant' },
-  { cle: 'montant_credite', titre: 'Crédité', type: 'montant' },
-  { cle: 'montant_paye', titre: 'Encaissé', type: 'montant' },
-  { cle: 'solde_restant', titre: 'Solde', type: 'montant' },
-  { cle: 'devise', titre: 'Devise' },
-  { cle: 'taux_change', titre: 'Taux de change' },
-  { cle: 'montant_total_cad', titre: 'Total en CAD', type: 'montant' }
+  { cle: 'numero_facture', titre: 'Numéro', titreEn: 'Number' },
+  { cle: 'date_emission', titre: 'Date d\'émission', titreEn: 'Issue date' },
+  { cle: 'date_echeance', titre: 'Échéance', titreEn: 'Due date' },
+  { cle: 'client', titre: 'Client', titreEn: 'Client' },
+  { cle: 'statut', titre: 'Statut', titreEn: 'Status' },
+  { cle: 'sous_total', titre: 'Sous-total', titreEn: 'Subtotal', type: 'montant' },
+  { cle: 'taxe_1_nom', titre: 'Taxe 1', titreEn: 'Tax 1' },
+  { cle: 'montant_taxe_1', titre: 'Montant taxe 1', titreEn: 'Tax 1 amount', type: 'montant' },
+  { cle: 'taxe_2_nom', titre: 'Taxe 2', titreEn: 'Tax 2' },
+  { cle: 'montant_taxe_2', titre: 'Montant taxe 2', titreEn: 'Tax 2 amount', type: 'montant' },
+  { cle: 'montant_total', titre: 'Total', titreEn: 'Total', type: 'montant' },
+  { cle: 'montant_credite', titre: 'Crédité', titreEn: 'Credited', type: 'montant' },
+  { cle: 'montant_paye', titre: 'Encaissé', titreEn: 'Received', type: 'montant' },
+  { cle: 'solde_restant', titre: 'Solde', titreEn: 'Balance', type: 'montant' },
+  { cle: 'devise', titre: 'Devise', titreEn: 'Currency' },
+  { cle: 'taux_change', titre: 'Taux de change', titreEn: 'Exchange rate' },
+  { cle: 'montant_total_cad', titre: 'Total en CAD', titreEn: 'Total in CAD', type: 'montant' }
 ];
 
 const COLONNES_ENCAISSEMENTS = [
-  { cle: 'date_paiement', titre: 'Date' },
-  { cle: 'montant', titre: 'Montant', type: 'montant' },
-  { cle: 'devise', titre: 'Devise' },
-  { cle: 'taux_change', titre: 'Taux de change' },
-  { cle: 'montant_cad', titre: 'Montant en CAD', type: 'montant' },
-  { cle: 'numero_facture', titre: 'Facture' },
-  { cle: 'client', titre: 'Client' },
-  { cle: 'origine', titre: 'Origine' },
-  { cle: 'note', titre: 'Note' }
+  { cle: 'date_paiement', titre: 'Date', titreEn: 'Date' },
+  { cle: 'montant', titre: 'Montant', titreEn: 'Amount', type: 'montant' },
+  { cle: 'devise', titre: 'Devise', titreEn: 'Currency' },
+  { cle: 'taux_change', titre: 'Taux de change', titreEn: 'Exchange rate' },
+  { cle: 'montant_cad', titre: 'Montant en CAD', titreEn: 'Amount in CAD', type: 'montant' },
+  { cle: 'numero_facture', titre: 'Facture', titreEn: 'Invoice' },
+  { cle: 'client', titre: 'Client', titreEn: 'Client' },
+  { cle: 'origine', titre: 'Origine', titreEn: 'Source' },
+  { cle: 'note', titre: 'Note', titreEn: 'Note' }
 ];
 
 const COLONNES_BALANCE = [
-  { cle: 'client', titre: 'Client' },
-  { cle: 'non_echu', titre: 'Non échu', type: 'montant' },
-  { cle: 'jours_1_30', titre: '1 à 30 jours', type: 'montant' },
-  { cle: 'jours_31_60', titre: '31 à 60 jours', type: 'montant' },
-  { cle: 'jours_61_90', titre: '61 à 90 jours', type: 'montant' },
-  { cle: 'jours_91_plus', titre: '91 jours et plus', type: 'montant' },
-  { cle: 'total', titre: 'Total dû', type: 'montant' }
+  { cle: 'client', titre: 'Client', titreEn: 'Client' },
+  { cle: 'non_echu', titre: 'Non échu', titreEn: 'Not yet due', type: 'montant' },
+  { cle: 'jours_1_30', titre: '1 à 30 jours', titreEn: '1 to 30 days', type: 'montant' },
+  { cle: 'jours_31_60', titre: '31 à 60 jours', titreEn: '31 to 60 days', type: 'montant' },
+  { cle: 'jours_61_90', titre: '61 à 90 jours', titreEn: '61 to 90 days', type: 'montant' },
+  { cle: 'jours_91_plus', titre: '91 jours et plus', titreEn: '91 days and over', type: 'montant' },
+  { cle: 'total', titre: 'Total dû', titreEn: 'Total due', type: 'montant' }
 ];
+
+/** Nom des fichiers, dans chaque langue. */
+const FICHIERS = {
+  ventes: { fr: 'registre-ventes', en: 'sales-register' },
+  encaissements: { fr: 'registre-encaissements', en: 'payments-received-register' },
+  balance: { fr: 'balance-agee', en: 'aged-receivables' }
+};
+
+/**
+ * Valeurs enregistrées en français, et leur équivalent dans le fichier d'un
+ * utilisateur anglophone : statuts, origine d'un paiement et noms de taxes.
+ */
+const VALEURS_EN = {
+  'Saisie manuelle': 'Manual entry',
+  'Rapprochement bancaire': 'Bank reconciliation',
+  TPS: 'GST',
+  TVQ: 'QST',
+  TVH: 'HST',
+  TVP: 'PST'
+};
+
+/**
+ * Langue du fichier. Un téléchargement part d'un lien, qui ne porte pas
+ * l'en-tête des appels à l'API : l'interface la met dans l'adresse.
+ */
+function langueDuFichier(req) {
+  return req.query.langue === 'en' ? 'en' : langueDeRequete(req);
+}
+
+function lignesDansLaLangue(lignes, langue) {
+  if (langue !== 'en') return lignes;
+  const traduire = (v) => (typeof v === 'string' ? (VALEURS_EN[v] || traduireStatut(v)) : v);
+  return lignes.map((ligne) => ({
+    ...ligne,
+    ...(ligne.statut !== undefined && { statut: traduire(ligne.statut) }),
+    ...(ligne.origine !== undefined && { origine: traduire(ligne.origine) }),
+    ...(ligne.taxe_1_nom !== undefined && { taxe_1_nom: traduire(ligne.taxe_1_nom) }),
+    ...(ligne.taxe_2_nom !== undefined && { taxe_2_nom: traduire(ligne.taxe_2_nom) })
+  }));
+}
 
 /** Valide et normalise une période de filtre. */
 function validerPeriode(query) {
@@ -130,19 +174,21 @@ module.exports = function rapportRoutes(getDb) {
    * La réponse est un téléchargement et non du JSON : `Content-Disposition`
    * porte le nom du fichier, daté de la période demandée.
    */
-  const registre = (chemin, base, colonnes, lecture) => {
+  const registre = (chemin, noms, colonnes, lecture) => {
     router.get(chemin, adminOrAccountant(), asyncRoute(async (req, res) => {
       const periode = validerPeriode(req.query);
+      const langue = langueDuFichier(req);
       const lignes = await lecture(getDb(), periode);
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="${nomFichier(base, periode)}"`);
-      res.send(versCSV(colonnes, lignes));
+      res.setHeader('Content-Disposition', `attachment; filename="${nomFichier(noms[langue], periode, langue)}"`);
+      res.send(versCSV(colonnes, lignesDansLaLangue(lignes, langue), langue));
     }));
   };
 
   /** La balance âgée s'exporte comme les registres, sans filtre de période. */
   router.get('/rapports/export/balance-agee', adminOrAccountant(), asyncRoute(async (req, res) => {
+    const langue = langueDuFichier(req);
     const balance = await getBalanceAgee(getDb());
     const lignes = [
       ...balance.clients,
@@ -151,13 +197,13 @@ module.exports = function rapportRoutes(getDb) {
     ];
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${nomFichier('balance-agee')}"`);
-    res.send(versCSV(COLONNES_BALANCE, lignes));
+    res.setHeader('Content-Disposition', `attachment; filename="${nomFichier(FICHIERS.balance[langue])}"`);
+    res.send(versCSV(COLONNES_BALANCE, lignes, langue));
   }));
 
-  registre('/rapports/export/ventes', 'registre-ventes', COLONNES_VENTES, getRegistreVentes);
+  registre('/rapports/export/ventes', FICHIERS.ventes, COLONNES_VENTES, getRegistreVentes);
   registre(
-    '/rapports/export/encaissements', 'registre-encaissements',
+    '/rapports/export/encaissements', FICHIERS.encaissements,
     COLONNES_ENCAISSEMENTS, getRegistreEncaissements
   );
 

@@ -50,7 +50,13 @@ const ECRANS_TRADUITS = [
   'components/ImportModal.jsx',
   'components/EmailModal.jsx',
   'components/EnTeteTri.jsx',
-  'components/InvoicePrintTemplate.jsx'
+  'components/InvoicePrintTemplate.jsx',
+  // Étape 3 : abonnements, banque, dépenses, rapports.
+  'components/SubscriptionList.jsx',
+  'components/BankReconciliation.jsx',
+  'components/ExpenseList.jsx',
+  'components/ReportDashboard.jsx',
+  'components/RapportSommaire.jsx'
 ];
 
 /** Fichiers du serveur dont chaque message a sa traduction anglaise. */
@@ -80,7 +86,16 @@ const SERVEUR_TRADUIT = [
   'noteCreditService.js',
   'importService.js',
   'emailService.js',
-  'xlsxReader.js'
+  'xlsxReader.js',
+  // Étape 3.
+  'routes/abonnements.js',
+  'routes/banque.js',
+  'routes/depenses.js',
+  'routes/rapports.js',
+  'subscriptionService.js',
+  'bankService.js',
+  'expenseService.js',
+  'kilometrageService.js'
 ];
 
 /**
@@ -112,20 +127,37 @@ function lireChaine(source, i) {
   return { valeur: new Function(`return ${quote}${brut}${quote};`)(), fin: j + 1 };
 }
 
+/**
+ * Lit une chaîne, et les morceaux qui lui sont ajoutés (`'…' + '…'`) : un long
+ * texte s'écrit sur plusieurs lignes, et c'est le texte entier qui est la clé.
+ */
+function lireChaineEntiere(source, i) {
+  let lue = lireChaine(source, i);
+  if (!lue) return null;
+  let valeur = lue.valeur;
+  for (let suite = source.slice(lue.fin).match(/^\s*\+\s*/); suite; suite = source.slice(lue.fin).match(/^\s*\+\s*/)) {
+    const morceau = lireChaine(source, lue.fin + suite[0].length);
+    if (!morceau) break;
+    valeur += morceau.valeur;
+    lue = morceau;
+  }
+  return { valeur, fin: lue.fin };
+}
+
 /** Clés passées à `t`, `tp`, `traduire` et `traduirePluriel` dans un fichier. */
 function clesDe(source) {
   const cles = [];
   for (const m of source.matchAll(/\b(?:t|traduire)\(\s*/g)) {
-    const lue = lireChaine(source, m.index + m[0].length);
+    const lue = lireChaineEntiere(source, m.index + m[0].length);
     if (lue) cles.push(lue.valeur);
   }
   for (const m of source.matchAll(/\b(?:tp|traduirePluriel)\(\s*[^,()]+,\s*/g)) {
-    const premiere = lireChaine(source, m.index + m[0].length);
+    const premiere = lireChaineEntiere(source, m.index + m[0].length);
     if (!premiere) continue;
     cles.push(premiere.valeur);
     const virgule = source.slice(premiere.fin).match(/^\s*,\s*/);
     if (virgule) {
-      const seconde = lireChaine(source, premiere.fin + virgule[0].length);
+      const seconde = lireChaineEntiere(source, premiere.fin + virgule[0].length);
       if (seconde) cles.push(seconde.valeur);
     }
   }
@@ -189,7 +221,9 @@ function clesIndirectes() {
   // Statuts des factures et des devis, conditions de paiement, provinces,
   // motifs suggérés pour une note de crédit.
   const statuts = lire(CLIENT, 'statuts.js');
-  cles.push(...chainesDuTableau(statuts, 'STATUTS_FACTURE'), ...chainesDuTableau(statuts, 'STATUTS_DEVIS'));
+  for (const nom of ['STATUTS_FACTURE', 'STATUTS_DEVIS', 'STATUTS_ABONNEMENT', 'CYCLES_ABONNEMENT', 'CATEGORIES_DEPENSE']) {
+    cles.push(...chainesDuTableau(statuts, nom));
+  }
   const api = lire(CLIENT, 'api.js');
   cles.push(...valeursDesChamps(api.slice(api.indexOf('const CONDITIONS'), api.indexOf('];', api.indexOf('const CONDITIONS'))), ['libelle']));
   const clientModal = lire(CLIENT, 'components', 'ClientModal.jsx');
@@ -198,6 +232,11 @@ function clesIndirectes() {
 
   // Premiers pas et profils, écrits par le serveur et traduits à l'affichage.
   cles.push(...valeursDesChamps(lire(RACINE, 'profils.js'), ['titre', 'detail', 'libelle']));
+
+  // Tranches de la balance âgée et catégorie par défaut des dépenses, écrites
+  // par le serveur.
+  const factures = lire(RACINE, 'invoiceService.js');
+  cles.push(...valeursDesChamps(factures, ['libelle']), 'Sans catégorie');
   return cles;
 }
 
@@ -232,7 +271,7 @@ test('une traduction garde les valeurs de son texte', () => {
 
 test('aucun texte visible n\'est écrit en dur dans un écran traduit', () => {
   // Noms propres et sigles, qui ne se traduisent pas.
-  const PERMIS = new Set(['Clora', 'FR', 'EN', 'Français', 'English', 'PDF']);
+  const PERMIS = new Set(['Clora', 'FR', 'EN', 'Français', 'English', 'PDF', 'CAD', 'USD']);
   const fautifs = [];
 
   for (const relatif of ECRANS_TRADUITS) {
@@ -246,8 +285,9 @@ test('aucun texte visible n\'est écrit en dur dans un écran traduit', () => {
     const signaler = (texte) => {
       // Les valeurs insérées dans un gabarit de chaîne ne sont pas du texte.
       const net = texte.replace(/\$\{[^}]*\}/g, '').replace(/\s+/g, ' ').trim();
-      // Du code pris entre deux balises (« ); return ( », « ) : x === 0 ? ( »).
-      if (/;|\breturn\b|=>|&&|\|\||===|\?\s*\(|^\)/.test(net)) return;
+      // Du code pris entre deux balises (« ); return ( », « ) : x === 0 ? ( »,
+      // « Math.abs(a - b) », lu entre la flèche d'une fonction et un « < »).
+      if (/;|\breturn\b|=>|&&|\|\||===|\?\s*\(|^\)|\b[A-Za-z]+\.[a-z]\w*\(/.test(net)) return;
       if (/[A-Za-zÀ-ÿ]{2,}/.test(net) && !PERMIS.has(net)) fautifs.push(`${relatif} : « ${net} »`);
     };
 

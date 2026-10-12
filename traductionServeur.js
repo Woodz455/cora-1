@@ -155,7 +155,51 @@ const EXACTS = new Map([
   ['Conditions de paiement', 'Payment terms'],
   ['Nom', 'Name'],
   ['Prix unitaire', 'Unit price'],
-  ['Description', 'Description']
+  ['Description', 'Description'],
+
+  // Abonnements
+  ["Identifiant d'abonnement invalide.", 'Invalid subscription ID.'],
+  ["Le titre de l'abonnement est requis.", 'The subscription title is required.'],
+  ['La date de prochaine génération est requise (format AAAA-MM-JJ).',
+    'The next generation date is required (format YYYY-MM-DD).'],
+  ['La date de prochaine génération est invalide (format AAAA-MM-JJ).',
+    'The next generation date is invalid (format YYYY-MM-DD).'],
+  ['Vérification des abonnements effectuée.', 'Subscriptions checked.'],
+  ["Les lignes de l'abonnement sont illisibles.", 'The subscription lines cannot be read.'],
+  ['Abonnement non trouvé.', 'Subscription not found.'],
+
+  // Banque
+  ['Le corps de la requête doit être un tableau de transactions.', 'The request body must be a list of transactions.'],
+  ['Identifiant de transaction invalide.', 'Invalid transaction ID.'],
+  ['Transaction non trouvée.', 'Transaction not found.'],
+  ['Une facture doit être sélectionnée.', 'An invoice must be selected.'],
+  ['Le montant à imputer est invalide.', 'The amount to allocate is invalid.'],
+  ['Cette transaction a été ignorée.', 'This transaction was ignored.'],
+  ['Ce dépôt est déjà entièrement imputé.', 'This deposit is already fully allocated.'],
+  ['Le montant à imputer doit être strictement positif.', 'The amount to allocate must be greater than zero.'],
+  ["Ce dépôt est déjà imputé sur une facture : annulez d'abord les encaissements correspondants.",
+    'This deposit is already allocated to an invoice: cancel the matching payments first.'],
+  ['Dépôt entièrement imputé.', 'Deposit fully allocated.'],
+  ['Imputation enregistrée ; ce dépôt garde un reste à affecter.',
+    'Allocation saved; this deposit still has an amount left to allocate.'],
+
+  // Dépenses et déplacements
+  ['Identifiant de dépense invalide.', 'Invalid expense ID.'],
+  ['La date de la dépense est requise (format AAAA-MM-JJ).', 'The expense date is required (format YYYY-MM-DD).'],
+  ['La distance parcourue doit être un nombre de kilomètres supérieur à zéro.',
+    'The distance travelled must be a number of kilometres greater than zero.'],
+  ['Le montant hors taxes doit être un nombre positif.', 'The amount before tax must be a positive number.'],
+  ['Les montants de taxes ne peuvent pas être négatifs.', 'Tax amounts cannot be negative.'],
+  ['Dépense introuvable.', 'Expense not found.'],
+  ['Dépense supprimée.', 'Expense deleted.'],
+
+  // Rapports
+  ["L'année doit être au format AAAA.", 'The year must be in the format YYYY.'],
+  ['Le mois doit être un nombre entre 1 et 12.', 'The month must be a number between 1 and 12.'],
+  ['Le trimestre doit être un nombre entre 1 et 4.', 'The quarter must be a number between 1 and 4.'],
+  ['Indiquez un mois ou un trimestre, pas les deux.', 'Enter a month or a quarter, not both.'],
+  ["Le compte rendu porte sur une année, un trimestre ou un mois : indiquez l'année.",
+    'The summary report covers a year, a quarter or a month: enter the year.']
 ]);
 
 /**
@@ -206,7 +250,16 @@ const MOTIFS = [
     (m) => `${m[1]} client${m[1] === '1' ? '' : 's'} imported.`],
   [/^(\d+) article\(s\) importé\(s\)\.$/,
     (m) => `${m[1]} item${m[1] === '1' ? '' : 's'} imported.`],
-  [/^Prix illisible ou négatif : « (.*) »\.$/s, (m) => `Unreadable or negative price: “${m[1]}”.`]
+  [/^Prix illisible ou négatif : « (.*) »\.$/s, (m) => `Unreadable or negative price: “${m[1]}”.`],
+  [/^Un relevé ne peut pas comporter plus de (\d+) lignes\.$/,
+    (m) => `A statement cannot have more than ${m[1]} rows.`],
+  [/^La facture (\S+) est libellée en (\S+) : saisissez le paiement manuellement dans sa devise\.$/,
+    (m) => `Invoice ${m[1]} is in ${m[2]}: enter the payment manually in its currency.`],
+  [/^Le montant imputé \((.+)\) dépasse ce qui reste de ce dépôt \((.+)\)\.$/,
+    (m) => `The amount allocated (${montantEn(m[1])}) exceeds what is left of this deposit (${montantEn(m[2])}).`],
+  [/^Aucun taux kilométrique n'est réglé pour (\d+)\. Renseignez-le dans Paramètres avant d'inscrire un déplacement\.$/,
+    (m) => `No mileage rate is set for ${m[1]}. Enter it in Settings before recording a trip.`],
+  [/^Aucun taux kilométrique n'est réglé pour (\d+)\.$/, (m) => `No mileage rate is set for ${m[1]}.`]
 ];
 
 /** Statuts cités dans un message, traduits comme à l'écran. */
@@ -259,4 +312,4 @@ function traductionDesReponses(req, res, next) {
   return next();
 }
 
-module.exports = { traduire, langueDeRequete, traductionDesReponses, montantEn, EXACTS, MOTIFS };
+module.exports = { traduire, traduireStatut, langueDeRequete, traductionDesReponses, montantEn, EXACTS, MOTIFS };

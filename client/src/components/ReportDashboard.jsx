@@ -2,8 +2,9 @@ import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { TriangleAlert } from 'lucide-react';
 import { PieChart, Pie, Cell, Legend, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import InfoTooltip from './InfoTooltip';
-import { api, formatMontant } from '../api';
-import { libellePeriode } from '../periodes';
+import { api } from '../api';
+import { libellePeriode, nomDuMois } from '../periodes';
+import { useLangue } from '../i18n.js';
 
 // Le document n'est chargé qu'à la demande : la plupart des visites de l'écran
 // Rapports n'en produisent pas.
@@ -16,11 +17,6 @@ const COULEURS_STATUT = {
   'Annulée': '#94a3b8'
 };
 const COULEURS_DEFAUT = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
-
-const MOIS = [
-  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-];
 
 /**
  * Nom de client sur l'axe du graphique, en une seule ligne.
@@ -44,7 +40,7 @@ const PART_MINIMALE = 0.08;
  * l'arc et dans le carré de la légende, où elle est la clé de lecture ; le
  * chiffre prend la couleur du texte.
  */
-function EtiquettePart({ cx, cy, midAngle, outerRadius, percent }) {
+function EtiquettePart({ cx, cy, midAngle, outerRadius, percent, langue }) {
   if (percent < PART_MINIMALE) return null;
 
   const rayon = outerRadius + 18;
@@ -57,7 +53,8 @@ function EtiquettePart({ cx, cy, midAngle, outerRadius, percent }) {
       x={x} y={y} textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central"
       style={{ fill: 'var(--text-main)', fontSize: '0.8rem' }}
     >
-      {`${(percent * 100).toFixed(0)} %`}
+      {/* L'anglais colle le signe au nombre : « 42% ». */}
+      {`${(percent * 100).toFixed(0)}${langue === 'en' ? '%' : ' %'}`}
     </text>
   );
 }
@@ -88,6 +85,7 @@ function TickClient({ x, y, payload }) {
  * toujours, car une couleur seule ne signale rien à qui ne la distingue pas.
  */
 function Carte({ titre, valeur, aide, alerte = false }) {
+  const { t } = useLangue();
   return (
     <div className="glass-card">
       <p style={{
@@ -95,7 +93,7 @@ function Carte({ titre, valeur, aide, alerte = false }) {
         color: alerte ? 'var(--status-danger)' : 'var(--text-muted)',
         display: 'flex', alignItems: 'center', gap: '.4rem'
       }}>
-        {alerte && <TriangleAlert size={14} aria-label="Perte" />}
+        {alerte && <TriangleAlert size={14} aria-label={t('Perte')} />}
         {titre}{aide && <InfoTooltip text={aide} />}
       </p>
       <h3 style={{
@@ -109,6 +107,7 @@ function Carte({ titre, valeur, aide, alerte = false }) {
 }
 
 function ReportDashboard() {
+  const { langue, t, montant: formatMontant } = useLangue();
   const [stats, setStats] = useState(null);
   const [taxStats, setTaxStats] = useState(null);
   const [balance, setBalance] = useState(null);
@@ -158,7 +157,7 @@ function ReportDashboard() {
     return annees;
   }, [anneeCourante]);
 
-  if (loading) return <p style={{ color: 'var(--text-muted)' }}>Calcul des statistiques…</p>;
+  if (loading) return <p style={{ color: 'var(--text-muted)' }}>{t('Calcul des statistiques…')}</p>;
   if (error && !stats) return <p className="alert alert-error" role="alert">{error}</p>;
   if (!stats) return null;
 
@@ -172,20 +171,27 @@ function ReportDashboard() {
     if (annee) params.set('annee', annee);
     if (mois) params.set('mois', mois);
     else if (trimestre) params.set('trimestre', trimestre);
+    // Un lien ne porte pas l'en-tête de langue des appels à l'API : la langue
+    // du fichier part dans l'adresse. Le français reste l'adresse d'avant.
+    if (langue === 'en') params.set('langue', 'en');
     return `/api/rapports/export/${registre}?${params.toString()}`;
   };
 
   const periode = { annee, mois, trimestre };
 
+  // Les statuts restent en français dans les données, qui choisissent la
+  // couleur ; seul le nom affiché se traduit.
+  const repartition = (stats.statusDistribution || []).map((e) => ({ ...e, statut: e.name, name: t(e.name) }));
+
   return (
     <div>
       <div className="toolbar">
-        <h2 style={{ color: 'var(--text-main)', margin: 0 }}>Vue d'ensemble financière</h2>
+        <h2 style={{ color: 'var(--text-main)', margin: 0 }}>{t("Vue d'ensemble financière")}</h2>
         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', background: 'var(--glass-bg)', padding: '4px 12px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
           {/* Le drapeau qui ouvrait cette phrase était une paire d'indicateurs
               régionaux, que Windows ne compose pas : les testeurs voyaient deux
               lettres encadrées. La phrase nomme la devise, cela suffit. */}
-          Tous les montants sont consolidés en dollars canadiens
+          {t('Tous les montants sont consolidés en dollars canadiens')}
         </span>
       </div>
 
@@ -195,16 +201,16 @@ function ReportDashboard() {
         <div className="toolbar">
           <div>
             <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
-              Compte rendu de la période
-              <InfoTooltip text="Un sommaire de gestion en PDF : facturé, encaissé, dépenses, bénéfice, créances, clients et taxes de la période. À remettre à votre comptable ou à votre banquier." />
+              {t('Compte rendu de la période')}
+              <InfoTooltip text={t('Un sommaire de gestion en PDF : facturé, encaissé, dépenses, bénéfice, créances, clients et taxes de la période. À remettre à votre comptable ou à votre banquier.')} />
             </h3>
             <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              Choisissez un mois, un trimestre ou l'année entière. La période retenue s'applique
-              aussi aux registres et au rapport de taxes ci-dessous.
+              {t("Choisissez un mois, un trimestre ou l'année entière. La période retenue s'applique "
+                + 'aussi aux registres et au rapport de taxes ci-dessous.')}
             </p>
           </div>
           <div className="toolbar-group">
-            <select className="search-input" style={{ minWidth: '120px' }} value={annee} onChange={(e) => setAnnee(e.target.value)} aria-label="Année">
+            <select className="search-input" style={{ minWidth: '120px' }} value={annee} onChange={(e) => setAnnee(e.target.value)} aria-label={t('Année')}>
               {anneesDisponibles.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
             {/* Trimestre et mois s'excluent : choisir l'un remet l'autre à
@@ -213,26 +219,26 @@ function ReportDashboard() {
             <select
               className="search-input" style={{ minWidth: '150px' }} value={trimestre}
               onChange={(e) => { setTrimestre(e.target.value); if (e.target.value) setMois(''); }}
-              aria-label="Trimestre"
+              aria-label={t('Trimestre')}
             >
-              <option value="">Aucun trimestre</option>
-              <option value="1">T1 : janv. à mars</option>
-              <option value="2">T2 : avr. à juin</option>
-              <option value="3">T3 : juill. à sept.</option>
-              <option value="4">T4 : oct. à déc.</option>
+              <option value="">{t('Aucun trimestre')}</option>
+              <option value="1">{t('T1 : janv. à mars')}</option>
+              <option value="2">{t('T2 : avr. à juin')}</option>
+              <option value="3">{t('T3 : juill. à sept.')}</option>
+              <option value="4">{t('T4 : oct. à déc.')}</option>
             </select>
             <select
               className="search-input" style={{ minWidth: '160px' }} value={mois}
               onChange={(e) => { setMois(e.target.value); if (e.target.value) setTrimestre(''); }}
-              aria-label="Mois"
+              aria-label={t('Mois')}
             >
-              <option value="">Toute l'année</option>
-              {MOIS.map((nom, i) => (
-                <option key={nom} value={String(i + 1).padStart(2, '0')}>{nom}</option>
+              <option value="">{t("Toute l'année")}</option>
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i} value={String(i + 1).padStart(2, '0')}>{nomDuMois(i + 1, langue, true)}</option>
               ))}
             </select>
             <button type="button" className="btn-primary" onClick={() => setSommaireOuvert(true)}>
-              Produire le compte rendu
+              {t('Produire le compte rendu')}
             </button>
           </div>
         </div>
@@ -249,15 +255,15 @@ function ReportDashboard() {
           <div className="toolbar">
             <div>
               <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
-                Balance âgée
-                <InfoTooltip text="Répartition de ce qui vous est dû selon l'ancienneté du retard. Plus une créance vieillit, moins elle a de chances d'être recouvrée." />
+                {t('Balance âgée')}
+                <InfoTooltip text={t("Répartition de ce qui vous est dû selon l'ancienneté du retard. Plus une créance vieillit, moins elle a de chances d'être recouvrée.")} />
               </h3>
               <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                Au {new Date(balance.date_reference).toLocaleDateString('fr-CA')}
+                {t('Au {date}', { date: new Date(balance.date_reference).toLocaleDateString('fr-CA') })}
               </p>
             </div>
-            <a className="btn-secondary" href="/api/rapports/export/balance-agee" download>
-              Exporter en CSV
+            <a className="btn-secondary" href={`/api/rapports/export/balance-agee${langue === 'en' ? '?langue=en' : ''}`} download>
+              {t('Exporter en CSV')}
             </a>
           </div>
 
@@ -265,28 +271,28 @@ function ReportDashboard() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Client</th>
-                  {balance.tranches.map((t) => (
-                    <th key={t.cle} style={{ textAlign: 'right' }}>{t.libelle}</th>
+                  <th>{t('Client')}</th>
+                  {balance.tranches.map((tr) => (
+                    <th key={tr.cle} style={{ textAlign: 'right' }}>{t(tr.libelle)}</th>
                   ))}
-                  <th style={{ textAlign: 'right' }}>Total dû</th>
+                  <th style={{ textAlign: 'right' }}>{t('Total dû')}</th>
                 </tr>
               </thead>
               <tbody>
                 {balance.clients.map((c) => (
                   <tr key={c.client_id}>
                     <td>{c.client}</td>
-                    {balance.tranches.map((t) => (
+                    {balance.tranches.map((tr) => (
                       <td
-                        key={t.cle}
+                        key={tr.cle}
                         style={{
                           textAlign: 'right',
                           // Le retard le plus ancien est celui qui doit sauter aux yeux.
-                          color: t.cle === 'jours_91_plus' && c[t.cle] > 0
+                          color: tr.cle === 'jours_91_plus' && c[tr.cle] > 0
                             ? 'var(--status-danger)' : 'inherit'
                         }}
                       >
-                        {c[t.cle] > 0 ? formatMontant(c[t.cle]) : '-'}
+                        {c[tr.cle] > 0 ? formatMontant(c[tr.cle]) : '-'}
                       </td>
                     ))}
                     <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatMontant(c.total)}</td>
@@ -295,10 +301,10 @@ function ReportDashboard() {
               </tbody>
               <tfoot>
                 <tr style={{ fontWeight: 700, borderTop: '2px solid var(--glass-border)' }}>
-                  <td>Total</td>
-                  {balance.tranches.map((t) => (
-                    <td key={t.cle} style={{ textAlign: 'right' }}>
-                      {formatMontant(balance.totaux[t.cle])}
+                  <td>{t('Total')}</td>
+                  {balance.tranches.map((tr) => (
+                    <td key={tr.cle} style={{ textAlign: 'right' }}>
+                      {formatMontant(balance.totaux[tr.cle])}
                     </td>
                   ))}
                   <td style={{ textAlign: 'right' }}>{formatMontant(balance.totaux.total)}</td>
@@ -312,10 +318,10 @@ function ReportDashboard() {
       <div className="glass-panel" style={{ padding: '20px', marginTop: '24px' }}>
         <div className="toolbar">
           <div>
-            <h3 style={{ margin: 0, color: 'var(--text-main)' }}>Registres pour votre comptable</h3>
+            <h3 style={{ margin: 0, color: 'var(--text-main)' }}>{t('Registres pour votre comptable')}</h3>
             <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              Fichiers CSV directement lisibles dans Excel, à transmettre au logiciel comptable
-              (Acomba, Sage, QuickBooks) pour la fin d'année. Période : {libellePeriode(periode)}.
+              {t("Fichiers CSV directement lisibles dans Excel, à transmettre au logiciel comptable "
+                + "(Acomba, Sage, QuickBooks) pour la fin d'année. Période : {periode}.", { periode: libellePeriode(periode, langue) })}
             </p>
           </div>
           <div className="toolbar-group">
@@ -323,10 +329,10 @@ function ReportDashboard() {
                 pas du JSON. Le cookie de session part avec la requête, l'API
                 étant servie par la même origine. */}
             <a className="btn-secondary" href={lienExport('ventes')} download>
-              Registre des ventes
+              {t('Registre des ventes')}
             </a>
             <a className="btn-secondary" href={lienExport('encaissements')} download>
-              Registre des encaissements
+              {t('Registre des encaissements')}
             </a>
           </div>
         </div>
@@ -338,29 +344,29 @@ function ReportDashboard() {
           haute : elle se collait au panneau des registres. Quarante pixels,
           comme les trois blocs qui suivent. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '20px', marginTop: '40px' }}>
-        <Carte titre="Total facturé" valeur={formatMontant(stats.revenu_total)} />
-        <Carte titre="Total encaissé" valeur={formatMontant(stats.total_encaisse)} />
+        <Carte titre={t('Total facturé')} valeur={formatMontant(stats.revenu_total)} />
+        <Carte titre={t('Total encaissé')} valeur={formatMontant(stats.total_encaisse)} />
         <Carte
-          titre="Dépenses hors taxes"
+          titre={t('Dépenses hors taxes')}
           valeur={formatMontant(stats.total_depenses_ht)}
-          aide="Le montant de vos achats avant taxes. C'est cette valeur qui constitue une charge : les taxes payées sont récupérables."
+          aide={t("Le montant de vos achats avant taxes. C'est cette valeur qui constitue une charge : les taxes payées sont récupérables.")}
         />
         {/* Le violet ne distinguait pas un bénéfice d'une perte. La seconde
             marque est déjà là, et gratuite : en français canadien, `Intl` écrit
             un montant négatif avec son signe. */}
         <Carte
-          titre="Bénéfice net"
+          titre={t('Bénéfice net')}
           valeur={formatMontant(beneficeNet)}
           alerte={beneficeNet < 0}
-          aide="Total encaissé moins les dépenses hors taxes."
+          aide={t('Total encaissé moins les dépenses hors taxes.')}
         />
-        <Carte titre="Reste à percevoir" valeur={formatMontant(stats.solde_a_percevoir)} />
+        <Carte titre={t('Reste à percevoir')} valeur={formatMontant(stats.solde_a_percevoir)} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px', marginTop: '40px' }}>
         <div className="glass-panel" style={{ padding: '20px' }}>
-          <h3 style={{ marginTop: 0, color: 'var(--text-main)' }}>Répartition des statuts</h3>
-          {stats.statusDistribution && stats.statusDistribution.length > 0 ? (
+          <h3 style={{ marginTop: 0, color: 'var(--text-main)' }}>{t('Répartition des statuts')}</h3>
+          {repartition.length > 0 ? (
             <div style={{ width: '100%', height: 300 }}>
               <ResponsiveContainer>
                 <PieChart>
@@ -370,14 +376,14 @@ function ReportDashboard() {
                       l'arc, où sa largeur est bornée, et les noms descendent
                       dans la légende, qui a celle du panneau. */}
                   <Pie
-                    data={stats.statusDistribution}
+                    data={repartition}
                     cx="50%" cy="50%" innerRadius={55} outerRadius={95} paddingAngle={5}
                     dataKey="value"
                     labelLine={false}
-                    label={EtiquettePart}
+                    label={(props) => <EtiquettePart {...props} langue={langue} />}
                   >
-                    {stats.statusDistribution.map((entry, index) => (
-                      <Cell key={entry.name} fill={COULEURS_STATUT[entry.name] || COULEURS_DEFAUT[index % COULEURS_DEFAUT.length]} />
+                    {repartition.map((entry, index) => (
+                      <Cell key={entry.statut} fill={COULEURS_STATUT[entry.statut] || COULEURS_DEFAUT[index % COULEURS_DEFAUT.length]} />
                     ))}
                   </Pie>
                   {/* Le carré garde la couleur du statut, qui est la clé de
@@ -396,12 +402,12 @@ function ReportDashboard() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="empty-state">Aucune donnée disponible.</p>
+            <p className="empty-state">{t('Aucune donnée disponible.')}</p>
           )}
         </div>
 
         <div className="glass-panel" style={{ padding: '20px' }}>
-          <h3 style={{ marginTop: 0, color: 'var(--text-main)' }}>Principaux clients (facturé)</h3>
+          <h3 style={{ marginTop: 0, color: 'var(--text-main)' }}>{t('Principaux clients (facturé)')}</h3>
           {stats.topClients && stats.topClients.length > 0 ? (
             <div style={{ width: '100%', height: 300 }}>
               <ResponsiveContainer>
@@ -417,14 +423,14 @@ function ReportDashboard() {
                   />
                   <Tooltip
                     contentStyle={{ backgroundColor: 'var(--app-bg)', borderColor: 'var(--glass-border)', color: 'var(--text-main)' }}
-                    formatter={(value) => [formatMontant(value), 'Facturé']}
+                    formatter={(value) => [formatMontant(value), t('Facturé')]}
                   />
                   <Bar dataKey="revenu" fill="var(--safehill-blue)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="empty-state">Aucune donnée disponible.</p>
+            <p className="empty-state">{t('Aucune donnée disponible.')}</p>
           )}
         </div>
       </div>
@@ -435,7 +441,7 @@ function ReportDashboard() {
               l'émoji d'avertissement n'ajoutait rien qu'une couleur que nous
               ne dessinons pas. */}
           <h3 style={{ margin: '0 0 16px 0', color: 'var(--status-danger)' }}>
-            Alertes de trésorerie : factures en retard
+            {t('Alertes de trésorerie : factures en retard')}
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {stats.lateInvoices.map((invoice) => (
@@ -443,7 +449,7 @@ function ReportDashboard() {
                 <div>
                   <strong style={{ color: 'var(--text-main)' }}>{invoice.numero_facture}</strong>, {invoice.client}
                   <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem', color: 'var(--status-danger)' }}>
-                    Échéance dépassée : {invoice.date_echeance}
+                    {t('Échéance dépassée : {date}', { date: invoice.date_echeance })}
                   </p>
                 </div>
                 <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
@@ -458,31 +464,31 @@ function ReportDashboard() {
       <div className="glass-panel" style={{ marginTop: '40px', padding: '32px' }}>
         <div className="toolbar">
           <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
-            Rapport de taxes
-            <InfoTooltip text="CTI / RTI : crédit ou remboursement de la taxe sur les intrants. Vous récupérez les taxes payées sur vos achats." />
+            {t('Rapport de taxes')}
+            <InfoTooltip text={t('CTI / RTI : crédit ou remboursement de la taxe sur les intrants. Vous récupérez les taxes payées sur vos achats.')} />
           </h3>
           {/* La période se choisit en tête de page, pour toute la page. */}
-          <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{libellePeriode(periode)}</span>
+          <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{libellePeriode(periode, langue)}</span>
         </div>
 
         {taxStats ? (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '20px', marginBottom: '24px' }}>
               <div style={{ padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
-                <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Taxes facturées</p>
+                <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Taxes facturées')}</p>
                 <h4 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-main)' }}>{formatMontant(taxStats.taxes_facturees)}</h4>
               </div>
               <div style={{ padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
                 <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Taxes payées (CTI)
-                  <InfoTooltip text="La somme des taxes payées sur vos dépenses de la période." />
+                  {t('Taxes payées (CTI)')}
+                  <InfoTooltip text={t('La somme des taxes payées sur vos dépenses de la période.')} />
                 </p>
                 <h4 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-main)' }}>{formatMontant(taxStats.taxes_payees)}</h4>
               </div>
               <div style={{ padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
                 <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Taxes nettes à remettre
-                  <InfoTooltip text="Taxes facturées moins taxes payées. Un montant négatif correspond à un remboursement attendu." />
+                  {t('Taxes nettes à remettre')}
+                  <InfoTooltip text={t('Taxes facturées moins taxes payées. Un montant négatif correspond à un remboursement attendu.')} />
                 </p>
                 <h4 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-main)' }}>{formatMontant(taxStats.taxes_nettes)}</h4>
               </div>
@@ -491,36 +497,36 @@ function ReportDashboard() {
             {/* Chaque régime est présenté séparément : TPS, TVH et TVQ se
                 déclarent à des administrations et sur des lignes distinctes,
                 les additionner en un seul total rendait le rapport inutilisable. */}
-            <h4 style={{ color: 'var(--text-main)', marginBottom: '8px' }}>Détail par régime de taxe</h4>
+            <h4 style={{ color: 'var(--text-main)', marginBottom: '8px' }}>{t('Détail par régime de taxe')}</h4>
             {taxStats.parRegime && taxStats.parRegime.length > 0 ? (
               <div className="table-scroll">
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Régime</th>
-                      <th className="numeric">Montant perçu</th>
+                      <th>{t('Régime')}</th>
+                      <th className="numeric">{t('Montant perçu')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {taxStats.parRegime.map((regime) => (
                       <tr key={regime.nom}>
-                        <td style={{ fontWeight: '500' }}>{regime.nom}</td>
+                        <td style={{ fontWeight: '500' }}>{t(regime.nom)}</td>
                         <td className="numeric" style={{ fontWeight: 'bold' }}>{formatMontant(regime.montant)}</td>
                       </tr>
                     ))}
                     <tr>
-                      <td style={{ fontWeight: '600' }}>Revenus taxables</td>
+                      <td style={{ fontWeight: '600' }}>{t('Revenus taxables')}</td>
                       <td className="numeric">{formatMontant(taxStats.summary.total_revenus_taxables)}</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             ) : (
-              <p className="empty-state">Aucune taxe facturée sur cette période.</p>
+              <p className="empty-state">{t('Aucune taxe facturée sur cette période.')}</p>
             )}
           </>
         ) : (
-          <p style={{ color: 'var(--text-muted)' }}>Chargement du rapport…</p>
+          <p style={{ color: 'var(--text-muted)' }}>{t('Chargement du rapport…')}</p>
         )}
       </div>
     </div>

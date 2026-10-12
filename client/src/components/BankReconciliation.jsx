@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import Papa from 'papaparse';
 import { Upload, CheckCircle, XCircle } from 'lucide-react';
-import { api, formatMontant } from '../api';
+import { api } from '../api';
 import { useApiResource } from '../useApiResource';
+import { useLangue } from '../i18n.js';
 
 /** Noms de colonnes reconnus dans les relevés bancaires canadiens. */
 const COLONNES = {
@@ -64,6 +65,7 @@ function parseDate(valeur) {
 }
 
 export default function BankReconciliation() {
+  const { t, tp, montant: formatMontant } = useLangue();
   const transactionsRes = useApiResource('/api/banque/transactions', []);
   const facturesRes = useApiResource('/api/factures', []);
 
@@ -109,9 +111,10 @@ export default function BankReconciliation() {
 
           const data = await api.post('/api/banque/import', lignes);
           const details = [
-            `${data.inserted} dépôt(s) importé(s)`,
-            data.ignored ? `${data.ignored} ligne(s) ignorée(s) (retraits ou doublons)` : null,
-            data.invalid ? `${data.invalid} ligne(s) illisible(s)` : null
+            tp(data.inserted, '{n} dépôt(s) importé(s)', '{n} dépôt(s) importé(s)|pluriel'),
+            data.ignored ? tp(data.ignored, '{n} ligne(s) ignorée(s) (retraits ou doublons)',
+              '{n} ligne(s) ignorée(s) (retraits ou doublons)|pluriel') : null,
+            data.invalid ? tp(data.invalid, '{n} ligne(s) illisible(s)', '{n} ligne(s) illisible(s)|pluriel') : null
           ].filter(Boolean).join(', ');
           setMessage(`${details}.`);
           charger();
@@ -123,7 +126,7 @@ export default function BankReconciliation() {
         }
       },
       error: () => {
-        setErreurAction('Le fichier CSV n\'a pas pu être lu.');
+        setErreurAction(t("Le fichier CSV n'a pas pu être lu."));
         setLoading(false);
       }
     });
@@ -132,7 +135,7 @@ export default function BankReconciliation() {
   const handleRapprocher = async (transactionId) => {
     const factureId = selections[transactionId];
     if (!factureId) {
-      setErreurAction('Sélectionnez une facture avant de lier la transaction.');
+      setErreurAction(t('Sélectionnez une facture avant de lier la transaction.'));
       return;
     }
     try {
@@ -154,7 +157,7 @@ export default function BankReconciliation() {
         delete copie[transactionId];
         return copie;
       });
-      setMessage(data.message || 'Transaction rapprochée.');
+      setMessage(data.message || t('Transaction rapprochée.'));
       charger();
     } catch (err) {
       setErreurAction(err.message);
@@ -174,10 +177,10 @@ export default function BankReconciliation() {
   /** Facture dont le solde correspond exactement au dépôt, s'il en existe une seule. */
   const suggestions = useMemo(() => {
     const map = {};
-    for (const t of transactions) {
-      const restant = t.montant_restant ?? t.montant;
+    for (const tx of transactions) {
+      const restant = tx.montant_restant ?? tx.montant;
       const correspondances = factures.filter((f) => Math.abs(f.solde_restant - restant) < 0.01);
-      if (correspondances.length === 1) map[t.id] = correspondances[0].id;
+      if (correspondances.length === 1) map[tx.id] = correspondances[0].id;
     }
     return map;
   }, [transactions, factures]);
@@ -188,33 +191,33 @@ export default function BankReconciliation() {
       {message && <p className="alert alert-success" role="status">{message}</p>}
 
       <div className="glass-panel" style={{ padding: '20px', marginBottom: '20px' }}>
-        <h3 style={{ marginTop: 0 }}>Importer un relevé (CSV)</h3>
+        <h3 style={{ marginTop: 0 }}>{t('Importer un relevé (CSV)')}</h3>
         <p style={{ color: 'var(--text-muted)' }}>
-          Le fichier doit comporter une ligne d'en-têtes. Les colonnes de date, de description et de
-          montant sont détectées automatiquement. Seuls les dépôts sont retenus, et les lignes déjà
-          importées sont ignorées.
+          {t("Le fichier doit comporter une ligne d'en-têtes. Les colonnes de date, de description et de "
+            + 'montant sont détectées automatiquement. Seuls les dépôts sont retenus, et les lignes déjà '
+            + 'importées sont ignorées.')}
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '8px' }}>
           <label className="btn-primary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             <Upload size={18} aria-hidden="true" />
-            Sélectionner un fichier CSV
+            {t('Sélectionner un fichier CSV')}
             <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={handleFileUpload} disabled={loading} />
           </label>
-          {loading && <span style={{ color: 'var(--text-muted)' }}>Analyse en cours…</span>}
+          {loading && <span style={{ color: 'var(--text-muted)' }}>{t('Analyse en cours…')}</span>}
         </div>
       </div>
 
       <div className="glass-panel" style={{ padding: '20px' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '8px' }}>Dépôts à imputer</h3>
+        <h3 style={{ marginTop: 0, marginBottom: '8px' }}>{t('Dépôts à imputer')}</h3>
         <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>
-          Un dépôt peut régler plusieurs factures : liez-le autant de fois que nécessaire.
-          La colonne « Part » permet d'imputer un montant précis ; laissée vide, elle affecte
-          le plus petit du reste du dépôt et du solde de la facture.
+          {t('Un dépôt peut régler plusieurs factures : liez-le autant de fois que nécessaire. '
+            + "La colonne « Part » permet d'imputer un montant précis ; laissée vide, elle affecte "
+            + 'le plus petit du reste du dépôt et du solde de la facture.')}
         </p>
 
         {factures.length === 0 && transactions.length > 0 && (
           <p className="alert alert-info">
-            Aucune facture en dollars canadiens n'a de solde ouvert : il n'y a rien à rapprocher.
+            {t("Aucune facture en dollars canadiens n'a de solde ouvert : il n'y a rien à rapprocher.")}
           </p>
         )}
 
@@ -222,36 +225,36 @@ export default function BankReconciliation() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Description</th>
-                <th className="numeric">Montant</th>
-                <th className="numeric">Reste à imputer</th>
-                <th>Facture associée</th>
-                <th className="numeric">Part</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
+                <th>{t('Date')}</th>
+                <th>{t('Description')}</th>
+                <th className="numeric">{t('Montant')}</th>
+                <th className="numeric">{t('Reste à imputer')}</th>
+                <th>{t('Facture associée')}</th>
+                <th className="numeric">{t('Part')}</th>
+                <th style={{ textAlign: 'center' }}>{t('Actions')}</th>
               </tr>
             </thead>
             <tbody>
               {transactions.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="empty-state">Aucun dépôt en attente.</td>
+                  <td colSpan="7" className="empty-state">{t('Aucun dépôt en attente.')}</td>
                 </tr>
-              ) : transactions.map((t) => {
-                const valeur = selections[t.id] ?? suggestions[t.id] ?? '';
-                const restant = t.montant_restant ?? t.montant;
-                const partiel = restant < t.montant - 0.005;
+              ) : transactions.map((tx) => {
+                const valeur = selections[tx.id] ?? suggestions[tx.id] ?? '';
+                const restant = tx.montant_restant ?? tx.montant;
+                const partiel = restant < tx.montant - 0.005;
                 return (
-                  <tr key={t.id}>
-                    <td>{t.date_transaction}</td>
-                    <td>{t.description}</td>
+                  <tr key={tx.id}>
+                    <td>{tx.date_transaction}</td>
+                    <td>{tx.description}</td>
                     <td className="numeric" style={{ fontWeight: 'bold', color: 'var(--status-paid)' }}>
-                      + {formatMontant(t.montant)}
+                      + {formatMontant(tx.montant)}
                     </td>
                     <td className="numeric" style={{ fontWeight: 'bold' }}>
                       {formatMontant(restant)}
                       {partiel && (
                         <div style={{ fontSize: '0.8rem', fontWeight: 'normal', color: 'var(--status-warning)' }}>
-                          {formatMontant(t.montant_rapproche)} déjà imputés
+                          {t('{montant} déjà imputés', { montant: formatMontant(tx.montant_rapproche) })}
                         </div>
                       )}
                     </td>
@@ -263,11 +266,11 @@ export default function BankReconciliation() {
                       <select
                         className="form-control"
                         style={{ minWidth: '260px', padding: '8px' }}
-                        aria-label={`Facture à associer au dépôt du ${t.date_transaction}`}
+                        aria-label={t('Facture à associer au dépôt du {date}', { date: tx.date_transaction })}
                         value={valeur}
-                        onChange={(e) => setSelections((prev) => ({ ...prev, [t.id]: e.target.value }))}
+                        onChange={(e) => setSelections((prev) => ({ ...prev, [tx.id]: e.target.value }))}
                       >
-                        <option value="">Sélectionner…</option>
+                        <option value="">{t('Sélectionner…')}</option>
                         {factures.map((f) => {
                           const exact = Math.abs(f.solde_restant - restant) < 0.01;
                           return (
@@ -276,7 +279,7 @@ export default function BankReconciliation() {
                                   icône n'y est possible, et l'étoile qui
                                   marquait la correspondance exacte se lit mieux
                                   en mots, y compris par un lecteur d'écran. */}
-                              {f.numero_facture}, {f.client} (solde : {formatMontant(f.solde_restant)}{exact ? ', montant exact' : ''})
+                              {f.numero_facture}, {f.client} ({t('solde : {montant}', { montant: formatMontant(f.solde_restant) })}{exact ? t(', montant exact') : ''})
                             </option>
                           );
                         })}
@@ -289,29 +292,29 @@ export default function BankReconciliation() {
                         type="number" className="form-control"
                         style={{ width: '120px', padding: '8px', textAlign: 'right' }}
                         step="0.01" min="0.01" max={restant}
-                        placeholder="tout"
-                        aria-label={`Part du dépôt du ${t.date_transaction} à imputer`}
-                        value={parts[t.id] ?? ''}
-                        onChange={(e) => setParts((prev) => ({ ...prev, [t.id]: e.target.value }))}
+                        placeholder={t('tout')}
+                        aria-label={t('Part du dépôt du {date} à imputer', { date: tx.date_transaction })}
+                        value={parts[tx.id] ?? ''}
+                        onChange={(e) => setParts((prev) => ({ ...prev, [tx.id]: e.target.value }))}
                       />
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         <button
                           type="button"
-                          onClick={() => handleRapprocher(t.id)}
+                          onClick={() => handleRapprocher(tx.id)}
                           className="btn-primary"
                           style={{ padding: '4px 12px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-                          title="Lier à la facture"
+                          title={t('Lier à la facture')}
                         >
-                          <CheckCircle size={16} aria-hidden="true" /> Lier
+                          <CheckCircle size={16} aria-hidden="true" /> {t('Lier')}
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleIgnorer(t.id)}
+                          onClick={() => handleIgnorer(tx.id)}
                           className="btn-danger"
-                          title="Ignorer cette transaction"
-                          aria-label={`Ignorer le dépôt du ${t.date_transaction}`}
+                          title={t('Ignorer cette transaction')}
+                          aria-label={t('Ignorer le dépôt du {date}', { date: tx.date_transaction })}
                         >
                           <XCircle size={16} aria-hidden="true" />
                         </button>
