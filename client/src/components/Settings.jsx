@@ -37,7 +37,7 @@ function Message({ contenu }) {
   );
 }
 
-function Settings({ ancre }) {
+function Settings({ ancre, naviguer }) {
   const utilisateurCourant = useUser();
   const { notifier, confirmer } = useFeedback();
   const { langue, t, tp, montant: formatMontant } = useLangue();
@@ -96,6 +96,18 @@ function Settings({ ancre }) {
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [minLength, setMinLength] = useState(8);
 
+  // Les premiers pas, pour proposer de les rouvrir une fois masqués.
+  const [demarrage, setDemarrage] = useState(null);
+
+  const rouvrirPremiersPas = async () => {
+    try {
+      await api.post('/api/demarrage/afficher', {});
+      if (naviguer) naviguer('dashboard');
+    } catch (err) {
+      notifier(err.message, 'erreur');
+    }
+  };
+
   useEffect(() => {
     api.get('/api/settings')
       .then((data) => setSettings((prev) => ({ ...prev, ...data })))
@@ -109,6 +121,7 @@ function Settings({ ancre }) {
       .then((r) => setEnSouffrance(r.encaissements || []))
       .catch(() => setEnSouffrance([]));
     api.get('/api/licence').then(setLicence).catch(() => setLicence(null));
+    api.get('/api/demarrage').then(setDemarrage).catch(() => setDemarrage(null));
     api.get('/api/settings/taux-kilometriques').then(setTauxKm).catch(() => setTauxKm([]));
     api.get('/api/auth/setup-status')
       .then((data) => { if (data.minPasswordLength) setMinLength(data.minPasswordLength); })
@@ -443,6 +456,13 @@ function Settings({ ancre }) {
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
               {t("Le profil règle l'ordre des premiers pas sur le tableau de bord. Il ne retire aucune fonction.")}
             </p>
+            {/* Masquer la liste ne doit pas être sans retour : qui l'a fermée
+                trop vite la retrouve ici, tant qu'il lui reste à faire. */}
+            {demarrage && demarrage.masque && demarrage.etapes.some((e) => !e.fait) && (
+              <button type="button" className="btn-secondary" onClick={rouvrirPremiersPas} style={{ marginTop: '8px' }}>
+                {t('Rouvrir les premiers pas')}
+              </button>
+            )}
           </div>
           <div className="form-group">
             <label htmlFor="conditions_defaut">{t('Conditions de paiement proposées aux nouveaux clients')}</label>

@@ -836,3 +836,119 @@ textarea:focus-visible {
 [id^="section-"] {
   scroll-margin-top: 24px;
 }
+
+/* Visite guidée. Le conteneur reprend la classe des fenêtres, pour que le
+   clavier suive les mêmes règles, mais pas leur fond flou : c'est le voile et
+   l'éclairage qui assombrissent. */
+.visite.modal-overlay {
+  display: block;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  z-index: 3000;
+  opacity: 1;
+  animation: none;
+}
+
+/* Le voile assombrit tout l'écran ; quand un élément est
+   présenté, c'est l'ombre démesurée de l'éclairage qui assombrit, et le voile
+   devient transparent pour ne pas couvrir l'élément. Les deux interceptent les
+   clics : la visite se quitte par ses boutons. */
+.visite-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.visite-eclairage {
+  position: fixed;
+  z-index: 3001;
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.55);
+  outline: 2px solid var(--safehill-teal);
+  pointer-events: none;
+  transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+
+.visite-bulle {
+  position: fixed;
+  z-index: 3002;
+  box-sizing: border-box;
+  padding: 20px 24px;
+  border-radius: 12px;
+  /* Opaque : sur le voile, un fond translucide se lirait mal. */
+  background: var(--app-bg);
+  color: var(--text-main);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 20px 40px -12px rgba(15, 23, 42, 0.45);
+  animation: notification-entree 0.2s ease-out;
+}
+
+.visite-bulle h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+}
+
+.visite-bulle p {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.visite-bulle .visite-compte {
+  margin-bottom: 4px;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.visite-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.visite-passer {
+  padding: 0;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .visite-eclairage { transition: none; }
+  .visite-bulle { animation: none; }
+}
+
+/* Barre d'avancement des premiers pas. */
+.progression {
+  height: 6px;
+  border-radius: 6px;
+  background: var(--hover-subtle);
+  overflow: hidden;
+}
+
+.progression span {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--safehill-teal);
+  transition: width 0.4s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progression span { transition: none; }
+}
+
+/* Le logotype dans la variante du thème (composant Logotype). */
+.logotype-sombre { display: none !important; }
+[data-theme='dark'] .logotype-clair { display: none !important; }
+[data-theme='dark'] .logotype-sombre { display: inline !important; }

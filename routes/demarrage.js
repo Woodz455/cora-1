@@ -30,5 +30,14 @@ module.exports = function demarrageRoutes(getDb, getComptesDb) {
     res.json({ masque: true });
   }));
 
+  /**
+   * Rouvre la liste masquée, depuis les paramètres. Masquer ne doit pas être
+   * définitif : qui l'a fermée trop vite doit pouvoir la retrouver.
+   */
+  router.post('/afficher', asyncRoute(async (req, res) => {
+    await getDb().run('UPDATE settings SET demarrage_masque = 0');
+    res.json({ masque: false });
+  }));
+
   return router;
 };

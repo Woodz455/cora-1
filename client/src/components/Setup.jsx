@@ -3,6 +3,7 @@ import { api } from '../api';
 import ChoixProfil from './ChoixProfil';
 import SelecteurLangue from './SelecteurLangue';
 import { useLangue } from '../i18n.js';
+import Logotype from './Logotype';
 
 function Setup({ onSetupComplete }) {
   const [username, setUsername] = useState('');
@@ -53,6 +54,7 @@ function Setup({ onSetupComplete }) {
       onSetupComplete({
         username: session.username,
         role: session.role,
+        visite_vue: session.visite_vue,
         entreprises: session.entreprises || [],
         ouvert: session.ouvert || null
       });
@@ -70,8 +72,7 @@ function Setup({ onSetupComplete }) {
         </div>
         {/* Le tout premier écran qu'un client voit ne portait aucun logo,
             contrairement à l'écran de connexion des fois suivantes. */}
-        <img
-          src="/banner.png"
+        <Logotype
           alt=""
           style={{ maxWidth: '100%', marginBottom: '32px' }}
           onError={(e) => { e.currentTarget.style.display = 'none'; }}

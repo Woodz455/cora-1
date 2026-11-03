@@ -140,8 +140,20 @@ facture, puis ce qui tient au profil (le taux kilométrique pour un travailleur
 autonome, les comptes de l'équipe et le relevé bancaire pour une PME, les
 abonnements et le paiement en ligne pour une startup), et pour tous un dossier
 de sauvegarde synchronisé. Chaque étape mène à l'écran où elle s'accomplit et
-se coche d'elle-même d'après le contenu du dossier ; la liste disparaît quand
-tout est fait, ou d'un clic.
+se coche d'elle-même d'après le contenu du dossier. Une barre montre
+l'avancement, et l'étape à faire maintenant porte un bouton « Commencer ». La
+liste disparaît quand tout est fait, ou d'un clic ; masquée trop vite, elle se
+rouvre depuis Paramètres.
+
+**La visite guidée.** La première fois qu'une personne ouvre un dossier,
+quelques bulles lui montrent où se trouve chaque chose : le dossier ouvert, le
+menu, les factures, les premiers pas, les paramètres et le choix de la langue.
+Chacun ne voit que ce que son rôle lui ouvre. La visite se passe d'un clic, ne
+revient pas d'elle-même, et le bouton d'aide en haut à droite la relance.
+
+**Au lancement**, une petite fenêtre au logotype de Clora apparaît dès le
+double-clic, le temps que le programme démarre : on sait tout de suite que
+Clora s'ouvre.
 
 ### Factures
 *Accessible à tous*

@@ -3,6 +3,7 @@ import { KeyRound, ShieldCheck } from 'lucide-react';
 import { api } from '../api';
 import { useLangue } from '../i18n.js';
 import SelecteurLangue from './SelecteurLangue';
+import Logotype from './Logotype';
 
 /**
  * Écran d'activation, affiché quand l'installation n'est plus utilisable.
@@ -44,7 +45,7 @@ function Licence({ etat, onActive }) {
         {/* L'écran passe avant la connexion : la langue se choisit ici, comme à
             l'écran de connexion, faute de compte qui la porterait. */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-          <img src="/images/logotype.png" alt="Clora" style={{ height: '38px' }} />
+          <Logotype style={{ height: '38px' }} />
           <SelecteurLangue />
         </div>
 

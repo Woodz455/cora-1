@@ -12,7 +12,7 @@ version 1.8.0.*
 | **Version publiée** | 1.8.0, le 12 octobre 2026 |
 | **Publications** | 14 versions livrées depuis le 24 juillet 2026 |
 | **Développement** | 69 commits, 30 demandes de fusion, toutes fusionnées |
-| **Tests** | 387, tous au vert, exécutés à chaque fusion |
+| **Tests** | 390, tous au vert, exécutés à chaque fusion |
 | **Durée** | 11 semaines, du 24 juillet au 12 octobre 2026 |
 | **Langues** | Interface en français ou en anglais, au choix de chaque utilisateur |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
@@ -343,6 +343,34 @@ boutons « Fermer » de l'aperçu d'une facture et du compte rendu, ainsi que
 « Imprimer » du compte rendu, avaient un texte blanc sur fond blanc en mode
 sombre ; et un « 0 » s'affichait sous la case « Ajouter un lien de paiement sur
 mes factures » quand le paiement en ligne est désactivé.
+
+### Phase 15 : l'accueil au lancement
+*3 novembre · pas encore publié*
+
+Les testeurs ont demandé pourquoi rien ne se passait à l'ouverture de Clora, et
+pourquoi il n'y avait pas d'accueil. Il y avait bien la liste des premiers pas,
+mais elle se fermait d'un clic sans retour, et le démarrage ne montrait rien
+pendant quelques secondes. Trois réponses, toutes retenues :
+
+- **Un écran de démarrage** apparaît dès le double-clic, au logotype de Clora,
+  avec « Démarrage de Clora… » et une barre d'attente. Il suit la langue et le
+  thème du système, et se ferme quand l'application est prête.
+- **Une visite guidée** au premier dossier ouvert par chaque compte : huit
+  bulles pour un administrateur, six pour un employé, qui ne voit pas ce que
+  son rôle ne lui ouvre pas. Elle se passe d'un clic ou par Échap, se retient
+  par compte, et un bouton d'aide dans l'en-tête la relance.
+- **Des premiers pas plus visibles** : une barre d'avancement, l'étape suivante
+  mise en avant, un avis à la fermeture, et un bouton dans Paramètres pour les
+  rouvrir.
+
+Le français existant n'a pas changé d'un mot (relevé avant et après sur tous
+les écrans) ; tous les nouveaux textes ont leur traduction anglaise. Trois tests
+de plus.
+
+Un défaut corrigé en passant, antérieur à cette version : en mode sombre, le
+logotype bleu marine des écrans de configuration, de connexion, de choix du
+dossier et de licence se voyait à peine sur le fond foncé. Ces écrans prennent
+désormais la variante claire, comme le menu.
 
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*

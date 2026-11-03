@@ -166,6 +166,7 @@ test('les premiers pas sont réservés à l\'administration', async (t) => {
 
   assert.equal((await api.get('/api/demarrage')).status, 403);
   assert.equal((await api.post('/api/demarrage/masquer', {})).status, 403);
+  assert.equal((await api.post('/api/demarrage/afficher', {})).status, 403);
 });
 
 test('un dossier sans profil reçoit l\'essentiel, rien de coché', async (t) => {
@@ -261,6 +262,47 @@ test('la liste se masque, et réapparaît quand le profil change', async (t) => 
   const etat = (await api.get('/api/demarrage')).data;
   assert.equal(etat.masque, false);
   assert.deepEqual(etat.etapes.map((e) => e.cle), PARCOURS.pme);
+});
+
+test('une liste masquée se rouvre depuis les paramètres', async (t) => {
+  const api = await avecAdmin(t);
+  await dossier(api, 'pme');
+
+  await api.post('/api/demarrage/masquer', {});
+  assert.equal((await api.get('/api/demarrage')).data.masque, true);
+
+  const res = await api.post('/api/demarrage/afficher', {});
+  assert.equal(res.status, 200, JSON.stringify(res.data));
+  const etat = (await api.get('/api/demarrage')).data;
+  assert.equal(etat.masque, false);
+  assert.deepEqual(etat.etapes.map((e) => e.cle), PARCOURS.pme, 'les étapes reviennent telles quelles');
+});
+
+/* --- La visite guidée --- */
+
+test('la visite guidée se retient par compte, pas par dossier', async (t) => {
+  const api = await avecAdmin(t);
+  assert.equal((await api.get('/api/auth/check')).data.visite_vue, false, 'un compte neuf ne l\'a pas vue');
+
+  await api.post('/api/users', { username: 'compta', password: MOT_DE_PASSE, role: 'comptable' });
+
+  assert.equal((await api.put('/api/auth/visite', {})).status, 200);
+  assert.equal((await api.get('/api/auth/check')).data.visite_vue, true);
+
+  // Un autre dossier ne la relance pas.
+  await dossier(api, 'startup', 'Second dossier');
+  assert.equal((await api.get('/api/auth/check')).data.visite_vue, true);
+
+  // Les autres comptes gardent la leur.
+  await api.post('/api/auth/login', { username: 'compta', password: MOT_DE_PASSE });
+  assert.equal((await api.get('/api/auth/check')).data.visite_vue, false);
+});
+
+test('marquer la visite demande une session', async (t) => {
+  resetRateLimit();
+  const api = await startTestServer();
+  t.after(() => api.close());
+  assert.equal((await api.put('/api/auth/visite', {})).status, 401);
 });
 
 /* --- Les paramètres --- */

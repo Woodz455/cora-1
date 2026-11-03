@@ -3,6 +3,7 @@ import { TriangleAlert } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { api } from '../api';
 import { useLangue } from '../i18n.js';
+import { useFeedback } from '../FeedbackContext';
 
 /**
  * Les premiers pas du dossier, dans l'ordre que son profil suggère.
@@ -16,9 +17,12 @@ function PremiersPas({ demarrage, onMasquer, naviguer }) {
   const { t, tp } = useLangue();
   const faites = demarrage.etapes.filter((e) => e.fait).length;
   const total = demarrage.etapes.length;
+  // L'étape à faire maintenant, mise en avant : la liste dit par où commencer
+  // au lieu de laisser choisir parmi huit lignes semblables.
+  const suivante = demarrage.etapes.find((e) => !e.fait);
 
   return (
-    <div className="glass-card" style={{ padding: '32px', marginBottom: '40px' }}>
+    <div className="glass-card" data-visite="premiers-pas" style={{ padding: '32px', marginBottom: '40px' }}>
       <div className="toolbar" style={{ marginBottom: '16px' }}>
         <div>
           <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.2rem' }}>{t('Pour commencer')}</h3>
@@ -30,6 +34,17 @@ function PremiersPas({ demarrage, onMasquer, naviguer }) {
         </div>
         <button type="button" className="btn-secondary" onClick={onMasquer}>{t('Masquer')}</button>
       </div>
+      <div
+        className="progression"
+        role="progressbar"
+        aria-label={t('Avancement des premiers pas')}
+        aria-valuemin={0}
+        aria-valuemax={total}
+        aria-valuenow={faites}
+        style={{ marginBottom: '20px' }}
+      >
+        <span style={{ width: `${total ? (faites / total) * 100 : 0}%` }} />
+      </div>
       <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
         {demarrage.etapes.map((etape, index) => (
           <li key={etape.cle}>
@@ -40,7 +55,8 @@ function PremiersPas({ demarrage, onMasquer, naviguer }) {
               style={{
                 width: '100%', textAlign: 'left', padding: '12px 16px', font: 'inherit',
                 background: etape.fait ? 'transparent' : 'var(--hover-subtle)',
-                border: '1px solid var(--glass-border)', borderRadius: '10px',
+                border: etape === suivante ? '1px solid var(--safehill-teal)' : '1px solid var(--glass-border)',
+                borderRadius: '10px',
                 color: etape.fait ? 'var(--text-muted)' : 'var(--text-main)', cursor: 'pointer',
                 marginBottom: '8px', display: 'flex', gap: '12px', alignItems: 'flex-start'
               }}
@@ -67,7 +83,11 @@ function PremiersPas({ demarrage, onMasquer, naviguer }) {
                   </span>
                 )}
               </span>
-              {!etape.fait && <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}>→</span>}
+              {etape === suivante ? (
+                <span className="btn-primary" aria-hidden="true" style={{ flexShrink: 0, alignSelf: 'center', padding: '4px 12px', fontSize: '0.85rem' }}>
+                  {t('Commencer')}
+                </span>
+              ) : !etape.fait && <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}>→</span>}
             </button>
           </li>
         ))}
@@ -83,6 +103,7 @@ function Dashboard({ naviguer }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { t, tp, montant } = useLangue();
+  const { notifier } = useFeedback();
 
   // Réservé à l'administration : un 403 signifie simplement qu'il n'y a rien à
   // montrer, les étapes menant presque toutes aux paramètres.
@@ -98,6 +119,7 @@ function Dashboard({ naviguer }) {
     try {
       await api.post('/api/demarrage/masquer', {});
       setDemarrage((prev) => (prev ? { ...prev, masque: true } : prev));
+      notifier(t('Premiers pas masqués. Vous pourrez les rouvrir depuis Paramètres.'), 'info');
     } catch {
       // La liste reviendra au prochain passage : rien de grave.
     }

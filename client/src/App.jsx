@@ -15,6 +15,7 @@ import AuditLog from './components/AuditLog';
 import { UserContext } from './UserContext';
 import { useLangue } from './i18n.js';
 import SelecteurLangue from './components/SelecteurLangue';
+import VisiteGuidee from './components/VisiteGuidee';
 
 // Ces deux écrans embarquent la bibliothèque de graphiques : ils sont chargés à
 // la demande pour alléger le démarrage de l'application.
@@ -35,7 +36,8 @@ import {
   CreditCard,
   Landmark,
   Repeat,
-  ScrollText
+  ScrollText,
+  CircleHelp
 } from 'lucide-react';
 
 /**
@@ -147,6 +149,54 @@ const VUES = [
   }
 ];
 
+/**
+ * Étapes de la visite guidée, dans l'ordre de l'écran : d'abord où l'on est,
+ * puis où aller, puis ce qui se règle. `cible` désigne l'attribut
+ * `data-visite` de l'élément présenté ; sans cible, la bulle se centre.
+ */
+const VISITE = [
+  {
+    cible: null,
+    titre: 'Bienvenue dans Clora',
+    texte: "Quelques bulles pour vous montrer où se trouve chaque chose. Vous pouvez passer la visite à tout moment et la revoir plus tard."
+  },
+  {
+    cible: 'dossier',
+    titre: 'Le dossier ouvert',
+    texte: "Le nom affiché ici est celui de l'entreprise dont vous tenez la comptabilité. Le lien en dessous mène à vos autres dossiers, ou en crée un nouveau."
+  },
+  {
+    cible: 'menu',
+    titre: 'Le menu',
+    texte: 'Chaque écran de Clora est ici : factures, devis, clients, dépenses, rapports. Ce que votre rôle ne permet pas de faire n\'y figure pas.'
+  },
+  {
+    cible: 'vue-factures',
+    titre: 'Vos factures',
+    texte: 'Créez une facture, envoyez-la par courriel, puis inscrivez les paiements reçus : son statut se met à jour de lui-même.'
+  },
+  {
+    cible: 'premiers-pas',
+    titre: 'Pour commencer',
+    texte: "Cette liste suit l'ordre de votre profil et se coche d'elle-même. Chaque étape mène à l'écran où elle se fait."
+  },
+  {
+    cible: 'vue-parametres',
+    titre: 'Paramètres',
+    texte: 'Votre entreprise, vos taxes, le paiement en ligne et les sauvegardes. Les premiers pas, une fois masqués, se rouvrent aussi depuis ici.'
+  },
+  {
+    cible: 'compte',
+    titre: 'Langue et compte',
+    texte: 'Passez du français à l\'anglais à tout moment : la langue est retenue pour votre compte. Le mode sombre se règle en bas du menu.'
+  },
+  {
+    cible: 'aide',
+    titre: 'Revoir la visite',
+    texte: 'Ce bouton relance cette visite quand vous le voulez.'
+  }
+];
+
 const COULEUR_ROLE = { admin: '#10b981', comptable: '#3b82f6', employe: '#f59e0b' };
 
 function App() {
@@ -167,6 +217,7 @@ function App() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+  const [visiteOuverte, setVisiteOuverte] = useState(false);
   const { t, changerLangue } = useLangue();
 
   const isAuthenticated = Boolean(user);
@@ -190,6 +241,16 @@ function App() {
       .catch(() => {});
     return () => { annule = true; };
   }, [isAuthenticated, ouvert]);
+
+  // La visite se lance d'elle-même la première fois qu'un compte ouvre un
+  // dossier, sur le tableau de bord. Le court délai laisse l'écran se dessiner
+  // et la liste des premiers pas arriver : la visite la présente.
+  const visiteAFaire = Boolean(user && ouvert && !changementDossier && user.visite_vue === false);
+  useEffect(() => {
+    if (!visiteAFaire) return undefined;
+    const minuterie = setTimeout(() => setVisiteOuverte(true), 900);
+    return () => clearTimeout(minuterie);
+  }, [visiteAFaire]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -222,7 +283,7 @@ function App() {
             if (authData.authenticated) {
               // La langue du compte l'emporte sur celle du poste.
               if (authData.langue) changerLangue(authData.langue);
-              setUser({ username: authData.username, role: authData.role });
+              setUser({ username: authData.username, role: authData.role, visite_vue: authData.visite_vue });
               setEntreprises(authData.entreprises || []);
               setOuvert(authData.ouvert || null);
             }
@@ -246,6 +307,7 @@ function App() {
       await api.post('/api/auth/logout');
     } finally {
       setUser(null);
+      setVisiteOuverte(false);
       setCurrentView('dashboard');
     }
   };
@@ -327,6 +389,27 @@ function App() {
 
   const ContenuActif = vueActive.composant;
 
+  /**
+   * Fin de la visite, terminée ou passée. Elle est retenue pour le compte dans
+   * les deux cas : qui l'a passée l'a choisi, et le bouton de l'en-tête la
+   * rouvre.
+   */
+  const fermerVisite = () => {
+    setVisiteOuverte(false);
+    if (user.visite_vue === false) {
+      setUser((prev) => ({ ...prev, visite_vue: true }));
+      api.put('/api/auth/visite', {}).catch(() => {});
+    }
+  };
+
+  const relancerVisite = () => {
+    setCurrentView('dashboard');
+    setParametresVue(null);
+    // Le tableau de bord doit être à l'écran avant que la visite ne cherche
+    // ses éléments.
+    setTimeout(() => setVisiteOuverte(true), 300);
+  };
+
   /** Change de vue, en lui passant éventuellement un état initial. */
   const naviguer = (id, parametres = null) => {
     setCurrentView(id);
@@ -366,7 +449,7 @@ function App() {
               saisir une facture chez le mauvais client se répare mal, et
               l'ambiguïté sur « chez qui suis-je » est le premier risque. Le
               bouton n'apparaît que s'il y a réellement ailleurs où aller. */}
-          <div style={{ marginBottom: '24px', padding: '0 8px' }}>
+          <div data-visite="dossier" style={{ marginBottom: '24px', padding: '0 8px' }}>
             <p style={{ margin: 0, fontSize: '.7rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               {t('Dossier')}
             </p>
@@ -394,7 +477,7 @@ function App() {
           {/* La liste défile quand la fenêtre est trop basse pour elle : à la
               taille d'ouverture, elle poussait « Se déconnecter » sous le bas
               du panneau, hors d'atteinte. */}
-          <nav aria-label={t('Navigation principale')} style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}>
+          <nav data-visite="menu" aria-label={t('Navigation principale')} style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}>
             {vuesVisibles.map((vue) => {
               const Icone = vue.icone;
               return (
@@ -402,6 +485,7 @@ function App() {
                   key={vue.id}
                   type="button"
                   className="nav-item"
+                  data-visite={`vue-${vue.id}`}
                   aria-current={vueActive.id === vue.id ? 'page' : undefined}
                   onClick={() => naviguer(vue.id)}
                 >
@@ -440,10 +524,23 @@ function App() {
               <p style={{ color: 'var(--text-muted)', margin: 0 }}>{t(vueActive.sousTitre)}</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              data-visite="aide"
+              onClick={relancerVisite}
+              aria-label={t('Visite guidée')}
+              title={t('Visite guidée')}
+              style={{ display: 'inline-flex', alignItems: 'center', padding: '8px' }}
+            >
+              <CircleHelp size={18} aria-hidden="true" />
+            </button>
+            <div data-visite="compte" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <SelecteurLangue enregistrer />
             <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '8px 20px', borderRadius: '30px', fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
               <span aria-hidden="true" style={{ width: '8px', height: '8px', borderRadius: '50%', background: COULEUR_ROLE[user.role] || '#94a3b8' }}></span>
               {`${user.username} (${t(user.role)})`}
+            </div>
             </div>
             </div>
           </header>
@@ -482,6 +579,7 @@ function App() {
           </div>
         </main>
       </div>
+      {visiteOuverte && <VisiteGuidee etapes={VISITE} onFermer={fermerVisite} />}
     </UserContext.Provider>
   );
 }
