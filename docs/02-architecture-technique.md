@@ -58,16 +58,25 @@ l'intégration parle directement à l'API REST par le module `https` de Node.
 
 1. Electron obtient un verrou d'instance unique : deux processus écrivant dans
    la même base SQLite se gêneraient.
-2. La fenêtre est créée **cachée**, pour ne pas montrer un rectangle blanc.
+2. Un **écran de démarrage** s'ouvre aussitôt : une petite fenêtre sans cadre
+   qui charge `ecran-demarrage.html` (dans `client/dist`, à côté des
+   logotypes), sans script, la langue passée par l'ancre (`#en`). La fenêtre
+   principale est créée **cachée**, pour ne pas montrer un rectangle blanc.
 3. Le serveur Express démarre. En production, sur **un port libre attribué par
    le système** ; en développement, sur 3000 pour que le proxy de Vite le trouve.
 4. Le registre `comptes.sqlite` s'ouvre, migre si nécessaire, et désigne le
    dossier d'entreprise à charger.
 5. Le planificateur horaire démarre.
-6. La fenêtre charge `http://127.0.0.1:<port>` et s'affiche.
+6. La fenêtre charge `http://127.0.0.1:<port>` et s'affiche ; l'écran de
+   démarrage se ferme, après être resté au moins 0,6 seconde.
 
-Un échec à l'étape 3 ouvre une boîte de dialogue d'erreur explicite, au lieu de
-laisser l'utilisateur devant une fenêtre blanche.
+Un échec à l'étape 3 ferme l'écran de démarrage et ouvre une boîte de dialogue
+d'erreur explicite, au lieu de laisser l'utilisateur devant une fenêtre blanche.
+
+À la première ouverture d'un dossier par un compte, l'interface lance la
+**visite guidée** (`VisiteGuidee.jsx`). Les éléments présentés portent un
+attribut `data-visite` ; la visite se retient par compte dans le registre
+(`users.visite_vue`, `PUT /api/auth/visite`, renvoyé par `GET /api/auth/check`).
 
 ---
 
@@ -91,9 +100,9 @@ companyStore.js    Registre des dossiers d'entreprise et comptes partagés
 traductionServeur.js  Messages du serveur traduits en anglais à la sortie
 *Service.js        Logique métier par domaine (19 services)
 routes/            21 modules de points d'entrée HTTP
-client/src/        Interface React (33 composants, 13 crochets et modules,
+client/src/        Interface React (34 composants, 13 crochets et modules,
                    dictionnaire anglais dans traductions/en.js)
-tests/             27 fichiers, 387 tests
+tests/             27 fichiers, 390 tests
 ```
 
 Le découpage est strict : **`server.js` ne fait que câbler**. Il ne contient
@@ -600,7 +609,7 @@ facture émise), donc une vérification fréquente est sans risque.
 
 ## 10. Tests et intégration continue
 
-**387 tests**, exécutés par `node --test`. Répartition :
+**390 tests**, exécutés par `node --test`. Répartition :
 
 | Domaine | Tests |
 | --- | --- |
@@ -620,7 +629,7 @@ facture émise), donc une vérification fréquente est sans risque.
 | Journal d'audit | 15 |
 | Encaissements et annulations | 14 |
 | API et cloisonnement des rôles | 14 |
-| Profils et premiers pas | 13 |
+| Profils, premiers pas et visite guidée | 16 |
 | Devis | 12 |
 | Montants figés | 11 |
 | Mises à jour | 10 |

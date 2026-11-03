@@ -95,6 +95,11 @@ async function ouvrirComptes(chemin = cheminComptes()) {
   // le patron du même dossier peut garder le français.
   await addColumn(db, 'users', 'langue', "TEXT NOT NULL DEFAULT 'fr'");
 
+  // La visite guidée se montre une fois par personne, au premier dossier
+  // ouvert, et non une fois par dossier : qui a déjà vu le menu de Clora n'a
+  // pas à le revoir en changeant de client.
+  await addColumn(db, 'users', 'visite_vue', 'INTEGER NOT NULL DEFAULT 0');
+
   // L'essai commence à la création du registre, donc à la première ouverture
   // de l'application — et non à la première consultation de l'écran de
   // licence, qu'un utilisateur pourrait ne jamais atteindre.

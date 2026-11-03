@@ -220,8 +220,28 @@ Ce que le profil règle :
   relevé bancaire, dossier de sauvegarde). Chaque étape mène à son écran, et
   pour les paramètres à sa section (`ancre`). Elle disparaît quand tout est
   fait, ou d'un clic (`POST /api/demarrage/masquer`) ; changer de profil la
-  rouvre. Un dossier antérieur au choix de profil reçoit l'essentiel, sans
-  présumer du métier.
+  rouvre, et Paramètres propose de la rouvrir tant qu'il reste une étape
+  (`POST /api/demarrage/afficher`). Une barre d'avancement la surmonte et
+  l'étape à faire maintenant est mise en avant. Un dossier antérieur au choix
+  de profil reçoit l'essentiel, sans présumer du métier.
+
+## Accueil au lancement
+
+**L'écran de démarrage.** Dès le double-clic, une petite fenêtre affiche le
+logotype et « Démarrage de Clora… » le temps que le service interne démarre
+(`client/public/ecran-demarrage.html`, ouvert par `main.js`). Elle suit la
+langue et le thème du système, sans script, et se ferme quand la fenêtre
+principale apparaît ; elle reste au moins 0,6 seconde, pour ne pas simplement
+clignoter.
+
+**La visite guidée** (`client/src/components/VisiteGuidee.jsx`). La première
+fois qu'un compte ouvre un dossier, quelques bulles présentent le dossier
+ouvert, le menu, les factures, les premiers pas, les paramètres, la langue et le
+bouton qui relance la visite. Une étape dont l'élément n'est pas à l'écran (un
+employé ne voit ni les paramètres ni les premiers pas) est omise. Elle se passe
+d'un clic ou par Échap, et se retient par compte (`users.visite_vue`,
+`PUT /api/auth/visite`) : changer de dossier ne la relance pas. Le bouton
+d'aide de l'en-tête la rouvre à volonté.
 
 Au passage, un défaut de création corrigé : l'initialisation d'une base sème
 déjà une ligne de paramètres, et `creerEntreprise` en insérait une seconde.

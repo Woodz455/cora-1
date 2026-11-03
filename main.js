@@ -5,7 +5,7 @@
  * l'interface compilée en production.
  */
 
-const { app, BrowserWindow, dialog, shell } = require('electron');
+const { app, BrowserWindow, dialog, nativeTheme, shell } = require('electron');
 const path = require('path');
 const { startServer } = require('./server.js');
 const { sauvegardeSiNecessaire } = require('./backupService.js');
@@ -36,6 +36,64 @@ const cheminImage = (nom) => (app.isPackaged
 
 let mainWindow = null;
 let serverInstance = null;
+let ecranDemarrage = null;
+let ecranAfficheLe = null;
+
+/**
+ * Durée minimale de l'écran de démarrage, une fois apparu. Quand le service
+ * démarre vite, il ne ferait que clignoter, ce qui se lit comme un défaut
+ * plutôt que comme un accueil.
+ */
+const DUREE_MIN_ECRAN_MS = 600;
+
+/** La langue du système : celle du compte n'est pas encore connue. */
+const systemeEnAnglais = () => String(app.getLocale() || '').toLowerCase().startsWith('en');
+
+/**
+ * Petite fenêtre affichée dès le double-clic.
+ *
+ * La fenêtre principale reste cachée tant que l'interface n'est pas dessinée ;
+ * pendant ces quelques secondes, rien n'apparaissait à l'écran et l'on pouvait
+ * croire que Clora ne s'était pas lancé. Elle ne retarde rien : elle se ferme
+ * dès que la fenêtre principale s'affiche.
+ */
+function ouvrirEcranDemarrage() {
+  ecranDemarrage = new BrowserWindow({
+    width: 420,
+    height: 300,
+    frame: false,
+    resizable: false,
+    movable: true,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    center: true,
+    show: false,
+    title: 'Clora',
+    icon: cheminImage('logo.png'),
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f172a' : '#f8fafc',
+    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true }
+  });
+  ecranDemarrage.once('ready-to-show', () => {
+    if (ecranDemarrage && !ecranDemarrage.isDestroyed()) {
+      ecranDemarrage.show();
+      ecranAfficheLe = Date.now();
+    }
+  });
+  ecranDemarrage.on('closed', () => { ecranDemarrage = null; });
+
+  // Compilée, la page vit dans client/dist, à côté des logotypes ; en
+  // développement, dans client/public, que Vite sert tel quel.
+  const dossier = isDev ? path.join(__dirname, 'client', 'public') : path.join(__dirname, 'client', 'dist');
+  ecranDemarrage.loadFile(path.join(dossier, 'ecran-demarrage.html'), { hash: systemeEnAnglais() ? 'en' : 'fr' })
+    .catch((error) => console.error('[Electron] Écran de démarrage :', error.message));
+}
+
+function fermerEcranDemarrage() {
+  if (ecranDemarrage && !ecranDemarrage.isDestroyed()) ecranDemarrage.close();
+  ecranDemarrage = null;
+}
 
 /**
  * L'alerte de démarrage s'affiche avant l'interface, donc avant que la langue
@@ -43,8 +101,7 @@ let serverInstance = null;
  * de connexion.
  */
 function alerteDeDemarrage(message) {
-  const anglais = String(app.getLocale() || '').toLowerCase().startsWith('en');
-  return anglais
+  return systemeEnAnglais()
     ? ['Clora cannot start', `The internal service could not be started.\n\n${traduire(message, 'en')}`]
     : ['Clora ne peut pas démarrer', `Le service interne n'a pas pu être lancé.\n\n${message}`];
 }
@@ -70,11 +127,20 @@ async function createWindow() {
     }
   });
 
-  const afficherFenetre = () => {
-    if (mainWindow && !mainWindow.isVisible()) {
+  const montrer = () => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
       mainWindow.show();
       console.log('[Electron] Fenêtre affichée');
     }
+    fermerEcranDemarrage();
+  };
+
+  // Un écran de démarrage pas encore apparu ne retient rien : la fenêtre
+  // principale s'affiche aussitôt et il se ferme sans s'être montré.
+  const afficherFenetre = () => {
+    const reste = ecranAfficheLe ? DUREE_MIN_ECRAN_MS - (Date.now() - ecranAfficheLe) : 0;
+    if (reste > 0) setTimeout(montrer, reste);
+    else montrer();
   };
 
   mainWindow.once('ready-to-show', afficherFenetre);
@@ -108,6 +174,8 @@ async function createWindow() {
     // Sans cette alerte, un échec de démarrage se traduisait par une fenêtre
     // blanche sans explication.
     console.error('[Electron] Erreur au démarrage du serveur :', error);
+    // L'alerte ne doit pas s'ouvrir derrière un « Démarrage… » qui ne finira pas.
+    fermerEcranDemarrage();
     dialog.showErrorBox(...alerteDeDemarrage(error.message));
     app.quit();
   }
@@ -130,6 +198,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(() => {
+    ouvrirEcranDemarrage();
     createWindow();
 
     app.on('activate', () => {

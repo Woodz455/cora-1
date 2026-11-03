@@ -214,12 +214,13 @@ module.exports = function authRoutes(getDb) {
     const db = getDb();
     const dossiers = await listerPourUtilisateur(db, req.user.sub);
     const ouvert = dossiers.find((d) => d.id === req.user.entreprise) || null;
-    const compte = await db.get('SELECT langue FROM users WHERE id = ?', [req.user.sub]);
+    const compte = await db.get('SELECT langue, visite_vue FROM users WHERE id = ?', [req.user.sub]);
 
     return res.json({
       authenticated: true,
       username: req.user.username,
       langue: parseLangue(compte && compte.langue),
+      visite_vue: Boolean(compte && compte.visite_vue),
       role: ouvert ? ouvert.role : null,
       entreprises: dossiers.map(({ id, nom, role }) => ({ id, nom, role })),
       ouvert: ouvert ? { id: ouvert.id, nom: ouvert.nom, role: ouvert.role } : null
@@ -239,6 +240,15 @@ module.exports = function authRoutes(getDb) {
     }
     await getDb().run('UPDATE users SET langue = ? WHERE id = ?', [req.body.langue, req.user.sub]);
     res.json({ langue: req.body.langue });
+  }));
+
+  /**
+   * La visite guidée a été vue, jusqu'au bout ou passée : elle ne se relance
+   * plus d'elle-même pour ce compte. Le bouton de l'en-tête la rouvre à volonté.
+   */
+  router.put('/visite', authMiddleware, asyncRoute(async (req, res) => {
+    await getDb().run('UPDATE users SET visite_vue = 1 WHERE id = ?', [req.user.sub]);
+    res.json({ visite_vue: true });
   }));
 
   router.post('/logout', (req, res) => {

@@ -210,6 +210,37 @@ export default {
   "{n} étapes sur {total}. Chaque étape se coche d'elle-même.": '{n} of {total} steps done. Each step checks itself off.',
   'Masquer': 'Hide',
   '{titre}, fait': '{titre}, done',
+  'Avancement des premiers pas': 'Getting started progress',
+  'Commencer': 'Start',
+  'Premiers pas masqués. Vous pourrez les rouvrir depuis Paramètres.': 'Getting started hidden. You can reopen it from Settings.',
+
+  // --- Visite guidée --------------------------------------------------------
+  'Visite guidée': 'Guided tour',
+  '{n} sur {total}': '{n} of {total}',
+  'Passer la visite': 'Skip the tour',
+  'Terminer': 'Finish',
+  'Bienvenue dans Clora': 'Welcome to Clora',
+  "Quelques bulles pour vous montrer où se trouve chaque chose. Vous pouvez passer la visite à tout moment et la revoir plus tard.":
+    'A few tips to show you where everything is. You can skip the tour at any time and take it again later.',
+  'Le dossier ouvert': 'The open company file',
+  "Le nom affiché ici est celui de l'entreprise dont vous tenez la comptabilité. Le lien en dessous mène à vos autres dossiers, ou en crée un nouveau.":
+    'The name shown here is the business whose books you are keeping. The link below leads to your other company files, or creates a new one.',
+  'Le menu': 'The menu',
+  "Chaque écran de Clora est ici : factures, devis, clients, dépenses, rapports. Ce que votre rôle ne permet pas de faire n'y figure pas.":
+    'Every Clora screen is here: invoices, quotes, clients, expenses, reports. Anything your role does not allow is left out.',
+  'Vos factures': 'Your invoices',
+  'Créez une facture, envoyez-la par courriel, puis inscrivez les paiements reçus : son statut se met à jour de lui-même.':
+    'Create an invoice, email it, then record the payments received: its status updates by itself.',
+  "Cette liste suit l'ordre de votre profil et se coche d'elle-même. Chaque étape mène à l'écran où elle se fait.":
+    'This list follows the order of your business profile and checks itself off. Each step leads to the screen where it is done.',
+  'Votre entreprise, vos taxes, le paiement en ligne et les sauvegardes. Les premiers pas, une fois masqués, se rouvrent aussi depuis ici.':
+    'Your business, your taxes, online payment and backups. Once hidden, Getting started can also be reopened from here.',
+  'Langue et compte': 'Language and account',
+  "Passez du français à l'anglais à tout moment : la langue est retenue pour votre compte. Le mode sombre se règle en bas du menu.":
+    'Switch between French and English at any time: the language is kept for your account. Dark mode is at the bottom of the menu.',
+  'Revoir la visite': 'Take the tour again',
+  'Ce bouton relance cette visite quand vous le voulez.': 'This button starts the tour again whenever you like.',
+  'Rouvrir les premiers pas': 'Reopen Getting started',
 
   // Premiers pas, écrits par le serveur (profils.js).
   "Renseigner les coordonnées de l'entreprise": 'Enter your business details',

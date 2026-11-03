@@ -53,6 +53,7 @@ function Setup({ onSetupComplete }) {
       onSetupComplete({
         username: session.username,
         role: session.role,
+        visite_vue: session.visite_vue,
         entreprises: session.entreprises || [],
         ouvert: session.ouvert || null
       });

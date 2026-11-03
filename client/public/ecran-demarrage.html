@@ -1,0 +1,100 @@
+<!doctype html>
+<!--
+  Écran de démarrage de l'application de bureau.
+
+  Il s'affiche dès le double-clic, le temps que le service interne démarre et
+  que l'interface soit dessinée : sans lui, rien n'apparaissait pendant
+  quelques secondes, et l'on pouvait croire que Clora ne s'était pas lancé.
+
+  Aucun script : la langue arrive par l'ancre de l'adresse (#en), que la règle
+  :target lit seule. Le français est affiché par défaut. La page vit dans
+  client/dist, à côté des logotypes de l'interface.
+-->
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'" />
+    <title>Clora</title>
+    <style>
+      :root {
+        --fond: #f8fafc;
+        --texte: #475569;
+        --piste: rgba(15, 23, 42, 0.08);
+        --accent: #00c4b4;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fond: #0f172a;
+          --texte: #94a3b8;
+          --piste: rgba(255, 255, 255, 0.12);
+        }
+      }
+      html, body { margin: 0; height: 100%; }
+      body {
+        background: var(--fond);
+        color: var(--texte);
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        user-select: none;
+        -webkit-app-region: drag;
+      }
+      main {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 28px;
+        width: 260px;
+        animation: apparition 0.5s ease-out both;
+      }
+      img { width: 220px; height: auto; display: block; }
+      p { margin: 0; font-size: 0.9rem; letter-spacing: 0.02em; }
+      .en { display: none; }
+      #en:target .fr { display: none; }
+      #en:target .en { display: block; }
+      .piste {
+        width: 160px;
+        height: 3px;
+        border-radius: 3px;
+        background: var(--piste);
+        overflow: hidden;
+      }
+      .piste span {
+        display: block;
+        width: 40%;
+        height: 100%;
+        border-radius: 3px;
+        background: var(--accent);
+        animation: va-et-vient 1.4s ease-in-out infinite;
+      }
+      @keyframes apparition {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: none; }
+      }
+      @keyframes va-et-vient {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(250%); }
+      }
+      /* Sans mouvement, la barre reste pleine et immobile : le texte suffit à
+         dire que le programme démarre. */
+      @media (prefers-reduced-motion: reduce) {
+        main { animation: none; }
+        .piste span { animation: none; width: 100%; opacity: 0.5; }
+      }
+    </style>
+  </head>
+  <body>
+    <main id="en">
+      <picture>
+        <source srcset="images/logotype-sombre.png" media="(prefers-color-scheme: dark)" />
+        <img src="images/logotype.png" alt="Clora" />
+      </picture>
+      <div class="piste" aria-hidden="true"><span></span></div>
+      <p class="fr" lang="fr">Démarrage de Clora…</p>
+      <p class="en" lang="en">Starting Clora…</p>
+    </main>
+  </body>
+</html>
