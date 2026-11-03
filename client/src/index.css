@@ -947,3 +947,8 @@ textarea:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .progression span { transition: none; }
 }
+
+/* Le logotype dans la variante du thème (composant Logotype). */
+.logotype-sombre { display: none !important; }
+[data-theme='dark'] .logotype-clair { display: none !important; }
+[data-theme='dark'] .logotype-sombre { display: inline !important; }

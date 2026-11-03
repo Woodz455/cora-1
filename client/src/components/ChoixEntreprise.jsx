@@ -3,6 +3,7 @@ import { Building2, Plus, ArrowRight } from 'lucide-react';
 import { api } from '../api';
 import ChoixProfil from './ChoixProfil';
 import { useLangue } from '../i18n.js';
+import Logotype from './Logotype';
 
 /**
  * Choix du dossier d'entreprise.
@@ -53,10 +54,7 @@ function ChoixEntreprise({ entreprises, onOuvert, onAnnuler }) {
       padding: '2rem', color: 'var(--text-main)'
     }}>
       <div style={{ width: '100%', maxWidth: '30rem' }}>
-        <img
-          src="/images/logotype.png" alt="Clora"
-          style={{ height: '38px', marginBottom: '2rem' }}
-        />
+        <Logotype style={{ height: '38px', marginBottom: '2rem' }} />
 
         <h1 style={{ fontSize: '1.4rem', margin: '0 0 .4rem' }}>{t('Quel dossier ouvrir\u00a0?')}</h1>
         <p style={{ color: 'var(--text-muted)', margin: '0 0 1.5rem', fontSize: '.9rem' }}>

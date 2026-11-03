@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '../api';
 import { useLangue } from '../i18n.js';
 import SelecteurLangue from './SelecteurLangue';
+import Logotype from './Logotype';
 
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -49,8 +50,7 @@ function Login({ onLogin }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
           <SelecteurLangue onChange={() => setLangueChoisie(true)} />
         </div>
-        <img
-          src="/banner.png"
+        <Logotype
           alt=""
           style={{ maxWidth: '100%', marginBottom: '32px' }}
           onError={(e) => { e.currentTarget.style.display = 'none'; }}

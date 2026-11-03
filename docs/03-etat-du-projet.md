@@ -367,6 +367,11 @@ Le français existant n'a pas changé d'un mot (relevé avant et après sur tous
 les écrans) ; tous les nouveaux textes ont leur traduction anglaise. Trois tests
 de plus.
 
+Un défaut corrigé en passant, antérieur à cette version : en mode sombre, le
+logotype bleu marine des écrans de configuration, de connexion, de choix du
+dossier et de licence se voyait à peine sur le fond foncé. Ces écrans prennent
+désormais la variante claire, comme le menu.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
