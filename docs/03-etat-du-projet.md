@@ -1,7 +1,7 @@
 # Clora : état du projet
 
-*Ce qui a été fait, ce qui reste à faire. Arrêté au 12 octobre 2026,
-version 1.8.0.*
+*Ce qui a été fait, ce qui reste à faire. Arrêté au 3 novembre 2026,
+version 1.9.0.*
 
 ---
 
@@ -9,11 +9,11 @@ version 1.8.0.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.8.0, le 12 octobre 2026 |
-| **Publications** | 14 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 69 commits, 30 demandes de fusion, toutes fusionnées |
+| **Version publiée** | 1.9.0, le 3 novembre 2026 |
+| **Publications** | 15 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 72 commits, 32 demandes de fusion, toutes fusionnées |
 | **Tests** | 390, tous au vert, exécutés à chaque fusion |
-| **Durée** | 11 semaines, du 24 juillet au 12 octobre 2026 |
+| **Durée** | 14 semaines, du 24 juillet au 3 novembre 2026 |
 | **Langues** | Interface en français ou en anglais, au choix de chaque utilisateur |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
 | **Ventes** | Aucune : les tests utilisateurs sont en cours |
@@ -345,7 +345,7 @@ sombre ; et un « 0 » s'affichait sous la case « Ajouter un lien de paiement s
 mes factures » quand le paiement en ligne est désactivé.
 
 ### Phase 15 : l'accueil au lancement
-*3 novembre · pas encore publié*
+*3 novembre · publié en 1.9.0 · demande de fusion #32*
 
 Les testeurs ont demandé pourquoi rien ne se passait à l'ouverture de Clora, et
 pourquoi il n'y avait pas d'accueil. Il y avait bien la liste des premiers pas,
@@ -482,8 +482,8 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.8.0 en offre l'occasion sur toute installation restée en
-  1.7.5.
+  annoncer. La 1.9.0 en offre l'occasion sur toute installation restée en
+  1.8.0.
 - **Le redémarrage après restauration d'une sauvegarde.**
 
 Ce sont deux choses à regarder pendant les tests utilisateurs.
@@ -556,7 +556,12 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.8.0 par les testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.9.0 par les testeurs et écouter ce qu'ils disent.**
+
+La 1.9.0 répond à leur dernière question, l'absence d'accueil au lancement. Il
+reste à savoir si la réponse leur convient : l'écran de démarrage apparaît-il
+assez tôt sur leur machine, la visite guidée les aide-t-elle ou est-elle de
+trop, et les premiers pas sont-ils désormais remarqués.
 
 Leurs trois premières demandes sont livrées : le compte rendu de la période, le
 profil du dossier, et le sérieux du design. Le reste (la clé de licence, le
@@ -583,4 +588,4 @@ chez lui.
 ---
 
 *Document maintenu par Safehill Technologies. Dernière mise à jour :
-12 octobre 2026.*
+3 novembre 2026.*
