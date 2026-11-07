@@ -879,7 +879,14 @@ export default {
   'Sauvegarde créée ({taille} Ko).': 'Backup created ({taille} KB).',
   'Restaurer cette sauvegarde ?': 'Restore this backup?',
   "Toute la comptabilité sera ramenée à son état du {quand}. Ce qui a été saisi depuis sera perdu. La base actuelle est conservée à côté, et l'application redémarrera pour appliquer la restauration.":
-    'All the bookkeeping will be returned to its state of {quand}. Anything entered since will be lost. The current database is kept alongside, and the application will restart to apply the restore.',
+    'All the bookkeeping will be returned to its state of {quand}, and anything entered since will be lost. The current database is kept alongside, and the application will restart to apply the restore.',
+  'Elle contient le dossier « {entreprise} » : {factures} et {clients}.':
+    'It contains the company file “{entreprise}”: {factures} and {clients}.',
+  'Elle contient {factures} et {clients}.': 'It contains {factures} and {clients}.',
+  "Attention : elle vient d'un autre dossier. Son contenu remplacera entièrement celui-ci.":
+    'Caution: it comes from another company file. Its content will entirely replace this one.',
+  "Elle date d'avant la version 1.9.1 : vérifiez que c'est bien le bon dossier.":
+    'It predates version 1.9.1: check that it is the right company file.',
   'Restaurer': 'Restore',
   "L'image dépasse la taille maximale de 2 Mo.": 'The image exceeds the maximum size of 2 MB.',
   "L'image n'a pas pu être lue.": 'The image could not be read.',
@@ -998,6 +1005,11 @@ export default {
   '{n} sauvegarde(s) disponible(s) :': '{n} backup available:',
   '{n} sauvegarde(s) disponible(s) :|pluriel': '{n} backups available:',
   '{taille} Ko': '{taille} KB',
+  'antérieure à la 1.9.1': 'from before 1.9.1',
+  '{n} autre sauvegarde dans ce dossier de destination': '{n} other backup in this destination folder',
+  '{n} autres sauvegardes dans ce dossier de destination': '{n} other backups in this destination folder',
+  "Elles viennent d'un autre dossier d'entreprise, d'un autre ordinateur ou d'une version antérieure à la 1.9.1. Avant toute restauration, Clora vous montre ce qu'elles contiennent.":
+    'They come from another company file, another computer, or a version before 1.9.1. Before any restore, Clora shows you what they contain.',
   'Licence': 'Licence',
   'Licence au nom de ': 'Licensed to ',
   "Maintenance jusqu'au ": 'Maintenance until ',

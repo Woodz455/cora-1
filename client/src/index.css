@@ -164,8 +164,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .glass-panel {
   background: var(--glass-bg);
-  backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
   border: 1px solid var(--glass-border);
   border-radius: 16px;
   box-shadow: var(--glass-shadow);
@@ -180,8 +180,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .glass-card {
   background: var(--glass-card-bg);
-  backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
   border: 1px solid var(--glass-border);
   border-radius: 12px;
   box-shadow: var(--glass-shadow);
@@ -682,8 +682,8 @@ textarea:focus-visible {
   right: 0;
   bottom: 0;
   background-color: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -843,8 +843,8 @@ textarea:focus-visible {
 .visite.modal-overlay {
   display: block;
   background: none;
-  backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   z-index: 3000;
   opacity: 1;
   animation: none;

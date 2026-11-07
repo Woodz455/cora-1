@@ -79,6 +79,8 @@ function Settings({ ancre, naviguer }) {
   const [tauxMessage, setTauxMessage] = useState(null);
   const [infoSauvegardes, setInfoSauvegardes] = useState(null);
   const [sauvegardeEnCours, setSauvegardeEnCours] = useState(false);
+  // Nom de la sauvegarde dont on lit le contenu avant de proposer sa restauration.
+  const [examenEnCours, setExamenEnCours] = useState(null);
   const [relancesDues, setRelancesDues] = useState(null);
   const [relanceMessage, setRelanceMessage] = useState(null); // { texte, erreur }
   const [relanceEnCours, setRelanceEnCours] = useState(false);
@@ -204,14 +206,48 @@ function Settings({ ancre, naviguer }) {
   /**
    * La restauration écrase les données en place : on demande une confirmation
    * explicite, et on annonce le redémarrage qui la rendra effective.
+   *
+   * Le contenu de la sauvegarde est lu d'abord et montré dans la confirmation :
+   * le dossier de destination peut contenir les copies d'un autre dossier,
+   * d'un autre ordinateur ou d'une version antérieure, et une date seule ne
+   * dit pas quelle entreprise on s'apprête à remettre en place.
    */
   const restaurer = async (sauvegarde) => {
+    let examen;
+    setExamenEnCours(sauvegarde.nom);
+    try {
+      examen = await api.post('/api/sauvegardes/examiner', { nom: sauvegarde.nom });
+    } catch (err) {
+      notifier(err.message, 'erreur');
+      return;
+    } finally {
+      setExamenEnCours(null);
+    }
+
     const quand = new Date(sauvegarde.date).toLocaleString(locale);
+    const volumes = {
+      factures: tp(examen.factures || 0, '{n} facture', '{n} factures'),
+      clients: tp(examen.clients || 0, '{n} client', '{n} clients')
+    };
+    const contenu = examen.entreprise
+      ? t('Elle contient le dossier « {entreprise} » : {factures} et {clients}.', { entreprise: examen.entreprise, ...volumes })
+      : t('Elle contient {factures} et {clients}.', volumes);
+    let provenance = '';
+    if (examen.meme_dossier === false) {
+      provenance = t("Attention : elle vient d'un autre dossier. Son contenu remplacera entièrement celui-ci.");
+    } else if (examen.meme_dossier === null) {
+      provenance = t("Elle date d'avant la version 1.9.1 : vérifiez que c'est bien le bon dossier.");
+    }
+
     const accepte = await confirmer({
       titre: t('Restaurer cette sauvegarde ?'),
-      message: t('Toute la comptabilité sera ramenée à son état du {quand}. '
-        + 'Ce qui a été saisi depuis sera perdu. La base actuelle est conservée à côté, '
-        + "et l'application redémarrera pour appliquer la restauration.", { quand }),
+      message: [
+        contenu,
+        provenance,
+        t('Toute la comptabilité sera ramenée à son état du {quand}. '
+          + 'Ce qui a été saisi depuis sera perdu. La base actuelle est conservée à côté, '
+          + "et l'application redémarrera pour appliquer la restauration.", { quand })
+      ].filter(Boolean).join(' '),
       libelleConfirmer: t('Restaurer'),
       danger: true
     });
@@ -224,6 +260,29 @@ function Settings({ ancre, naviguer }) {
       notifier(err.message, 'erreur');
     }
   };
+
+  /** Une sauvegarde de la liste, avec son bouton de restauration. */
+  const ligneSauvegarde = (s, { ancienne = false } = {}) => (
+    <li
+      key={s.nom}
+      style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        gap: '8px', padding: '8px 0', borderBottom: '1px solid var(--glass-border)'
+      }}
+    >
+      <span style={{ fontSize: '0.9rem' }}>
+        {new Date(s.date).toLocaleString(locale)}
+        <span style={{ color: 'var(--text-muted)' }}>, {t('{taille} Ko', { taille: Math.round(s.taille / 1024) })}</span>
+        {ancienne && <span style={{ color: 'var(--text-muted)' }}>, {t('antérieure à la 1.9.1')}</span>}
+      </span>
+      <button
+        type="button" className="btn-secondary" onClick={() => restaurer(s)}
+        disabled={examenEnCours !== null}
+      >
+        {examenEnCours === s.nom ? t('Vérification…') : t('Restaurer')}
+      </button>
+    </li>
+  );
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -812,26 +871,33 @@ function Settings({ ancre, naviguer }) {
                   {tp(infoSauvegardes.sauvegardes.length, '{n} sauvegarde(s) disponible(s) :', '{n} sauvegarde(s) disponible(s) :|pluriel')}
                 </p>
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, maxHeight: '220px', overflowY: 'auto' }}>
-                  {infoSauvegardes.sauvegardes.map((s) => (
-                    <li
-                      key={s.nom}
-                      style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        gap: '8px', padding: '8px 0', borderBottom: '1px solid var(--glass-border)'
-                      }}
-                    >
-                      <span style={{ fontSize: '0.9rem' }}>
-                        {new Date(s.date).toLocaleString(locale)}
-                        <span style={{ color: 'var(--text-muted)' }}>, {t('{taille} Ko', { taille: Math.round(s.taille / 1024) })}</span>
-                      </span>
-                      <button type="button" className="btn-secondary" onClick={() => restaurer(s)}>
-                        {t('Restaurer')}
-                      </button>
-                    </li>
-                  ))}
+                  {infoSauvegardes.sauvegardes.map((s) => ligneSauvegarde(s))}
                 </ul>
               </>
             )
+          )}
+
+          {/* Les copies d'un autre dossier, d'un autre ordinateur ou d'une
+              version antérieure partagent parfois le dossier de destination.
+              Elles restent restaurables (c'est ainsi qu'on reprend sa
+              comptabilité sur un nouvel ordinateur), mais à part, pour ne
+              jamais les confondre avec celles de ce dossier. */}
+          {infoSauvegardes && infoSauvegardes.autres && infoSauvegardes.autres.length > 0 && (
+            <details style={{ marginTop: '16px' }}>
+              <summary style={{ cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                {tp(infoSauvegardes.autres.length,
+                  '{n} autre sauvegarde dans ce dossier de destination',
+                  '{n} autres sauvegardes dans ce dossier de destination')}
+              </summary>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '8px 0' }}>
+                {t("Elles viennent d'un autre dossier d'entreprise, d'un autre ordinateur ou d'une "
+                  + "version antérieure à la 1.9.1. Avant toute restauration, Clora vous montre ce "
+                  + "qu'elles contiennent.")}
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, maxHeight: '220px', overflowY: 'auto' }}>
+                {infoSauvegardes.autres.map((s) => ligneSauvegarde(s, { ancienne: s.serie === null }))}
+              </ul>
+            </details>
           )}
         </div>
 

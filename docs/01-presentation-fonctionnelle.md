@@ -485,11 +485,19 @@ produite **automatiquement, activée par défaut**.
   réellement d'une panne de disque ou d'un vol.
 - **Combien.** Les 30 plus récentes ; au-delà, les plus anciennes sont
   supprimées. Les fichiers étrangers au dossier ne sont jamais touchés.
+- **Chaque dossier a ses copies.** Un comptable peut envoyer les sauvegardes de
+  tous ses clients dans le même dossier OneDrive : chaque dossier d'entreprise
+  ne voit, ne compte et ne supprime que les siennes.
 
-**Restaurer** est réservé à l'administrateur. La sauvegarde est d'abord
+**Restaurer** est réservé à l'administrateur. Avant de confirmer, Clora montre
+ce que contient la copie : l'entreprise, le nombre de factures et de clients,
+et un avertissement si elle vient d'un autre dossier. Les copies d'un autre
+dossier ou d'un autre ordinateur restent restaurables, à part : c'est ainsi
+qu'on reprend sa comptabilité sur un nouvel ordinateur. La sauvegarde est
 contrôlée (intégrité et présence du schéma Clora) et un fichier douteux est
-refusé sans que rien ne soit modifié. La base remplacée est conservée à côté :
-une restauration sur le mauvais fichier reste réversible.
+refusé sans que rien ne soit modifié. L'application redémarre d'elle-même pour
+appliquer la restauration, et la base remplacée est conservée à côté : une
+restauration sur le mauvais fichier reste réversible.
 
 ---
 

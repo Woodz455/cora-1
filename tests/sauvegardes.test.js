@@ -25,10 +25,14 @@ const {
   verifierSauvegarde,
   demanderRestauration,
   appliquerRestaurationEnAttente,
+  identifiantDuDossier,
+  serieDe,
   horodatage,
   dateDuNom,
+  analyserNom,
   INTERVALLE_MS,
-  MARQUEUR
+  MARQUEUR,
+  SUFFIXE_PREPARATION
 } = require('../backupService.js');
 
 /** Dossier jetable, nettoyé à la fin du test. */
@@ -111,6 +115,9 @@ test('deux sauvegardes rapprochées coexistent sans s\'écraser', async (t) => {
   assert.equal((await recente.get('SELECT COUNT(*) AS c FROM clients')).c, 2);
 });
 
+/** Série factice, pour des sauvegardes écrites à la main. */
+const SERIE = '0123456789ab';
+
 test('la rétention ne garde que les plus récentes', async (t) => {
   const { dossier } = await prepare(t);
 
@@ -118,12 +125,12 @@ test('la rétention ne garde que les plus récentes', async (t) => {
   const noms = [];
   for (let i = 0; i < 6; i += 1) {
     const date = new Date(Date.UTC(2026, 0, 1 + i, 3, 0, 0));
-    const nom = `clora-${horodatage(date)}.sqlite`;
+    const nom = `clora-${SERIE}-${horodatage(date)}.sqlite`;
     fs.writeFileSync(path.join(dossier, nom), 'factice');
     noms.push(nom);
   }
 
-  const supprimes = appliquerRetention(dossier, 3);
+  const supprimes = appliquerRetention(dossier, 3, SERIE);
 
   assert.equal(supprimes.length, 3);
   const restantes = listerSauvegardes(dossier).map((s) => s.nom);
@@ -133,12 +140,31 @@ test('la rétention ne garde que les plus récentes', async (t) => {
 test('un fichier étranger au dossier est ignoré, jamais supprimé', async (t) => {
   const { dossier } = await prepare(t);
   fs.writeFileSync(path.join(dossier, 'notes-personnelles.txt'), 'à conserver');
-  fs.writeFileSync(path.join(dossier, `clora-${horodatage()}.sqlite`), 'factice');
+  fs.writeFileSync(path.join(dossier, `clora-${SERIE}-${horodatage()}.sqlite`), 'factice');
 
-  appliquerRetention(dossier, 0);
+  appliquerRetention(dossier, 0, SERIE);
 
   assert.ok(fs.existsSync(path.join(dossier, 'notes-personnelles.txt')));
   assert.equal(listerSauvegardes(dossier).length, 0);
+});
+
+test('la rétention exige de savoir quelle série elle taille', async (t) => {
+  const { dossier } = await prepare(t);
+  fs.writeFileSync(path.join(dossier, `clora-${horodatage()}.sqlite`), 'factice');
+
+  // Sans série, elle ne supprime rien plutôt que tout.
+  assert.throws(() => appliquerRetention(dossier, 0), /série/);
+  assert.equal(listerSauvegardes(dossier).length, 1);
+});
+
+test('le nom d\'une sauvegarde porte la série de son dossier', async (t) => {
+  const { db, dossier } = await prepare(t);
+  const uid = await identifiantDuDossier(db);
+
+  const { nom } = await creerSauvegarde(db, { dossier });
+
+  assert.ok(nom.startsWith(`clora-${serieDe(uid)}-`), nom);
+  assert.equal(listerSauvegardes(dossier)[0].serie, serieDe(uid));
 });
 
 test('la sauvegarde périodique respecte le délai de 24 h', async (t) => {
@@ -191,7 +217,10 @@ test('un fichier qui n\'est pas une base Clora est refusé', async (t) => {
   fs.writeFileSync(bidon, 'ceci n\'est pas une base de données');
 
   await assert.rejects(() => verifierSauvegarde(bidon));
-  await assert.rejects(() => demanderRestauration(bidon, dossier), /inutilisable/);
+  const cible = path.join(dossier, 'courante.sqlite');
+  await assert.rejects(() => demanderRestauration(bidon, cible), /inutilisable/);
+  assert.ok(!fs.existsSync(path.join(dossier, MARQUEUR)), 'aucune demande ne doit être déposée');
+  assert.ok(!fs.existsSync(`${cible}${SUFFIXE_PREPARATION}`), 'la base préparée doit être retirée');
 });
 
 test('une base SQLite valide mais étrangère à Clora est refusée', async (t) => {
@@ -217,7 +246,7 @@ test('la restauration rend une base identique à la sauvegarde', async (t) => {
   const { chemin: apres } = await creerSauvegarde(db, { dossier });
   fs.copyFileSync(apres, dbPath);
 
-  await demanderRestauration(chemin, dataDir);
+  await demanderRestauration(chemin, dbPath);
   assert.ok(fs.existsSync(path.join(dataDir, MARQUEUR)), 'le marqueur doit être déposé');
 
   const resultat = appliquerRestaurationEnAttente(dbPath, dataDir);
@@ -240,7 +269,7 @@ test('la base remplacée est conservée de côté', async (t) => {
   const { chemin } = await creerSauvegarde(db, { dossier });
   fs.copyFileSync(chemin, dbPath);
 
-  await demanderRestauration(chemin, dataDir);
+  await demanderRestauration(chemin, dbPath);
   const resultat = appliquerRestaurationEnAttente(dbPath, dataDir);
 
   assert.ok(resultat.sauvegardeDeSecurite, 'un exemplaire de secours doit être écrit');
@@ -260,7 +289,7 @@ test('le journal WAL de l\'ancienne base est écarté à la restauration', async
   fs.writeFileSync(`${dbPath}-wal`, 'journal périmé');
   fs.writeFileSync(`${dbPath}-shm`, 'index périmé');
 
-  await demanderRestauration(chemin, dataDir);
+  await demanderRestauration(chemin, dbPath);
   appliquerRestaurationEnAttente(dbPath, dataDir);
 
   assert.ok(!fs.existsSync(`${dbPath}-wal`), 'le journal périmé doit être supprimé');
@@ -293,7 +322,23 @@ test('un marqueur désignant un fichier disparu laisse la base en place', async 
   fs.writeFileSync(dbPath, 'contenu intact');
   fs.writeFileSync(
     path.join(dataDir, MARQUEUR),
-    JSON.stringify({ source: path.join(dataDir, 'envolee.sqlite') })
+    JSON.stringify({ cible: dbPath, source: path.join(dataDir, 'envolee.sqlite') })
+  );
+
+  assert.equal(appliquerRestaurationEnAttente(dbPath, dataDir), null);
+  assert.equal(fs.readFileSync(dbPath, 'utf8'), 'contenu intact');
+  assert.ok(!fs.existsSync(path.join(dataDir, MARQUEUR)), 'la demande ne doit pas se rejouer');
+});
+
+test('une demande qui désigne une autre base est écartée sans rien toucher', async (t) => {
+  const { db, dossier } = await prepare(t);
+  const dataDir = dossierTemporaire(t);
+  const dbPath = path.join(dataDir, 'courante.sqlite');
+  const { chemin } = await creerSauvegarde(db, { dossier });
+  fs.writeFileSync(dbPath, 'contenu intact');
+  fs.writeFileSync(
+    path.join(dataDir, MARQUEUR),
+    JSON.stringify({ cible: path.join(dataDir, 'autre.sqlite'), source: chemin })
   );
 
   assert.equal(appliquerRestaurationEnAttente(dbPath, dataDir), null);
@@ -313,6 +358,13 @@ test('les noms de sauvegarde se trient chronologiquement', () => {
   const parNom = [...noms].sort();
   const parDate = [...noms].sort((a, b) => dateDuNom(a) - dateDuNom(b));
   assert.deepEqual(parNom, parDate);
+
+  // La nouvelle forme se lit aussi, et sa série en est extraite.
+  const date = new Date(Date.UTC(2026, 10, 7, 1, 56, 5, 43));
+  const nom = `clora-${SERIE}-${horodatage(date)}.sqlite`;
+  assert.deepEqual(analyserNom(nom), { serie: SERIE, date });
+  assert.deepEqual(analyserNom(`clora-${horodatage(date)}.sqlite`), { serie: null, date });
+  assert.equal(analyserNom(`${nom}.partiel`), null, 'un dépôt en cours n\'est pas une sauvegarde');
 });
 
 /* --- Routes --- */
@@ -352,6 +404,11 @@ test('les sauvegardes sont réservées à l\'administrateur', async (t) => {
       403,
       `restauration pour ${role}`
     );
+    assert.equal(
+      (await api.post('/api/sauvegardes/examiner', { nom: 'clora-2026-01-01T00-00-00-000.sqlite' })).status,
+      403,
+      `examen pour ${role}`
+    );
 
     await api.post('/api/auth/login', { username: 'patron', password: MOT_DE_PASSE });
   }
@@ -378,6 +435,58 @@ test('l\'administrateur crée et retrouve une sauvegarde', async (t) => {
   assert.equal(liste.status, 200);
   assert.equal(liste.data.sauvegardes.length, 1);
   assert.equal(liste.data.sauvegardes[0].nom, creation.data.nom);
+});
+
+test('la liste sépare les sauvegardes du dossier de celles venues d\'ailleurs', async (t) => {
+  const api = await avecAdmin(t);
+  const dossier = dossierTemporaire(t);
+  await api.db.run('UPDATE settings SET sauvegarde_dossier = ?', [dossier]);
+
+  const propre = (await api.post('/api/sauvegardes')).data.nom;
+  const ancienne = `clora-${horodatage(new Date(Date.UTC(2026, 9, 1, 3, 0, 0)))}.sqlite`;
+  const etrangere = `clora-${SERIE}-${horodatage(new Date(Date.UTC(2026, 9, 2, 3, 0, 0)))}.sqlite`;
+  await api.db.run('VACUUM INTO ?', [path.join(dossier, ancienne)]);
+  await api.db.run('VACUUM INTO ?', [path.join(dossier, etrangere)]);
+
+  const liste = (await api.get('/api/sauvegardes')).data;
+  assert.deepEqual(liste.sauvegardes.map((s) => s.nom), [propre]);
+  assert.deepEqual(liste.autres.map((s) => s.nom).sort(), [ancienne, etrangere].sort());
+  assert.equal(liste.autres.find((s) => s.nom === ancienne).serie, null);
+  assert.equal(liste.uid, undefined, 'l\'identifiant n\'a rien à faire dans l\'interface');
+});
+
+test('examiner une sauvegarde montre son contenu sans rien modifier', async (t) => {
+  const api = await avecAdmin(t);
+  const dossier = dossierTemporaire(t);
+  await api.db.run("UPDATE settings SET sauvegarde_dossier = ?, entreprise_nom = 'Plomberie Rivard'", [dossier]);
+  await insertClient(api.db, { nom: 'Boulangerie Côté' });
+
+  const { nom } = (await api.post('/api/sauvegardes')).data;
+  const res = await api.post('/api/sauvegardes/examiner', { nom });
+
+  assert.equal(res.status, 200, JSON.stringify(res.data));
+  assert.equal(res.data.entreprise, 'Plomberie Rivard');
+  assert.equal(res.data.clients, 1);
+  assert.equal(res.data.meme_dossier, true);
+  assert.ok(!fs.existsSync(path.join(path.dirname(api.db.__dbPath), MARQUEUR)), 'examiner ne demande rien');
+});
+
+test('la restauration est préparée à côté de la base du dossier, et consignée', async (t) => {
+  const api = await avecAdmin(t);
+  const dossier = dossierTemporaire(t);
+  await api.db.run('UPDATE settings SET sauvegarde_dossier = ?', [dossier]);
+  const { nom } = (await api.post('/api/sauvegardes')).data;
+
+  const res = await api.post('/api/sauvegardes/restaurer', { nom });
+  assert.equal(res.status, 200, JSON.stringify(res.data));
+
+  const marqueur = path.join(path.dirname(api.db.__dbPath), MARQUEUR);
+  const demande = JSON.parse(fs.readFileSync(marqueur, 'utf8'));
+  assert.equal(demande.cible, api.db.__dbPath);
+  assert.ok(fs.existsSync(`${api.db.__dbPath}${SUFFIXE_PREPARATION}`));
+
+  const trace = await api.db.get("SELECT details FROM logs_audit WHERE action = 'sauvegarde.restauration'");
+  assert.equal(JSON.parse(trace.details).sauvegarde, nom);
 });
 
 test('restaurer une sauvegarde inconnue est refusé', async (t) => {

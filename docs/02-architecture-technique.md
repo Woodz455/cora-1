@@ -102,7 +102,7 @@ traductionServeur.js  Messages du serveur traduits en anglais à la sortie
 routes/            21 modules de points d'entrée HTTP
 client/src/        Interface React (34 composants, 13 crochets et modules,
                    dictionnaire anglais dans traductions/en.js)
-tests/             27 fichiers, 390 tests
+tests/             28 fichiers, 412 tests
 ```
 
 Le découpage est strict : **`server.js` ne fait que câbler**. Il ne contient
@@ -580,15 +580,42 @@ fermeture de l'application** : un poste éteint chaque soir n'atteindrait jamais
 l'échéance autrement. Tous les dossiers ouverts pendant la session y passent, pas
 seulement le dernier consulté.
 
-Rétention : les 30 plus récentes. Les fichiers étrangers au dossier ne sont
-jamais touchés.
+**Une série de sauvegardes par dossier.** Chaque base porte un identifiant
+permanent, `settings.dossier_uid`, attribué à la fin de `initDb` et rangé dans
+la base elle-même : il suit la comptabilité jusque dans ses sauvegardes et sur
+un nouvel ordinateur. Les noms le reprennent, `clora-<série>-<horodatage>.sqlite`
+(série : les 12 premiers caractères de l'identifiant). La liste, la rétention
+(les 30 plus récentes) et le contrôle « dernière sauvegarde de moins de 24 h »
+ne portent que sur la série du dossier. Les copies sans série, antérieures à la
+1.9.1, et celles d'une autre série sont rendues à part (`autres`) et ne sont
+jamais supprimées automatiquement.
 
-**La restauration ne remplace pas la base pendant qu'elle est ouverte.** La
-sauvegarde est d'abord contrôlée (intégrité SQLite, présence du schéma Clora)
-puis une demande est enregistrée et appliquée **au redémarrage**, alors
-qu'aucune connexion ni journal ne décrit encore l'ancienne base. Celle-ci est
-conservée à côté sous `database.sqlite.avant-restauration-<horodatage>` : une
-restauration sur le mauvais fichier reste réversible.
+**La copie est produite à côté de la base, puis déposée d'un coup.**
+`VACUUM INTO` écrit un fichier temporaire dans le répertoire du dossier, copié
+vers la destination sous un nom en `.partiel`, puis renommé. Les fichiers de
+travail abandonnés depuis plus d'une heure sont nettoyés au passage suivant.
+
+**La restauration ne remplace pas la base pendant qu'elle est ouverte.**
+
+1. `POST /api/sauvegardes/examiner` lit une copie locale de la sauvegarde et
+   rend l'entreprise, le nombre de factures et de clients, et `meme_dossier`
+   (vrai, faux, ou `null` pour une copie sans identifiant).
+2. `POST /api/sauvegardes/restaurer` prépare la base à côté de sa cible
+   (`<base>.restauration`), la contrôle (intégrité SQLite, présence du schéma
+   Clora), puis l'accorde au poste : réglages de sauvegarde repris de la base
+   actuelle ; identifiant conservé, attribué (copie sans identifiant) ou
+   renouvelé (copie d'un autre dossier du poste). Un marqueur qui nomme sa cible
+   est déposé dans le même répertoire, le journal WAL est reporté dans la base,
+   et l'application redémarre.
+3. Au démarrage, `initDb` applique le marqueur avant toute connexion, et
+   seulement s'il désigne cette base : une demande sans cible est écartée. La
+   base remplacée est conservée à côté sous
+   `database.sqlite.avant-restauration-<horodatage>`, avec son journal WAL.
+
+Jusqu'à la 1.9.0, le marqueur était déposé à la racine des données, loin des
+dossiers rangés dans `entreprises/` : la restauration ne s'appliquait jamais sur
+une installation récente, et pouvait remplacer le premier dossier sur une
+installation antérieure au multi-dossier.
 
 ---
 
@@ -609,12 +636,13 @@ facture émise), donc une vérification fréquente est sans risque.
 
 ## 10. Tests et intégration continue
 
-**390 tests**, exécutés par `node --test`. Répartition :
+**412 tests**, exécutés par `node --test`. Répartition :
 
 | Domaine | Tests |
 | --- | --- |
 | Paiement en ligne Stripe | 33 |
-| Sauvegardes et restauration | 24 |
+| Sauvegardes et restauration | 30 |
+| Sauvegardes à plusieurs dossiers | 15 |
 | Indemnité kilométrique | 17 |
 | Import de tableur | 19 |
 | Rapprochement bancaire | 19 |
@@ -626,7 +654,7 @@ facture émise), donc une vérification fréquente est sans risque.
 | Licence et maintenance | 15 |
 | Exports CSV | 18 |
 | Conditions de paiement | 15 |
-| Journal d'audit | 15 |
+| Journal d'audit | 16 |
 | Encaissements et annulations | 14 |
 | API et cloisonnement des rôles | 14 |
 | Profils, premiers pas et visite guidée | 16 |
@@ -776,7 +804,7 @@ Trois corrections peuvent être demandées explicitement :
 | **Retraits bancaires** | Ignorés : frais et sorties sont hors périmètre |
 | **Windows seul** | Aucune cible macOS ou Linux |
 | **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.9.0 en offre l'occasion sur toute installation restée en 1.8.0 |
-| **Redémarrage après restauration** | `app.relaunch()` non vérifié sur un vrai Windows |
+| **Redémarrage après restauration** | Vérifié de bout en bout dans l'application de bureau sous Linux en 1.9.1 (restauration appliquée, redémarrage automatique). Reste à l'observer sur un vrai Windows |
 
 ---
 

@@ -343,3 +343,32 @@ test('ecart ne retient que les différences réelles', () => {
   );
   assert.equal(ecart({ a: 1 }, { a: 1 }, ['inexistant']), null);
 });
+
+/* --- Les événements de compte --- */
+
+test('changer ses identifiants est consigné au journal de chacun de ses dossiers', async (t) => {
+  const api = await avecAdmin(t);
+  const second = await api.post('/api/entreprises', { nom: 'Second dossier' });
+  assert.equal(second.status, 201, JSON.stringify(second.data));
+
+  // Le compte vit dans le registre, qui n'a pas de journal : l'écriture y
+  // échouait en silence, et ce changement ne laissait aucune trace.
+  const res = await api.put('/api/auth/credentials', {
+    currentPassword: MOT_DE_PASSE, newUsername: 'patronne', newPassword: 'un-autre-mot-de-passe'
+  });
+  assert.equal(res.status, 200, JSON.stringify(res.data));
+
+  const { ouvrirEntreprise } = require('../companyStore.js');
+  const dossiers = await api.comptesDb.all('SELECT chemin FROM entreprises ORDER BY id');
+  assert.equal(dossiers.length, 2);
+  for (const { chemin } of dossiers) {
+    const base = await ouvrirEntreprise(chemin);
+    const ligne = await base.get(
+      'SELECT utilisateur, role, details FROM logs_audit WHERE action = ?', [ACTIONS.IDENTIFIANTS_MODIFICATION]
+    );
+    assert.ok(ligne, `le changement doit figurer au journal de ${chemin}`);
+    assert.equal(ligne.role, 'admin');
+    assert.deepEqual(JSON.parse(ligne.details).username, { avant: 'patron', apres: 'patronne' });
+    assert.ok(!ligne.details.includes('un-autre-mot-de-passe'));
+  }
+});
