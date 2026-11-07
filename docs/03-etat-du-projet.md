@@ -1,7 +1,7 @@
 # Clora : état du projet
 
-*Ce qui a été fait, ce qui reste à faire. Arrêté au 3 novembre 2026,
-version 1.9.0.*
+*Ce qui a été fait, ce qui reste à faire. Arrêté au 7 novembre 2026,
+version 1.9.1.*
 
 ---
 
@@ -9,11 +9,11 @@ version 1.9.0.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.9.0, le 3 novembre 2026 |
-| **Publications** | 15 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 72 commits, 32 demandes de fusion, toutes fusionnées |
+| **Version publiée** | 1.9.1, le 7 novembre 2026 |
+| **Publications** | 16 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 74 commits, 34 demandes de fusion, toutes fusionnées |
 | **Tests** | 412, tous au vert, exécutés à chaque fusion |
-| **Durée** | 14 semaines, du 24 juillet au 3 novembre 2026 |
+| **Durée** | 15 semaines, du 24 juillet au 7 novembre 2026 |
 | **Langues** | Interface en français ou en anglais, au choix de chaque utilisateur |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
 | **Ventes** | Aucune : les tests utilisateurs sont en cours |
@@ -373,7 +373,7 @@ dossier et de licence se voyait à peine sur le fond foncé. Ces écrans prennen
 désormais la variante claire, comme le menu.
 
 ### Phase 16 : des sauvegardes fiables
-*7 novembre · pas encore publié*
+*7 novembre · publié en 1.9.1 · demande de fusion #34*
 
 En préparant le chiffrement des sauvegardes, quatre défauts ont été trouvés et
 reproduits sur la 1.9.0. Ils passent avant : chiffrer une sauvegarde qui ne se
@@ -511,8 +511,8 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.9.0 en offre l'occasion sur toute installation restée en
-  1.8.0.
+  annoncer. La 1.9.1 en offre l'occasion sur toute installation restée en
+  1.9.0.
 - **Le redémarrage après restauration d'une sauvegarde.** Vérifié de bout en
   bout dans l'application de bureau sous Linux depuis la 1.9.1 : la restauration
   s'applique et l'application redémarre seule. Reste à le voir sous Windows.
@@ -587,10 +587,14 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.9.0 par les testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.9.1 par les testeurs et écouter ce qu'ils disent.**
 
-La 1.9.0 répond à leur dernière question, l'absence d'accueil au lancement. Il
-reste à savoir si la réponse leur convient : l'écran de démarrage apparaît-il
+La 1.9.1 rend la restauration sûre : jusque-là, il fallait leur demander de ne
+pas s'en servir. Un essai de restauration sur un vrai Windows, avec des données
+de test, reste à faire par l'un d'eux (voir la section 5).
+
+La 1.9.0 répondait à leur dernière question, l'absence d'accueil au lancement.
+Il reste à savoir si la réponse leur convient : l'écran de démarrage apparaît-il
 assez tôt sur leur machine, la visite guidée les aide-t-elle ou est-elle de
 trop, et les premiers pas sont-ils désormais remarqués.
 
@@ -598,6 +602,10 @@ Leurs trois premières demandes sont livrées : le compte rendu de la période, 
 profil du dossier, et le sérieux du design. Le reste (la clé de licence, le
 certificat, les améliorations du rapprochement bancaire) attend la suite de ce
 retour, et devrait être priorisé par lui.
+
+**Côté développement, la suite est décidée** : chiffrer les sauvegardes avec une
+clé générée par Clora et imprimée, et ajouter un code de récupération du mot de
+passe administrateur, ensemble en 1.10.0.
 
 **Tout ce qui avait été relevé en corrigeant le design est fait** : les polices
 embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la
@@ -619,4 +627,4 @@ chez lui.
 ---
 
 *Document maintenu par Safehill Technologies. Dernière mise à jour :
-3 novembre 2026.*
+7 novembre 2026.*
