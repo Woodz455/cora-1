@@ -212,7 +212,7 @@ function createApp(db, options = {}) {
   app.use('/api/emails', emailRoutes(getDb));
   app.use('/api/notes-credit', noteCreditRoutes(getDb));
   app.use('/api/relances', relanceRoutes(getDb));
-  app.use('/api/sauvegardes', sauvegardeRoutes(getDb));
+  app.use('/api/sauvegardes', sauvegardeRoutes(getDb, getComptesDb));
   app.use('/api/audit', auditRoutes(getDb));
   app.use('/api/import', importRoutes(getDb));
   app.use('/api/paiements-en-ligne', paiementEnLigneRoutes(getDb));

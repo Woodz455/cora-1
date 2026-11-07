@@ -12,10 +12,14 @@ const { journaliser, ACTIONS } = require('../auditService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const {
   lireReglages,
+  lireIdentifiant,
+  serieDe,
   listerSauvegardes,
   creerSauvegarde,
+  examinerSauvegarde,
   demanderRestauration,
-  dossierParDefaut
+  dossierParDefaut,
+  memeChemin
 } = require('../backupService.js');
 
 /**
@@ -47,20 +51,74 @@ async function choisirDossier(depart) {
   return resultat.canceled || resultat.filePaths.length === 0 ? null : resultat.filePaths[0];
 }
 
-module.exports = function sauvegardeRoutes(getDb) {
+/**
+ * Retrouve une sauvegarde par son nom dans le dossier de destination.
+ *
+ * Le nom est confronté à la liste réelle du dossier, jamais concaténé à un
+ * chemin : une remontée d'arborescence ne désigne donc rien.
+ */
+function trouverSauvegarde(reglages, nom) {
+  if (!nom) throw httpError(400, 'Indiquez la sauvegarde à restaurer.');
+  const trouvee = listerSauvegardes(reglages.dossier).find((s) => s.nom === nom);
+  if (!trouvee) throw httpError(404, 'Cette sauvegarde est introuvable.');
+  return trouvee;
+}
+
+/**
+ * Identifiants des autres dossiers de ce poste, archivés compris.
+ *
+ * Une copie qui porte l'identifiant de l'un d'eux, restaurée ici, en reçoit un
+ * nouveau : deux dossiers ne doivent jamais partager une série de sauvegardes.
+ */
+async function identifiantsDesAutresDossiers(comptesDb, cheminCourant) {
+  if (!comptesDb) return [];
+  const dossiers = await comptesDb.all('SELECT chemin FROM entreprises');
+  const identifiants = [];
+  for (const { chemin } of dossiers) {
+    if (memeChemin(chemin, cheminCourant)) continue;
+    const uid = await lireIdentifiant(chemin);
+    if (uid) identifiants.push(uid);
+  }
+  return identifiants;
+}
+
+module.exports = function sauvegardeRoutes(getDb, getComptesDb = () => null) {
   const router = express.Router();
 
   router.use(adminOnly());
 
-  /** Réglages courants et sauvegardes disponibles. */
+  /**
+   * Réglages courants et sauvegardes disponibles.
+   *
+   * `sauvegardes` ne contient que celles de ce dossier. Les autres présentes
+   * dans le dossier de destination (un autre dossier d'entreprise, un autre
+   * ordinateur, une version antérieure à la 1.9.1) sont rendues à part : on
+   * peut les restaurer, par exemple sur un nouvel ordinateur, mais jamais en
+   * les confondant avec les siennes.
+   */
   router.get('/', asyncRoute(async (req, res) => {
-    const reglages = await lireReglages(getDb());
+    const { uid, ...reglages } = await lireReglages(getDb());
+    const serie = serieDe(uid);
+    const toutes = listerSauvegardes(reglages.dossier);
     res.json({
       ...reglages,
       dossier_par_defaut: dossierParDefaut(),
       selecteur_disponible: Boolean(process.versions && process.versions.electron),
-      sauvegardes: listerSauvegardes(reglages.dossier)
+      sauvegardes: toutes.filter((s) => serie && s.serie === serie),
+      autres: toutes.filter((s) => !serie || s.serie !== serie)
     });
+  }));
+
+  /**
+   * Ce que contient une sauvegarde : l'entreprise, le nombre de factures et de
+   * clients, et si elle vient de ce dossier. L'interface le montre avant de
+   * demander confirmation.
+   */
+  router.post('/examiner', asyncRoute(async (req, res) => {
+    const reglages = await lireReglages(getDb());
+    const sauvegarde = trouverSauvegarde(reglages, String((req.body && req.body.nom) || ''));
+    const contenu = await examinerSauvegarde(sauvegarde.chemin, req.entreprise.chemin, reglages.uid);
+    res.json({ nom: sauvegarde.nom, date: sauvegarde.date, taille: sauvegarde.taille, ...contenu });
   }));
 
   /** Sauvegarde immédiate, à la demande. */
@@ -89,23 +147,35 @@ module.exports = function sauvegardeRoutes(getDb) {
    * elle-même quand elle tourne dans Electron.
    */
   router.post('/restaurer', asyncRoute(async (req, res) => {
-    const nom = String(req.body && req.body.nom ? req.body.nom : '');
-    if (!nom) throw httpError(400, 'Indiquez la sauvegarde à restaurer.');
+    const db = getDb();
+    const reglages = await lireReglages(db);
+    const cible = trouverSauvegarde(reglages, String((req.body && req.body.nom) || ''));
 
-    const reglages = await lireReglages(getDb());
-    const cible = listerSauvegardes(reglages.dossier).find((s) => s.nom === nom);
-    if (!cible) throw httpError(404, 'Cette sauvegarde est introuvable.');
-
-    await demanderRestauration(cible.chemin);
+    // Valeurs brutes, et non celles de `lireReglages` : un dossier de
+    // destination resté vide doit le rester, plutôt que de figer le chemin par
+    // défaut de cette installation-ci.
+    const poste = await db.get(
+      'SELECT sauvegarde_active, sauvegarde_dossier, sauvegarde_retention FROM settings ORDER BY id LIMIT 1'
+    );
+    await demanderRestauration(cible.chemin, req.entreprise.chemin, {
+      uid: reglages.uid,
+      poste,
+      uidsAilleurs: await identifiantsDesAutresDossiers(getComptesDb(), req.entreprise.chemin)
+    });
 
     // Consigné avant le redémarrage : après restauration, la base ne contiendra
     // plus que ce que la sauvegarde portait, et cette ligne disparaîtrait. La
     // trace subsiste donc dans la base de secours conservée à côté.
-    await journaliser(getDb(), req, {
+    await journaliser(db, req, {
       action: ACTIONS.SAUVEGARDE_RESTAURATION,
       entite: 'sauvegarde',
       details: { sauvegarde: cible.nom, datee_du: cible.date }
     });
+
+    // Les dernières écritures, dont cette trace, rejoignent le fichier
+    // principal : la base de secours les contiendra même si l'application est
+    // coupée net pour redémarrer.
+    await db.exec('PRAGMA wal_checkpoint(TRUNCATE)').catch(() => {});
 
     res.json({
       message: "La restauration s'appliquera au redémarrage. La base actuelle sera conservée à côté, au cas où.",

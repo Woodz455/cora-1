@@ -559,21 +559,47 @@ est donc produite automatiquement, **activée par défaut**.
   dans les Paramètres. **Viser un dossier synchronisé** (OneDrive, Dropbox,
   Google Drive) est ce qui fait sortir la copie de la machine, et donc ce qui
   protège réellement d'une panne de disque ou d'un vol.
-- **Combien.** Les 30 plus récentes par défaut ; au-delà, les plus anciennes
-  sont supprimées. Les fichiers étrangers au dossier ne sont jamais touchés.
+- **Combien.** Les 30 plus récentes par défaut, **par dossier d'entreprise** ;
+  au-delà, les plus anciennes sont supprimées. Les fichiers étrangers, et les
+  copies d'un autre dossier, ne sont jamais touchés.
 
 La copie passe par `VACUUM INTO` et non par une copie de fichier. La base
 tourne en mode WAL : dupliquer `database.sqlite` pendant une écriture donnerait
 un fichier amputé de tout ce qui n'a pas encore été reporté depuis le journal.
+Elle est produite à côté de la base, puis déposée d'un coup dans le dossier de
+destination (`.partiel` le temps de la copie) : un service de synchronisation ne
+voit jamais un fichier à moitié écrit.
 
-**Restauration.** Depuis les Paramètres, réservée à l'administrateur. La
-sauvegarde est d'abord contrôlée (intégrité SQLite, présence du schéma Clora) :
-un fichier douteux est refusé sans que rien ne soit modifié. Le remplacement
-n'a pas lieu tant que la base est ouverte : une demande est enregistrée, puis
-appliquée au redémarrage, alors qu'aucune connexion ni journal ne décrit encore
-l'ancienne base. La base remplacée est conservée à côté sous
-`database.sqlite.avant-restauration-<horodatage>` : une restauration sur le
-mauvais fichier reste réversible.
+**Une série par dossier.** Chaque base porte un identifiant permanent
+(`settings.dossier_uid`), et le nom de ses sauvegardes le reprend :
+`clora-<série>-<horodatage>.sqlite`. Plusieurs dossiers peuvent donc partager
+un dossier de destination, celui par défaut ou un même dossier OneDrive : chacun
+ne compte, ne liste et ne supprime que ses propres copies. Les autres présentes
+(un autre dossier, un autre ordinateur, une copie antérieure à la 1.9.1, sans
+série) sont rendues à part, restaurables mais jamais confondues. Jusqu'à la
+1.9.0, les noms ne portaient que la date : la copie du premier dossier passait
+pour « récente » aux yeux des autres, qui n'étaient jamais sauvegardés.
+
+**Restauration.** Depuis les Paramètres, réservée à l'administrateur. Le
+contenu de la copie est d'abord montré (entreprise, nombre de factures et de
+clients, provenance) par `POST /api/sauvegardes/examiner`, qui lit une copie
+posée à côté de la base et l'efface aussitôt. La sauvegarde est ensuite préparée
+à côté de la base visée (`database.sqlite.restauration`) et contrôlée
+(intégrité SQLite, présence du schéma Clora) : un fichier douteux est refusé sans
+que rien ne soit modifié. Le remplacement n'a pas lieu tant que la base est
+ouverte : un marqueur qui **nomme sa cible** est déposé dans le même
+répertoire, et appliqué au redémarrage à cette base seulement ; une demande sans
+cible, laissée par une version antérieure, est écartée. Jusqu'à la 1.9.0, le
+marqueur était déposé à la racine des données : sur une installation récente la
+restauration ne s'appliquait jamais, et sur une installation plus ancienne elle
+pouvait remplacer le premier dossier.
+
+La base préparée garde les réglages de sauvegarde du poste (dossier, rétention,
+activation). Une copie sans identifiant prend celui du dossier où on la
+restaure ; une copie qui porte celui d'un autre dossier du poste en reçoit un
+nouveau, pour que deux dossiers ne partagent jamais une série. La base remplacée
+est conservée à côté sous `database.sqlite.avant-restauration-<horodatage>`,
+avec son journal WAL : une restauration sur le mauvais fichier reste réversible.
 
 ## Mises à jour
 
@@ -696,7 +722,10 @@ Les actions sensibles sont consignées dans `logs_audit` : annulation d'un
 encaissement, annulation ou suppression d'une facture, suppression d'une note de
 crédit, modification d'un client, **changement des taux de taxe**, création,
 modification ou suppression d'un compte, changement d'identifiants,
-restauration d'une sauvegarde.
+restauration d'une sauvegarde. Un changement d'identifiants touche l'accès à
+tous les dossiers du compte : il est consigné dans le journal de chacun.
+Jusqu'à la 1.9.0, il était écrit dans le registre des comptes, qui n'a pas de
+journal, et ne laissait aucune trace.
 
 Chaque entrée porte l'horodatage, l'auteur, son rôle et l'écart constaté,
 uniquement les champs qui ont changé, sous la forme « avant → après ».

@@ -2,7 +2,7 @@ const path = require('path');
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const { getDbPath } = require('./config.js');
-const { appliquerRestaurationEnAttente } = require('./backupService.js');
+const { appliquerRestaurationEnAttente, identifiantDuDossier } = require('./backupService.js');
 
 /** Journalisation silencieuse sous test, pour ne pas noyer la sortie. */
 const log = (...args) => {
@@ -398,6 +398,10 @@ async function runMigrations(db) {
   // La liste des premiers pas, une fois masquée par l'administrateur.
   await addColumn(db, 'settings', 'demarrage_masque', 'INTEGER DEFAULT 0');
 
+  // Identifiant permanent du dossier, porté par le nom de ses sauvegardes. Il
+  // est attribué à la fin de `initDb`, une fois la ligne de paramètres semée.
+  await addColumn(db, 'settings', 'dossier_uid', 'TEXT');
+
   await figerMontants(db);
 }
 
@@ -625,6 +629,7 @@ async function initDb(dbPath = getDbPath()) {
     await runMigrations(db);
     await createIndexes(db);
     await migrateLegacyAdmin(db);
+    await identifiantDuDossier(db);
 
     log('Schéma vérifié et à jour.');
     return db;

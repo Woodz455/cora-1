@@ -59,7 +59,11 @@ const MESSAGES_INTERNES = new Set([
   // Configuration lue au démarrage : l'application ne démarre pas.
   'JWT_SECRET est trop court : 32 caractères minimum sont requis.',
   // Restauration appliquée au démarrage, consignée dans la console seulement.
-  'la sauvegarde demandée a disparu'
+  'la sauvegarde demandée a disparu',
+  'la demande ne désigne pas ce dossier, elle est écartée',
+  // Erreurs de programmation : un appel sans série ou sans base cible.
+  'série de sauvegardes non précisée',
+  'base à restaurer non précisée'
 ]);
 
 /** Lit le dictionnaire, qui ne contient que des données. */

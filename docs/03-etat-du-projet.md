@@ -12,7 +12,7 @@ version 1.9.0.*
 | **Version publiée** | 1.9.0, le 3 novembre 2026 |
 | **Publications** | 15 versions livrées depuis le 24 juillet 2026 |
 | **Développement** | 72 commits, 32 demandes de fusion, toutes fusionnées |
-| **Tests** | 390, tous au vert, exécutés à chaque fusion |
+| **Tests** | 412, tous au vert, exécutés à chaque fusion |
 | **Durée** | 14 semaines, du 24 juillet au 3 novembre 2026 |
 | **Langues** | Interface en français ou en anglais, au choix de chaque utilisateur |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
@@ -372,6 +372,35 @@ logotype bleu marine des écrans de configuration, de connexion, de choix du
 dossier et de licence se voyait à peine sur le fond foncé. Ces écrans prennent
 désormais la variante claire, comme le menu.
 
+### Phase 16 : des sauvegardes fiables
+*7 novembre · pas encore publié*
+
+En préparant le chiffrement des sauvegardes, quatre défauts ont été trouvés et
+reproduits sur la 1.9.0. Ils passent avant : chiffrer une sauvegarde qui ne se
+restaure pas ne protège rien.
+
+- **Plusieurs dossiers, un seul sauvegardé.** Les dossiers qui envoyaient leurs
+  copies au même endroit se gênaient : la copie du premier passait pour
+  « récente » aux yeux des autres, jamais sauvegardés automatiquement, et la
+  rétention de l'un effaçait les copies de l'autre. Chaque dossier a désormais
+  un identifiant permanent, porté par le nom de ses sauvegardes.
+- **« Restaurer » ne faisait rien sur une installation récente**, sans aucun
+  message.
+- **« Restaurer » pouvait écraser le mauvais dossier** sur une installation
+  antérieure au multi-dossier qui en avait créé un second.
+- **Changer ses identifiants ne laissait aucune trace au journal.**
+
+La restauration montre maintenant ce que contient la copie avant de demander
+confirmation, et les copies venues d'ailleurs sont listées à part. Elle a été
+vérifiée de bout en bout dans l'application de bureau réelle : demande,
+redémarrage automatique, base restaurée, base de secours complète. Le français
+existant n'a pas changé ; 22 tests de plus.
+
+Deux défauts corrigés en passant, antérieurs à cette version : la construction
+de l'interface supprimait la propriété de flou des fenêtres et des panneaux, si
+bien qu'on lisait la page à travers chaque fenêtre de dialogue ; et la
+confirmation de restauration affichait « a.m.. » en anglais.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
@@ -484,7 +513,9 @@ jamais été observés sur une machine réelle :
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
   annoncer. La 1.9.0 en offre l'occasion sur toute installation restée en
   1.8.0.
-- **Le redémarrage après restauration d'une sauvegarde.**
+- **Le redémarrage après restauration d'une sauvegarde.** Vérifié de bout en
+  bout dans l'application de bureau sous Linux depuis la 1.9.1 : la restauration
+  s'applique et l'application redémarre seule. Reste à le voir sous Windows.
 
 Ce sont deux choses à regarder pendant les tests utilisateurs.
 

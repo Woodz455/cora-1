@@ -250,6 +250,7 @@ const EXACTS = new Map([
   ["La restauration s'appliquera au redémarrage. La base actuelle sera conservée à côté, au cas où.",
     'The restore will apply at the next restart. The current database will be kept alongside, just in case.'],
   ['ce fichier ne contient pas de comptabilité Clora', 'this file does not contain Clora bookkeeping'],
+  ["ce dossier n'a pas de paramètres", 'this company file has no settings'],
   ['Les relances automatiques sont désactivées dans les paramètres.', 'Automatic reminders are turned off in the settings.'],
 
   // Licence et dossier

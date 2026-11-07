@@ -12,7 +12,7 @@ const { getJwtSecret, isProduction, SESSION_HOURS } = require('../config.js');
 const { loginRateLimit, recordFailure, recordSuccess } = require('../rateLimit.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { sanitizeText } = require('../validators.js');
-const { listerPourUtilisateur, creerEntreprise } = require('../companyStore.js');
+const { listerPourUtilisateur, creerEntreprise, ouvrirEntreprise } = require('../companyStore.js');
 const { parseProfil } = require('../profils.js');
 
 /**
@@ -27,6 +27,26 @@ const LANGUES = ['fr', 'en'];
 const parseLangue = (valeur) => (LANGUES.includes(valeur) ? valeur : 'fr');
 
 const SESSION_MS = () => SESSION_HOURS * 60 * 60 * 1000;
+
+/**
+ * Consigne un événement de compte au journal de chaque dossier du compte.
+ *
+ * Le compte vit dans le registre, qui n'a pas de journal : l'écriture y
+ * échouait en silence, et un changement d'identifiants ne laissait aucune
+ * trace. Il touche l'accès à chacun des dossiers du compte ; chacun le
+ * consigne donc, avec le rôle que le compte y tient.
+ */
+async function journaliserPourLeCompte(comptesDb, req, userId, evenement) {
+  const dossiers = await listerPourUtilisateur(comptesDb, userId);
+  for (const dossier of dossiers) {
+    try {
+      const base = await ouvrirEntreprise(dossier.chemin);
+      await journaliser(base, { user: { username: req.user.username, role: dossier.role } }, evenement);
+    } catch (error) {
+      console.error(`Journal du dossier « ${dossier.nom} » inaccessible :`, error.message);
+    }
+  }
+}
 
 /** Options du cookie de session. */
 function cookieOptions() {
@@ -189,7 +209,7 @@ module.exports = function authRoutes(getDb) {
 
     // Ni l'ancien ni le nouveau mot de passe n'entrent au journal : seul le
     // fait qu'ils aient changé est consigné.
-    await journaliser(db, req, {
+    await journaliserPourLeCompte(db, req, user.id, {
       action: ACTIONS.IDENTIFIANTS_MODIFICATION,
       entite: 'utilisateur',
       entite_id: user.id,
