@@ -5,6 +5,8 @@ import { useUser } from '../UserContext';
 import { useFeedback } from '../FeedbackContext';
 import { PROFILS } from '../profils';
 import { useLangue } from '../i18n.js';
+import DemandeSecret from './DemandeSecret';
+import FeuilleDeSecours from './FeuilleDeSecours';
 
 const TAILLE_MAX_LOGO = 2 * 1024 * 1024;
 
@@ -81,6 +83,135 @@ function Settings({ ancre, naviguer }) {
   const [sauvegardeEnCours, setSauvegardeEnCours] = useState(false);
   // Nom de la sauvegarde dont on lit le contenu avant de proposer sa restauration.
   const [examenEnCours, setExamenEnCours] = useState(null);
+
+  // Fenêtre de saisie (mot de passe, clé), ouverte par `demander`, qui rend la
+  // valeur saisie, ou `null` si l'on annule.
+  const [demande, setDemande] = useState(null);
+  const demander = (options) => new Promise((resoudre) => setDemande({ ...options, resoudre }));
+  const repondre = (valeur) => {
+    demande.resoudre(valeur);
+    setDemande(null);
+  };
+
+  // Feuille de secours affichée : la clé des sauvegardes (à activer, à
+  // remplacer ou simplement consultée) ou le code de récupération.
+  const [feuille, setFeuille] = useState(null);
+  const [recopie, setRecopie] = useState('');
+  const [chiffrerExistantes, setChiffrerExistantes] = useState(true);
+  const [feuilleNotee, setFeuilleNotee] = useState(false);
+  const [activationEnCours, setActivationEnCours] = useState(false);
+  const [cleRessaisie, setCleRessaisie] = useState('');
+  const [recuperationLe, setRecuperationLe] = useState(null);
+
+  const ouvrirFeuille = (contenu) => {
+    setRecopie('');
+    setChiffrerExistantes(true);
+    setFeuilleNotee(false);
+    setFeuille(contenu);
+  };
+
+  /**
+   * Activation de la protection, ou remplacement de la clé. Remplacer demande
+   * d'abord le mot de passe, vérifié avant de tirer la nouvelle clé : on ne
+   * fait pas imprimer une feuille pour la refuser ensuite.
+   */
+  const protegerSauvegardes = async (remplacement) => {
+    let motDePasse;
+    if (remplacement) {
+      motDePasse = await demander({
+        titre: t('Remplacer la clé des sauvegardes'),
+        message: t('Une nouvelle clé sera tirée, et les sauvegardes de ce dossier seront chiffrées avec elle. '
+          + "L'ancienne feuille de secours ne servira plus. Confirmez avec votre mot de passe."),
+        libelle: t('Mot de passe'),
+        type: 'password'
+      });
+      if (!motDePasse) return;
+      try {
+        await api.post('/api/sauvegardes/cle/afficher', { motDePasse });
+      } catch (err) {
+        notifier(err.message, 'erreur');
+        return;
+      }
+    }
+    try {
+      const { cle } = await api.post('/api/sauvegardes/cle/generer', {});
+      ouvrirFeuille({ nature: 'cle', code: cle, mode: remplacement ? 'remplacement' : 'activation', motDePasse });
+    } catch (err) {
+      notifier(err.message, 'erreur');
+    }
+  };
+
+  const activerProtection = async () => {
+    setActivationEnCours(true);
+    try {
+      const r = await api.post('/api/sauvegardes/cle', {
+        cle: feuille.code,
+        confirmation: recopie,
+        chiffrer_existantes: chiffrerExistantes,
+        motDePasse: feuille.motDePasse
+      });
+      setFeuille(null);
+      notifier(r.message);
+      if (r.anciennes_en_clair > 0) {
+        notifier(tp(r.anciennes_en_clair,
+          "{n} sauvegarde antérieure à la 1.9.1 reste en clair dans le dossier de destination : supprimez-la quand vous n'en avez plus besoin.",
+          "{n} sauvegardes antérieures à la 1.9.1 restent en clair dans le dossier de destination : supprimez-les quand vous n'en avez plus besoin."),
+        'info');
+      }
+      await rafraichirSauvegardes();
+    } catch (err) {
+      notifier(err.message, 'erreur');
+    } finally {
+      setActivationEnCours(false);
+    }
+  };
+
+  const afficherCle = async () => {
+    const motDePasse = await demander({
+      titre: t('Afficher la clé des sauvegardes'),
+      message: t('Pour réimprimer la feuille de secours. Confirmez avec votre mot de passe.'),
+      libelle: t('Mot de passe'),
+      type: 'password'
+    });
+    if (!motDePasse) return;
+    try {
+      const { cle } = await api.post('/api/sauvegardes/cle/afficher', { motDePasse });
+      ouvrirFeuille({ nature: 'cle', code: cle, mode: 'consultation' });
+    } catch (err) {
+      notifier(err.message, 'erreur');
+    }
+  };
+
+  const ressaisirCle = async (e) => {
+    e.preventDefault();
+    try {
+      const r = await api.post('/api/sauvegardes/cle/ressaisir', { cle: cleRessaisie });
+      setCleRessaisie('');
+      notifier(r.message);
+      await rafraichirSauvegardes();
+    } catch (err) {
+      notifier(err.message, 'erreur');
+    }
+  };
+
+  const creerCodeRecuperation = async () => {
+    const motDePasse = await demander({
+      titre: t('Code de récupération'),
+      message: recuperationLe
+        ? t('Un nouveau code remplacera le précédent, qui ne servira plus. Confirmez avec votre mot de passe.')
+        : t('Confirmez avec votre mot de passe.'),
+      libelle: t('Mot de passe actuel'),
+      type: 'password'
+    });
+    if (!motDePasse) return;
+    try {
+      const r = await api.post('/api/auth/recuperation', { motDePasse });
+      setRecuperationLe(new Date().toISOString());
+      ouvrirFeuille({ nature: 'recuperation', code: r.code_recuperation, mode: 'recuperation' });
+    } catch (err) {
+      notifier(err.message, 'erreur');
+    }
+  };
   const [relancesDues, setRelancesDues] = useState(null);
   const [relanceMessage, setRelanceMessage] = useState(null); // { texte, erreur }
   const [relanceEnCours, setRelanceEnCours] = useState(false);
@@ -124,6 +255,7 @@ function Settings({ ancre, naviguer }) {
       .catch(() => setEnSouffrance([]));
     api.get('/api/licence').then(setLicence).catch(() => setLicence(null));
     api.get('/api/demarrage').then(setDemarrage).catch(() => setDemarrage(null));
+    api.get('/api/auth/check').then((s) => setRecuperationLe(s.recuperation_le || null)).catch(() => {});
     api.get('/api/settings/taux-kilometriques').then(setTauxKm).catch(() => setTauxKm([]));
     api.get('/api/auth/setup-status')
       .then((data) => { if (data.minPasswordLength) setMinLength(data.minPasswordLength); })
@@ -214,9 +346,28 @@ function Settings({ ancre, naviguer }) {
    */
   const restaurer = async (sauvegarde) => {
     let examen;
+    // Une copie chiffrée qui ne s'ouvre pas avec la clé du dossier (celle d'un
+    // autre ordinateur, d'un autre dossier) fait demander sa clé, autant de
+    // fois qu'il faut.
+    let cle = null;
     setExamenEnCours(sauvegarde.nom);
     try {
-      examen = await api.post('/api/sauvegardes/examiner', { nom: sauvegarde.nom });
+      for (;;) {
+        try {
+          examen = await api.post('/api/sauvegardes/examiner', cle ? { nom: sauvegarde.nom, cle } : { nom: sauvegarde.nom });
+          break;
+        } catch (err) {
+          if (err.status !== 409) throw err;
+          cle = await demander({
+            titre: t('Sauvegarde chiffrée'),
+            message: err.message,
+            libelle: t('Clé imprimée sur la feuille de secours'),
+            type: 'text',
+            libelleValider: t('Ouvrir')
+          });
+          if (!cle) return;
+        }
+      }
     } catch (err) {
       notifier(err.message, 'erreur');
       return;
@@ -254,7 +405,7 @@ function Settings({ ancre, naviguer }) {
     if (!accepte) return;
 
     try {
-      const r = await api.post('/api/sauvegardes/restaurer', { nom: sauvegarde.nom });
+      const r = await api.post('/api/sauvegardes/restaurer', cle ? { nom: sauvegarde.nom, cle } : { nom: sauvegarde.nom });
       notifier(r.message);
     } catch (err) {
       notifier(err.message, 'erreur');
@@ -273,6 +424,7 @@ function Settings({ ancre, naviguer }) {
       <span style={{ fontSize: '0.9rem' }}>
         {new Date(s.date).toLocaleString(locale)}
         <span style={{ color: 'var(--text-muted)' }}>, {t('{taille} Ko', { taille: Math.round(s.taille / 1024) })}</span>
+        {s.chiffree && <span style={{ color: 'var(--text-muted)' }}>, {t('chiffrée')}</span>}
         {ancienne && <span style={{ color: 'var(--text-muted)' }}>, {t('antérieure à la 1.9.1')}</span>}
       </span>
       <button
@@ -456,8 +608,78 @@ function Settings({ ancre, naviguer }) {
 
   if (loading) return <p style={{ color: 'var(--text-muted)' }}>{t('Chargement des paramètres…')}</p>;
 
+  const sujetFeuille = feuille && (feuille.nature === 'cle'
+    ? (settings.entreprise_nom || t('ce dossier'))
+    : (utilisateurCourant && utilisateurCourant.username) || '');
+  const titreFeuille = feuille && ({
+    activation: t('La clé de vos sauvegardes'),
+    remplacement: t('La nouvelle clé de vos sauvegardes'),
+    consultation: t('La clé de vos sauvegardes'),
+    recuperation: t('Votre code de récupération')
+  })[feuille.mode];
+
   return (
     <div style={{ maxWidth: '820px', margin: '0 auto' }}>
+      {demande && (
+        <DemandeSecret
+          titre={demande.titre}
+          message={demande.message}
+          libelle={demande.libelle}
+          type={demande.type}
+          libelleValider={demande.libelleValider}
+          onValider={repondre}
+          onAnnuler={() => repondre(null)}
+        />
+      )}
+
+      {feuille && (
+        <FeuilleDeSecours
+          nature={feuille.nature}
+          code={feuille.code}
+          sujet={sujetFeuille}
+          titre={titreFeuille}
+          onFermer={feuille.mode === 'consultation' ? () => setFeuille(null) : undefined}
+        >
+          {(feuille.mode === 'activation' || feuille.mode === 'remplacement') && (
+            <>
+              <div className="form-group" style={{ marginTop: '20px' }}>
+                <label htmlFor="cle-recopie">{t('Recopiez la clé depuis la feuille imprimée')}</label>
+                <input id="cle-recopie" type="text" className="form-control" autoComplete="off" spellCheck={false}
+                  value={recopie} onChange={(e) => setRecopie(e.target.value)} />
+              </div>
+              {feuille.mode === 'activation' && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={chiffrerExistantes} onChange={(e) => setChiffrerExistantes(e.target.checked)} style={{ width: '18px', height: '18px' }} />
+                  {t('Chiffrer aussi les sauvegardes déjà faites')}
+                </label>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '24px' }}>
+                <button type="button" className="btn-secondary" onClick={() => setFeuille(null)}>{t('Annuler')}</button>
+                <button type="button" className="btn-primary" disabled={!recopie.trim() || activationEnCours} onClick={activerProtection}>
+                  {feuille.mode === 'activation' ? t('Activer la protection') : t('Remplacer la clé')}
+                </button>
+              </div>
+            </>
+          )}
+          {feuille.mode === 'consultation' && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
+              <button type="button" className="btn-primary" onClick={() => setFeuille(null)}>{t('Fermer')}</button>
+            </div>
+          )}
+          {feuille.mode === 'recuperation' && (
+            <>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '20px', cursor: 'pointer' }}>
+                <input type="checkbox" checked={feuilleNotee} onChange={(e) => setFeuilleNotee(e.target.checked)} style={{ width: '18px', height: '18px' }} />
+                {t("J'ai imprimé ou noté ce code en lieu sûr")}
+              </label>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
+                <button type="button" className="btn-primary" disabled={!feuilleNotee} onClick={() => setFeuille(null)}>{t('Terminer')}</button>
+              </div>
+            </>
+          )}
+        </FeuilleDeSecours>
+      )}
+
       <h2 style={{ color: 'var(--text-main)', marginBottom: '20px' }}>{t("Paramètres de l'entreprise")}</h2>
 
       <Message contenu={message} />
@@ -794,6 +1016,51 @@ function Settings({ ancre, naviguer }) {
               + "Google Drive) pour que la copie quitte cet ordinateur : c'est ce qui vous protège "
               + "d'un disque en panne ou d'un vol.")}
           </p>
+
+          {infoSauvegardes && infoSauvegardes.protection && (
+            <div className="glass-card" style={{ padding: '16px', marginBottom: '16px' }}>
+              <h4 style={{ margin: '0 0 8px 0' }}>{t('Protection par une clé')}</h4>
+              {!infoSauvegardes.protection.active && (
+                <>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 0 12px 0' }}>
+                    {t("Vos sauvegardes sont enregistrées en clair. Protégées par une clé, elles ne se lisent pas "
+                      + "sans la feuille de secours que vous imprimez, même si le dossier synchronisé est piraté.")}
+                  </p>
+                  <button type="button" className="btn-primary" onClick={() => protegerSauvegardes(false)}>
+                    {t('Protéger les sauvegardes')}
+                  </button>
+                </>
+              )}
+              {infoSauvegardes.protection.active && infoSauvegardes.protection.lisible && (
+                <>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 0 12px 0' }}>
+                    {t('Les sauvegardes de ce dossier sont chiffrées. Gardez la feuille de secours : sans elle, '
+                      + 'elles ne se restaurent sur aucun autre ordinateur.')}
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button type="button" className="btn-secondary" onClick={afficherCle}>{t('Afficher la clé')}</button>
+                    <button type="button" className="btn-secondary" onClick={() => protegerSauvegardes(true)}>{t('Remplacer la clé')}</button>
+                  </div>
+                </>
+              )}
+              {infoSauvegardes.protection.active && !infoSauvegardes.protection.lisible && (
+                <form onSubmit={ressaisirCle}>
+                  <p className="alert alert-error" role="alert" style={{ margin: '0 0 12px 0' }}>
+                    {t("La clé des sauvegardes n'est plus lisible sur cet ordinateur : aucune sauvegarde n'est faite "
+                      + "tant qu'elle n'est pas ressaisie depuis la feuille de secours.")}
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                    <div className="form-group" style={{ flex: 1, margin: 0 }}>
+                      <label htmlFor="cle-ressaisie">{t('Clé imprimée sur la feuille de secours')}</label>
+                      <input id="cle-ressaisie" type="text" className="form-control" autoComplete="off" spellCheck={false}
+                        value={cleRessaisie} onChange={(e) => setCleRessaisie(e.target.value)} />
+                    </div>
+                    <button type="submit" className="btn-primary" disabled={!cleRessaisie.trim()}>{t('Enregistrer la clé')}</button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
 
           <div className="form-group">
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
@@ -1149,7 +1416,7 @@ function Settings({ ancre, naviguer }) {
         )}
       </div>
 
-      <h2 style={{ color: 'var(--text-main)', marginTop: '48px', marginBottom: '20px' }}>{t('Mes identifiants')}</h2>
+      <h2 id="section-identifiants" style={{ color: 'var(--text-main)', marginTop: '48px', marginBottom: '20px' }}>{t('Mes identifiants')}</h2>
       <Message contenu={secMessage} />
 
       <form onSubmit={handleSecuritySave} className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1171,6 +1438,19 @@ function Settings({ ancre, naviguer }) {
           </button>
         </div>
       </form>
+
+      <div className="glass-panel" style={{ marginTop: '16px' }}>
+        <h3 style={{ margin: '0 0 8px 0' }}>{t('Code de récupération')}</h3>
+        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 0 12px 0' }}>
+          {recuperationLe
+            ? t('Créé le {date}. Il vous rend l\'accès si vous oubliez votre mot de passe : à l\'écran de connexion, « Mot de passe oublié ? ».',
+              { date: new Date(`${String(recuperationLe).replace(' ', 'T')}${String(recuperationLe).endsWith('Z') ? '' : 'Z'}`).toLocaleDateString(locale) })
+            : t("Aucun code pour l'instant. Sans lui, un mot de passe oublié ne se retrouve pas, sauf par un autre administrateur.")}
+        </p>
+        <button type="button" className="btn-secondary" onClick={creerCodeRecuperation}>
+          {recuperationLe ? t('Remplacer le code') : t('Créer un code de récupération')}
+        </button>
+      </div>
 
       <h2 id="section-comptes" style={{ color: 'var(--text-main)', marginTop: '48px', marginBottom: '20px' }}>{t('Gestion des utilisateurs')}</h2>
       <Message contenu={usersMessage} />

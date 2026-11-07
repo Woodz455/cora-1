@@ -362,8 +362,9 @@ test('les noms de sauvegarde se trient chronologiquement', () => {
   // La nouvelle forme se lit aussi, et sa série en est extraite.
   const date = new Date(Date.UTC(2026, 10, 7, 1, 56, 5, 43));
   const nom = `clora-${SERIE}-${horodatage(date)}.sqlite`;
-  assert.deepEqual(analyserNom(nom), { serie: SERIE, date });
-  assert.deepEqual(analyserNom(`clora-${horodatage(date)}.sqlite`), { serie: null, date });
+  assert.deepEqual(analyserNom(nom), { serie: SERIE, date, chiffree: false });
+  assert.deepEqual(analyserNom(`clora-${horodatage(date)}.sqlite`), { serie: null, date, chiffree: false });
+  assert.deepEqual(analyserNom(nom.replace('.sqlite', '.clora')), { serie: SERIE, date, chiffree: true });
   assert.equal(analyserNom(`${nom}.partiel`), null, 'un dépôt en cours n\'est pas une sauvegarde');
 });
 

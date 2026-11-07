@@ -100,9 +100,10 @@ function Dashboard({ naviguer }) {
   const [stats, setStats] = useState(null);
   const [aFaire, setAFaire] = useState({ factures: [], devis: [], depots: [] });
   const [demarrage, setDemarrage] = useState(null);
+  const [etatSauvegardes, setEtatSauvegardes] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { t, tp, montant } = useLangue();
+  const { t, tp, montant, langue } = useLangue();
   const { notifier } = useFeedback();
 
   // Réservé à l'administration : un 403 signifie simplement qu'il n'y a rien à
@@ -111,6 +112,10 @@ function Dashboard({ naviguer }) {
     let annule = false;
     api.get('/api/demarrage')
       .then((data) => { if (!annule) setDemarrage(data); })
+      .catch(() => {});
+    // Même réserve : seul l'administrateur peut agir sur les sauvegardes.
+    api.get('/api/sauvegardes/etat')
+      .then((data) => { if (!annule) setEtatSauvegardes(data); })
       .catch(() => {});
     return () => { annule = true; };
   }, []);
@@ -227,6 +232,24 @@ function Dashboard({ naviguer }) {
           {t('+ Nouvelle facture')}
         </button>
       </div>
+
+      {/* Une sauvegarde qui échoue ne se voit nulle part ailleurs : un
+          dossier OneDrive hors ligne, ou une clé que ce poste ne sait plus
+          lire, laisserait la comptabilité sans copie en silence. */}
+      {etatSauvegardes && etatSauvegardes.alerte && (
+        <div className="alert alert-error" role="alert" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+          <span>
+            {etatSauvegardes.alerte === 'cle_illisible' && t("Les sauvegardes sont suspendues : la clé n'est plus lisible sur cet ordinateur. Ressaisissez-la depuis la feuille de secours.")}
+            {etatSauvegardes.alerte === 'en_retard' && t("Aucune sauvegarde n'a réussi depuis le {date}. Vérifiez que le dossier de sauvegarde est accessible.",
+              { date: new Date(etatSauvegardes.derniere).toLocaleDateString(langue === 'en' ? 'en-CA' : 'fr-CA') })}
+            {etatSauvegardes.alerte === 'aucune' && t("Aucune sauvegarde n'a encore réussi. Vérifiez que le dossier de sauvegarde est accessible.")}
+          </span>
+          <button type="button" className="btn-secondary" style={{ whiteSpace: 'nowrap' }}
+            onClick={() => naviguer('parametres', { ancre: 'section-sauvegardes' })}>
+            {t('Ouvrir les sauvegardes')}
+          </button>
+        </div>
+      )}
 
       {premiersPasVisibles && (
         <PremiersPas demarrage={demarrage} onMasquer={masquerPremiersPas} naviguer={naviguer} />

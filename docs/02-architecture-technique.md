@@ -96,13 +96,15 @@ scheduler.js       Passage horaire : abonnements, relances, Stripe, sauvegardes
 licenceService.js  Vérification Ed25519 des clés, essai, maintenance
 kilometrageService.js  Indemnité kilométrique : paliers et recalcul de l'année
 secretStorage.js   Chiffrement des secrets au repos
+chiffrementSauvegardes.js  Format chiffré des sauvegardes (AES-256-GCM)
+codesSecours.js    Clé des sauvegardes et code de récupération (base 32 de Crockford)
 companyStore.js    Registre des dossiers d'entreprise et comptes partagés
 traductionServeur.js  Messages du serveur traduits en anglais à la sortie
 *Service.js        Logique métier par domaine (19 services)
 routes/            21 modules de points d'entrée HTTP
-client/src/        Interface React (34 composants, 13 crochets et modules,
+client/src/        Interface React (37 composants, 13 crochets et modules,
                    dictionnaire anglais dans traductions/en.js)
-tests/             28 fichiers, 412 tests
+tests/             30 fichiers, 430 tests
 ```
 
 Le découpage est strict : **`server.js` ne fait que câbler**. Il ne contient
@@ -310,6 +312,12 @@ En-têtes envoyés sur chaque réponse : `X-Content-Type-Options: nosniff`,
 - **Limitation des tentatives** : 8 essais par tranche de 15 minutes, par couple
   adresse IP + nom d'utilisateur. Sans elle, un mot de passe de quatre caractères
   tombe en quelques secondes.
+- **Code de récupération** : 20 caractères tirés au hasard (100 bits), remis à la
+  création du compte et gardé sous forme d'empreinte bcrypt dans le registre.
+  `POST /api/auth/reinitialiser` l'échange contre un nouveau mot de passe, sous
+  la même limitation que la connexion, avec une réponse identique pour un compte
+  inconnu, sans code ou un code erroné, et une comparaison bcrypt dans tous les
+  cas pour que la durée ne trahisse rien. Le code ne sert qu'une fois.
 
 ### 5.3 Autorisation
 
@@ -357,6 +365,20 @@ Une base restaurée sur une autre machine ne sait plus déchiffrer : le paiement
 ligne se désactive et l'écran des paramètres invite à ressaisir la clé, plutôt
 que de laisser croire qu'il fonctionne encore.
 
+**Les sauvegardes, elles, peuvent être chiffrées pour de bon.** La clé des
+sauvegardes est tirée par Clora (24 caractères, 120 bits) et imprimée sur une
+feuille de secours ; le coffre du système n'en garde qu'un exemplaire de travail.
+Format d'un fichier `.clora` : signature `CLORASV1`, longueur et en-tête JSON
+(version, série, empreinte de la clé, sel, nonce), données chiffrées en
+AES-256-GCM, étiquette d'authentification de 16 octets. L'en-tête est
+authentifié avec les données ; la clé de chaque fichier est dérivée de la clé
+imprimée et du sel par HKDF-SHA256. L'empreinte (HKDF, 8 octets) fait
+reconnaître une clé erronée avant tout déchiffrement, sans permettre de
+retrouver la clé. Le chiffrement a lieu dans le répertoire de la base : aucune
+copie en clair n'atteint le dossier de destination. Si le coffre ne rend plus la
+clé, les sauvegardes s'arrêtent plutôt que de repartir en clair, et le tableau
+de bord le signale.
+
 ### 5.6 Le journal d'audit
 
 Les actions sensibles sont consignées dans `logs_audit` avec horodatage, auteur,
@@ -394,7 +416,8 @@ de sécurité.
 | | |
 | --- | --- |
 | **Le binaire n'est pas signé** | Windows affiche un avertissement SmartScreen à l'installation. Aucun certificat de signature de code n'a encore été acheté |
-| **La base n'est pas chiffrée au repos** | Seuls les deux secrets le sont. Quelqu'un qui a accès au disque a accès à la comptabilité : c'est le modèle d'un logiciel de bureau mono-poste |
+| **La base n'est pas chiffrée au repos** | Seuls les secrets le sont, et les sauvegardes quand la protection est activée. Quelqu'un qui a accès au disque de l'ordinateur a accès à la comptabilité : c'est le modèle d'un logiciel de bureau mono-poste |
+| **Protection des sauvegardes facultative** | Elle s'active dans Paramètres, et le tableau des premiers pas la propose. Les copies antérieures à la 1.9.1, dont on ignore le dossier, ne sont jamais chiffrées d'office : l'utilisateur les supprime lui-même |
 | **La clé de licence est partageable** | Sans serveur, rien n'empêche de la donner à un tiers |
 | **L'essai se réinitialise** | Supprimer `comptes.sqlite` remet le compteur à zéro |
 | **Le paquet est ouvrable** | Une archive `asar` n'est pas un coffre-fort |
@@ -636,13 +659,15 @@ facture émise), donc une vérification fréquente est sans risque.
 
 ## 10. Tests et intégration continue
 
-**412 tests**, exécutés par `node --test`. Répartition :
+**430 tests**, exécutés par `node --test`. Répartition :
 
 | Domaine | Tests |
 | --- | --- |
 | Paiement en ligne Stripe | 33 |
 | Sauvegardes et restauration | 30 |
 | Sauvegardes à plusieurs dossiers | 15 |
+| Sauvegardes chiffrées | 12 |
+| Code de récupération | 6 |
 | Indemnité kilométrique | 17 |
 | Import de tableur | 19 |
 | Rapprochement bancaire | 19 |

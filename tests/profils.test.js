@@ -61,7 +61,7 @@ test('les deux copies des profils restent alignées', () => {
   }
 });
 
-test('chaque parcours ne renvoie qu\'à des étapes définies, et toutes mènent à la sauvegarde', () => {
+test('chaque parcours ne renvoie qu\'à des étapes définies, et tous finissent par la sauvegarde et le code de récupération', () => {
   for (const [profil, cles] of Object.entries({ ...PARCOURS, aucun: PARCOURS_SANS_PROFIL })) {
     for (const cle of cles) {
       const etape = ETAPES[cle];
@@ -69,7 +69,8 @@ test('chaque parcours ne renvoie qu\'à des étapes définies, et toutes mènent
       assert.ok(etape.titre && etape.detail && etape.vue, `${profil} : étape ${cle} incomplète`);
       assert.equal(typeof etape.fait, 'function');
     }
-    assert.equal(cles[cles.length - 1], 'sauvegarde', `${profil} : la sauvegarde manque à tout le monde`);
+    assert.deepEqual(cles.slice(-3), ['sauvegarde', 'protection', 'recuperation'],
+      `${profil} : la sauvegarde, sa protection et le code de récupération valent pour tout le monde`);
   }
   assert.deepEqual(Object.keys(PARCOURS).sort(), PROFILS.map((p) => p.valeur).sort());
 });
@@ -169,7 +170,7 @@ test('les premiers pas sont réservés à l\'administration', async (t) => {
   assert.equal((await api.post('/api/demarrage/afficher', {})).status, 403);
 });
 
-test('un dossier sans profil reçoit l\'essentiel, rien de coché', async (t) => {
+test('un dossier sans profil reçoit l\'essentiel, rien de coché sauf le code remis à la configuration', async (t) => {
   const api = await avecAdmin(t);
 
   const res = await api.get('/api/demarrage');
@@ -177,7 +178,7 @@ test('un dossier sans profil reçoit l\'essentiel, rien de coché', async (t) =>
   assert.equal(res.data.profil, null);
   assert.equal(res.data.masque, false);
   assert.deepEqual(res.data.etapes.map((e) => e.cle), PARCOURS_SANS_PROFIL);
-  assert.ok(res.data.etapes.every((e) => e.fait === false));
+  assert.ok(res.data.etapes.every((e) => e.fait === (e.cle === 'recuperation')));
 });
 
 test('les étapes se cochent d\'elles-mêmes d\'après le contenu du dossier', async (t) => {
@@ -191,7 +192,8 @@ test('les étapes se cochent d\'elles-mêmes d\'après le contenu du dossier', a
     (await api.get('/api/demarrage')).data.etapes.map((e) => [e.cle, e.fait])
   );
   assert.deepEqual(await faites(), {
-    coordonnees: false, comptes: false, client: false, facture: false, banque: false, sauvegarde: false
+    coordonnees: false, comptes: false, client: false, facture: false, banque: false, sauvegarde: false,
+    protection: false, recuperation: true
   });
 
   // Les coordonnées : l'adresse suffit, un autonome n'a pas toujours de numéros de taxes.
@@ -216,8 +218,13 @@ test('les étapes se cochent d\'elles-mêmes d\'après le contenu du dossier', a
     sauvegarde_dossier: 'C:\\Users\\moi\\OneDrive\\Clora'
   });
 
+  // La protection : une clé posée.
+  const { cle } = (await api.post('/api/sauvegardes/cle/generer', {})).data;
+  assert.equal((await api.post('/api/sauvegardes/cle', { cle, confirmation: cle })).status, 200);
+
   assert.deepEqual(await faites(), {
-    coordonnees: true, comptes: true, client: true, facture: true, banque: true, sauvegarde: true
+    coordonnees: true, comptes: true, client: true, facture: true, banque: true, sauvegarde: true,
+    protection: true, recuperation: true
   });
 });
 

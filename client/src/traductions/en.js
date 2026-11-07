@@ -268,6 +268,12 @@ export default {
   'Choisir un dossier de sauvegarde synchronisé': 'Choose a synced backup folder',
   "OneDrive, Google Drive ou Dropbox : la copie quotidienne quitte l'ordinateur.":
     'OneDrive, Google Drive or Dropbox: the daily copy leaves the computer.',
+  'Protéger vos sauvegardes par une clé': 'Protect your backups with a key',
+  'Chiffrées, les copies envoyées dans le nuage ne se lisent pas sans la clé que vous imprimez.':
+    'Once encrypted, the copies sent to the cloud cannot be read without the key you print.',
+  'Noter votre code de récupération': 'Write down your recovery code',
+  "Il vous rend l'accès à Clora si vous oubliez votre mot de passe.":
+    'It gives you back access to Clora if you forget your password.',
 
   // --- Factures ----------------------------------------------------------------
   'Chargement des données financières…': 'Loading financial data…',
@@ -808,6 +814,9 @@ export default {
   'Compte modifié': 'Account edited',
   'Compte supprimé': 'Account deleted',
   'Identifiants modifiés': 'Sign-in details changed',
+  'Clé des sauvegardes posée': 'Backup key set',
+  'Mot de passe réinitialisé par code de récupération': 'Password reset with recovery code',
+  'Code de récupération créé': 'Recovery code created',
   'Sauvegarde restaurée': 'Backup restored',
   'Import depuis un tableur': 'Import from a spreadsheet',
   'Encaissement en ligne': 'Online payment',
@@ -1080,5 +1089,103 @@ export default {
   'Administrateur : accès complet': 'Administrator: full access',
   "Créer l'utilisateur": 'Create the user',
   ' (vous)': ' (you)',
-  'Vous ne pouvez pas supprimer votre propre compte.': 'You cannot delete your own account.'
+  'Vous ne pouvez pas supprimer votre propre compte.': 'You cannot delete your own account.',
+
+  // --- Sauvegardes chiffrées et code de récupération -----------------------
+  'Copies chiffrées': 'Copies encrypted',
+  'Empreinte de la clé': 'Key fingerprint',
+  'Remplacement': 'Replacement',
+  "Aucune sauvegarde n'a encore réussi. Vérifiez que le dossier de sauvegarde est accessible.":
+    'No backup has succeeded yet. Check that the backup folder is reachable.',
+  "Aucune sauvegarde n'a réussi depuis le {date}. Vérifiez que le dossier de sauvegarde est accessible.":
+    'No backup has succeeded since {date}. Check that the backup folder is reachable.',
+  "Les sauvegardes sont suspendues : la clé n'est plus lisible sur cet ordinateur. Ressaisissez-la depuis la feuille de secours.":
+    'Backups are on hold: the key can no longer be read on this computer. Enter it again from the recovery sheet.',
+  'Ouvrir les sauvegardes': 'Open backups',
+  'Continuer': 'Continue',
+  "Ce code vous rend l'accès à Clora si vous oubliez votre mot de passe. Il ne sert qu'une fois : imprimez-le et rangez la feuille à l'écart de l'ordinateur.":
+    'This code gives you back access to Clora if you forget your password. It works only once: print it and keep the sheet away from the computer.',
+  "Cette clé ouvre les sauvegardes chiffrées de ce dossier. Sans elle, personne ne peut les lire, pas même Safehill : imprimez-la et rangez la feuille à l'écart de l'ordinateur.":
+    "This key opens this company file's encrypted backups. Without it, no one can read them, not even Safehill: print it and keep the sheet away from the computer.",
+  'Cliquez sur Restaurer à côté de la sauvegarde la plus récente, puis saisissez cette clé.':
+    'Click Restore next to the most recent backup, then enter this key.',
+  'Clé des sauvegardes du dossier « {sujet} »': 'Backup key for the company file “{sujet}”',
+  'Code : {code}': 'Code: {code}',
+  'Code de récupération du compte « {sujet} »': 'Recovery code for the account “{sujet}”',
+  "Comment s'en servir": 'How to use it',
+  'Copier': 'Copy',
+  'Copié': 'Copied',
+  "Dans Paramètres, section Sauvegardes, choisissez le même dossier de sauvegarde qu'avant.":
+    'In Settings, Backups section, choose the same backup folder as before.',
+  'Feuille de secours Clora': 'Clora recovery sheet',
+  'Imprimer la feuille de secours': 'Print the recovery sheet',
+  'Installez Clora sur le nouvel ordinateur et créez votre compte.':
+    'Install Clora on the new computer and create your account.',
+  'Notez le nouveau code que Clora vous donne aussitôt : celui-ci ne servira plus.':
+    'Write down the new code Clora gives you right away: this one will no longer work.',
+  'Quiconque a cette feuille en main peut entrer dans votre compte : gardez-la comme un chèque signé.':
+    'Anyone holding this sheet can get into your account: keep it like a signed cheque.',
+  'Quiconque a cette feuille en main peut ouvrir vos sauvegardes : gardez-la comme un chèque signé.':
+    'Anyone holding this sheet can open your backups: keep it like a signed cheque.',
+  "Saisissez votre nom d'utilisateur, ce code et un nouveau mot de passe.":
+    'Enter your username, this code and a new password.',
+  "À l'écran de connexion, choisissez « Mot de passe oublié ? ».": 'On the sign-in screen, choose “Forgot your password?”.',
+  'À quoi elle sert': 'What it is for',
+  'Établie le {date}.': 'Issued on {date}.',
+  'Changer le mot de passe': 'Change password',
+  'Code de récupération': 'Recovery code',
+  'Confirmer le mot de passe': 'Confirm password',
+  "J'ai imprimé ou noté ce code en lieu sûr": 'I printed or wrote down this code and put it somewhere safe',
+  'Mot de passe changé : connectez-vous avec le nouveau.': 'Password changed: sign in with the new one.',
+  'Mot de passe oublié ?': 'Forgot your password?',
+  'Mot de passe oublié': 'Forgotten password',
+  'Nouveau mot de passe': 'New password',
+  'Pas de code ? Un autre administrateur du dossier peut vous donner un nouveau mot de passe dans Paramètres.':
+    'No code? Another administrator of the company file can give you a new password in Settings.',
+  'Retour à la connexion': 'Back to sign-in',
+  'Saisissez le code de récupération imprimé sur votre feuille de secours, puis choisissez un nouveau mot de passe.':
+    'Enter the recovery code printed on your recovery sheet, then choose a new password.',
+  'Votre nouveau code de récupération': 'Your new recovery code',
+  'XXXX-XXXX-XXXX-XXXX-XXXX': 'XXXX-XXXX-XXXX-XXXX-XXXX',
+  'Activer la protection': 'Turn on protection',
+  'Afficher la clé des sauvegardes': 'Show the backup key',
+  'Afficher la clé': 'Show the key',
+  "Aucun code pour l'instant. Sans lui, un mot de passe oublié ne se retrouve pas, sauf par un autre administrateur.":
+    'No code yet. Without one, a forgotten password cannot be recovered, except by another administrator.',
+  'Chiffrer aussi les sauvegardes déjà faites': 'Also encrypt the backups already made',
+  'Clé imprimée sur la feuille de secours': 'Key printed on the recovery sheet',
+  'Confirmez avec votre mot de passe.': 'Confirm with your password.',
+  'Créer un code de récupération': 'Create a recovery code',
+  "Créé le {date}. Il vous rend l'accès si vous oubliez votre mot de passe : à l'écran de connexion, « Mot de passe oublié ? ».":
+    'Created on {date}. It gives you back access if you forget your password: on the sign-in screen, “Forgot your password?”.',
+  'Enregistrer la clé': 'Save the key',
+  'La clé de vos sauvegardes': 'Your backup key',
+  "La clé des sauvegardes n'est plus lisible sur cet ordinateur : aucune sauvegarde n'est faite tant qu'elle n'est pas ressaisie depuis la feuille de secours.":
+    'The backup key can no longer be read on this computer: no backup is made until it is entered again from the recovery sheet.',
+  'La nouvelle clé de vos sauvegardes': 'Your new backup key',
+  'Les sauvegardes de ce dossier sont chiffrées. Gardez la feuille de secours : sans elle, elles ne se restaurent sur aucun autre ordinateur.':
+    "This company file's backups are encrypted. Keep the recovery sheet: without it, they cannot be restored on any other computer.",
+  'Ouvrir': 'Open',
+  'Pour réimprimer la feuille de secours. Confirmez avec votre mot de passe.':
+    'To print the recovery sheet again. Confirm with your password.',
+  'Protection par une clé': 'Key protection',
+  'Protéger les sauvegardes': 'Protect backups',
+  'Recopiez la clé depuis la feuille imprimée': 'Copy the key from the printed sheet',
+  'Remplacer la clé des sauvegardes': 'Replace the backup key',
+  'Remplacer la clé': 'Replace the key',
+  'Remplacer le code': 'Replace the code',
+  'Sauvegarde chiffrée': 'Encrypted backup',
+  'Un nouveau code remplacera le précédent, qui ne servira plus. Confirmez avec votre mot de passe.':
+    'A new code will replace the previous one, which will no longer work. Confirm with your password.',
+  "Une nouvelle clé sera tirée, et les sauvegardes de ce dossier seront chiffrées avec elle. L'ancienne feuille de secours ne servira plus. Confirmez avec votre mot de passe.":
+    "A new key will be drawn, and this company file's backups will be encrypted with it. The old recovery sheet will no longer work. Confirm with your password.",
+  'Vos sauvegardes sont enregistrées en clair. Protégées par une clé, elles ne se lisent pas sans la feuille de secours que vous imprimez, même si le dossier synchronisé est piraté.':
+    'Your backups are saved unencrypted. Protected by a key, they cannot be read without the recovery sheet you print, even if the synced folder is hacked.',
+  'Votre code de récupération': 'Your recovery code',
+  'ce dossier': 'this company file',
+  'chiffrée': 'encrypted',
+  "{n} sauvegarde antérieure à la 1.9.1 reste en clair dans le dossier de destination : supprimez-la quand vous n'en avez plus besoin.":
+    '{n} backup from before 1.9.1 remains unencrypted in the destination folder: delete it when you no longer need it.',
+  "{n} sauvegardes antérieures à la 1.9.1 restent en clair dans le dossier de destination : supprimez-les quand vous n'en avez plus besoin.":
+    '{n} backups from before 1.9.1 remain unencrypted in the destination folder: delete them when you no longer need them.',
 };

@@ -28,10 +28,13 @@ const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 
 const { getDataDir, getDbPath } = require('./config.js');
+const { chiffrer, dechiffrer, estChiffre, empreinteDe } = require('./chiffrementSauvegardes.js');
+const secrets = require('./secretStorage.js');
 
-/** Préfixe et extension des fichiers produits. */
+/** Préfixe et extensions des fichiers produits : en clair, ou chiffrés. */
 const PREFIXE = 'clora-';
 const EXTENSION = '.sqlite';
+const EXTENSION_CHIFFREE = '.clora';
 
 /**
  * Suffixe d'une copie en cours de dépôt. Le fichier ne prend son vrai nom
@@ -44,10 +47,11 @@ const PARTIEL = '.partiel';
 const LONGUEUR_SERIE = 12;
 
 /**
- * Forme des noms : `clora-<série>-<horodatage>.sqlite`, ou l'ancienne forme,
- * sans série, des versions antérieures à la 1.9.1.
+ * Forme des noms : `clora-<série>-<horodatage>.sqlite` (`.clora` quand la
+ * copie est chiffrée), ou l'ancienne forme, sans série, des versions
+ * antérieures à la 1.9.1.
  */
-const FORME_NOM = /^clora-(?:([0-9a-f]{12})-)?(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3})\.sqlite$/;
+const FORME_NOM = /^clora-(?:([0-9a-f]{12})-)?(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3})\.(sqlite|clora)$/;
 
 /** Nombre de sauvegardes conservées à défaut de réglage. */
 const RETENTION_DEFAUT = 30;
@@ -76,7 +80,9 @@ const SUFFIXE_PREPARATION = '.restauration';
 const REGLAGES_DU_POSTE = [
   ['sauvegarde_active', 'INTEGER DEFAULT 1'],
   ['sauvegarde_dossier', 'TEXT'],
-  ['sauvegarde_retention', 'INTEGER DEFAULT 30']
+  ['sauvegarde_retention', 'INTEGER DEFAULT 30'],
+  ['sauvegarde_cle', 'TEXT'],
+  ['sauvegarde_cle_empreinte', 'TEXT']
 ];
 
 /** Dossier utilisé lorsque l'utilisateur n'en a pas choisi d'autre. */
@@ -101,13 +107,14 @@ function serieDe(uid) {
   return uid ? String(uid).replace(/-/g, '').toLowerCase().slice(0, LONGUEUR_SERIE) : null;
 }
 
-function nomDeSauvegarde(serie, date) {
-  return `${PREFIXE}${serie}-${horodatage(date)}${EXTENSION}`;
+function nomDeSauvegarde(serie, date, chiffree = false) {
+  return `${PREFIXE}${serie}-${horodatage(date)}${chiffree ? EXTENSION_CHIFFREE : EXTENSION}`;
 }
 
 /**
  * Lit un nom de sauvegarde.
- * @returns {null|{serie: ?string, date: Date}} `serie` vaut `null` pour l'ancienne forme.
+ * @returns {null|{serie: ?string, date: Date, chiffree: boolean}} `serie` vaut
+ *   `null` pour l'ancienne forme.
  */
 function analyserNom(nom) {
   const trouve = FORME_NOM.exec(nom);
@@ -115,7 +122,8 @@ function analyserNom(nom) {
   // 2026-08-01T03-12-00-123 -> 2026-08-01T03:12:00.123Z
   const iso = trouve[2].replace(/T(\d{2})-(\d{2})-(\d{2})-(\d{3})$/, 'T$1:$2:$3.$4Z');
   const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? null : { serie: trouve[1] || null, date };
+  if (Number.isNaN(date.getTime())) return null;
+  return { serie: trouve[1] || null, date, chiffree: trouve[3] === 'clora' };
 }
 
 /** Extrait la date d'un nom de sauvegarde, ou `null` si le nom ne suit pas la forme. */
@@ -258,6 +266,39 @@ async function lireReglages(db) {
 }
 
 /**
+ * Protection des sauvegardes du dossier : la clé, si elle a été posée.
+ *
+ * La clé est gardée dans la base, par le coffre de Windows (`secretStorage`) :
+ * les sauvegardes automatiques la trouvent sans rien demander, et une copie de
+ * la base emportée ailleurs n'en contient qu'un bloc inexploitable. Son
+ * empreinte est gardée à côté, en clair : elle dit qu'une clé est en vigueur
+ * même quand le coffre ne sait plus la rendre.
+ *
+ * @returns {Promise<{active: boolean, lisible: boolean, empreinte: ?string, cle: ?string}>}
+ */
+async function lireProtection(db) {
+  let ligne = null;
+  try {
+    ligne = await db.get('SELECT sauvegarde_cle, sauvegarde_cle_empreinte FROM settings ORDER BY id LIMIT 1');
+  } catch (e) {
+    // Colonnes absentes : aucune protection n'a pu être posée.
+  }
+  const empreinte = (ligne && ligne.sauvegarde_cle_empreinte) || null;
+  if (!empreinte) return { active: false, lisible: false, empreinte: null, cle: null };
+  const cle = secrets.dechiffrer(ligne.sauvegarde_cle) || null;
+  const lisible = Boolean(cle) && empreinteDe(cle) === empreinte;
+  return { active: true, lisible, empreinte, cle: lisible ? cle : null };
+}
+
+/** Enregistre la clé des sauvegardes du dossier, protégée par le coffre du système. */
+async function enregistrerCle(db, cle) {
+  await db.run(
+    'UPDATE settings SET sauvegarde_cle = ?, sauvegarde_cle_empreinte = ?',
+    [secrets.chiffrer(cle), empreinteDe(cle)]
+  );
+}
+
+/**
  * Sauvegardes présentes dans un dossier de destination, toutes séries
  * confondues, de la plus récente à la plus ancienne.
  *
@@ -288,7 +329,9 @@ function listerSauvegardes(dossier) {
       } catch (e) {
         // Fichier disparu entre la liste et la mesure : il sera simplement à zéro.
       }
-      return { nom, chemin: complet, date: analyse.date.toISOString(), taille, serie: analyse.serie };
+      return {
+        nom, chemin: complet, date: analyse.date.toISOString(), taille, serie: analyse.serie, chiffree: analyse.chiffree
+      };
     });
 }
 
@@ -321,8 +364,16 @@ function appliquerRetention(dossier, retention, serie) {
   return supprimes;
 }
 
+/** Erreur rendue quand la clé du dossier n'est plus lisible sur ce poste. */
+const CLE_ILLISIBLE = 'cle_illisible';
+
 /**
  * Produit une sauvegarde immédiate.
+ *
+ * Quand le dossier est protégé, la copie est chiffrée avant de quitter le
+ * répertoire de la base : aucune donnée en clair n'atteint le dossier de
+ * destination. Si la clé n'est plus lisible sur ce poste, aucune copie n'est
+ * faite plutôt qu'une copie en clair : l'alerte du tableau de bord le dit.
  *
  * La copie est d'abord produite à côté de la base, sur le disque de
  * l'ordinateur, puis déposée d'un coup dans le dossier de destination. Écrite
@@ -337,6 +388,13 @@ async function creerSauvegarde(db, options = {}) {
   const dossier = options.dossier || dossierParDefaut();
   const retention = options.retention || RETENTION_DEFAUT;
   const serie = serieDe(options.uid || await identifiantDuDossier(db));
+  const protection = options.protection || await lireProtection(db);
+  if (protection.active && !protection.cle) {
+    throw Object.assign(
+      new Error("la clé des sauvegardes n'est plus lisible sur cet ordinateur"),
+      { code: CLE_ILLISIBLE }
+    );
+  }
 
   // Le dossier peut viser un espace synchronisé absent au démarrage : on le
   // recrée sans supposer qu'il existe.
@@ -351,10 +409,10 @@ async function creerSauvegarde(db, options = {}) {
   // On décale d'une milliseconde jusqu'à trouver un nom libre plutôt que
   // d'effacer une sauvegarde déjà là.
   let instant = new Date();
-  let nom = nomDeSauvegarde(serie, instant);
+  let nom = nomDeSauvegarde(serie, instant, protection.active);
   while (fs.existsSync(path.join(dossier, nom)) || fs.existsSync(path.join(dossier, `${nom}${PARTIEL}`))) {
     instant = new Date(instant.getTime() + 1);
-    nom = nomDeSauvegarde(serie, instant);
+    nom = nomDeSauvegarde(serie, instant, protection.active);
   }
   const chemin = path.join(dossier, nom);
   const partiel = `${chemin}${PARTIEL}`;
@@ -362,7 +420,12 @@ async function creerSauvegarde(db, options = {}) {
 
   try {
     await db.run('VACUUM INTO ?', [local]);
-    fs.copyFileSync(local, partiel);
+    if (protection.active) {
+      const contenu = chiffrer(fs.readFileSync(local), protection.cle, { serie, cree_le: instant.toISOString() });
+      fs.writeFileSync(partiel, contenu);
+    } else {
+      fs.copyFileSync(local, partiel);
+    }
     fs.renameSync(partiel, chemin);
   } finally {
     supprimer(local);
@@ -371,6 +434,81 @@ async function creerSauvegarde(db, options = {}) {
 
   const supprimes = appliquerRetention(dossier, retention, serie);
   return { nom, chemin, taille: fs.statSync(chemin).size, supprimes };
+}
+
+/**
+ * Chiffre avec une nouvelle clé les sauvegardes d'une série.
+ *
+ * À l'activation, les copies en clair déjà parties dans le dossier
+ * synchronisé y resteraient lisibles : elles sont chiffrées à leur tour, et la
+ * version en clair supprimée. Au remplacement d'une clé, les copies chiffrées
+ * avec l'ancienne le sont avec la nouvelle : une seule clé ouvre ainsi toute
+ * la série. Une copie qu'on ne sait pas ouvrir est laissée telle quelle.
+ *
+ * Les copies sans série, antérieures à la 1.9.1, ne sont pas touchées : rien
+ * ne dit qu'elles viennent de ce dossier, et les chiffrer avec sa clé les
+ * rendrait illisibles au dossier qui les a produites.
+ *
+ * @returns {{rechiffrees: number, laissees: number}}
+ */
+function rechiffrerSerie(dossier, serie, { ancienne = null, nouvelle, inclureClaires = true }) {
+  let rechiffrees = 0;
+  let laissees = 0;
+  for (const sauvegarde of sauvegardesDeLaSerie(dossier, serie)) {
+    if (!sauvegarde.chiffree && !inclureClaires) continue;
+    if (sauvegarde.chiffree && !ancienne) {
+      laissees += 1;
+      continue;
+    }
+    const final = path.join(dossier, sauvegarde.nom.replace(/\.(sqlite|clora)$/, EXTENSION_CHIFFREE));
+    const partiel = `${final}${PARTIEL}`;
+    try {
+      const contenu = fs.readFileSync(sauvegarde.chemin);
+      const clair = sauvegarde.chiffree ? dechiffrer(contenu, ancienne) : contenu;
+      fs.writeFileSync(partiel, chiffrer(clair, nouvelle, { serie, cree_le: sauvegarde.date }));
+      fs.renameSync(partiel, final);
+      if (final !== sauvegarde.chemin) supprimer(sauvegarde.chemin);
+      rechiffrees += 1;
+    } catch (error) {
+      supprimer(partiel);
+      console.error(`Sauvegarde ${sauvegarde.nom} non rechiffrée : ${error.message}`);
+      laissees += 1;
+    }
+  }
+  return { rechiffrees, laissees };
+}
+
+/** Copies en clair d'avant la 1.9.1 présentes dans le dossier de destination. */
+function anciennesEnClair(dossier) {
+  return listerSauvegardes(dossier).filter((s) => s.serie === null && !s.chiffree).length;
+}
+
+/**
+ * Ce que le tableau de bord doit signaler à propos des sauvegardes.
+ *
+ * - `cle_illisible` : le dossier est protégé mais ce poste ne sait plus lire
+ *   la clé ; aucune copie n'est faite tant qu'on ne l'a pas ressaisie ;
+ * - `en_retard` : la dernière copie réussie a plus de trois jours, par exemple
+ *   parce que le dossier synchronisé est hors ligne ;
+ * - `aucune` : aucune copie n'a jamais réussi, passé le premier jour.
+ *
+ * @param {{creeLe?: ?string, maintenant?: Date}} [options] `creeLe` : date de
+ *   création du dossier, au format de SQLite (UTC)
+ */
+async function etatDesSauvegardes(db, { creeLe = null, maintenant = new Date() } = {}) {
+  const reglages = await lireReglages(db);
+  if (!reglages.active) return { alerte: null, derniere: null };
+
+  const protection = await lireProtection(db);
+  const derniere = derniereSauvegarde(reglages.dossier, serieDe(reglages.uid));
+  const iso = derniere ? derniere.toISOString() : null;
+  if (protection.active && !protection.lisible) return { alerte: 'cle_illisible', derniere: iso };
+  if (derniere) {
+    return { alerte: maintenant - derniere > 3 * INTERVALLE_MS ? 'en_retard' : null, derniere: iso };
+  }
+  const cree = creeLe ? new Date(`${String(creeLe).replace(' ', 'T')}Z`) : null;
+  const age = cree && !Number.isNaN(cree.getTime()) ? maintenant - cree : Infinity;
+  return { alerte: age > INTERVALLE_MS ? 'aucune' : null, derniere: null };
 }
 
 /** Date de la sauvegarde la plus récente d'une série, ou `null`. */
@@ -409,7 +547,7 @@ async function sauvegardeSiNecessaire(db, maintenant = new Date()) {
   } catch (error) {
     // Un dossier synchronisé hors ligne ne doit pas faire tomber l'application.
     console.error('Sauvegarde impossible :', error.message);
-    return { effectuee: false, raison: 'echec', erreur: error.message };
+    return { effectuee: false, raison: error.code === CLE_ILLISIBLE ? 'cle' : 'echec', erreur: error.message };
   }
 }
 
@@ -451,6 +589,39 @@ async function verifierOuRefuser(chemin) {
   }
 }
 
+/**
+ * Pose à `destination` une copie en clair d'une sauvegarde, déchiffrée s'il le
+ * faut avec la clé du dossier ou celle que l'utilisateur vient de saisir.
+ *
+ * @param {{cleDuDossier?: ?string, cleSaisie?: ?string}} cles formes brutes
+ * @returns {?string} la clé qui a servi, ou `null` pour une copie en clair
+ */
+function copieEnClair(source, destination, { cleDuDossier = null, cleSaisie = null } = {}) {
+  const contenu = fs.readFileSync(source);
+  if (!estChiffre(contenu)) {
+    fs.writeFileSync(destination, contenu);
+    return null;
+  }
+  for (const cle of [cleDuDossier, cleSaisie].filter(Boolean)) {
+    try {
+      fs.writeFileSync(destination, dechiffrer(contenu, cle));
+      return cle;
+    } catch (error) {
+      if (error.code === 'cle_incorrecte') continue;
+      if (error.code === 'fichier_altere') {
+        throw Object.assign(new Error(
+          "Cette sauvegarde a été modifiée ou est incomplète : elle ne peut pas être déchiffrée. Rien n'a été modifié."
+        ), { status: 400 });
+      }
+      throw Object.assign(new Error(`Cette sauvegarde est inutilisable (${error.message}). Rien n'a été modifié.`), { status: 400 });
+    }
+  }
+  // 409 : l'interface demande alors la clé, ou une autre.
+  throw Object.assign(new Error(cleSaisie
+    ? 'Cette clé ne correspond pas à cette sauvegarde.'
+    : 'Cette sauvegarde est chiffrée : saisissez la clé imprimée sur la feuille de secours.'), { status: 409 });
+}
+
 /** Compte les lignes d'une table, ou `null` si elle n'existe pas dans cette copie. */
 async function compter(base, table) {
   try {
@@ -473,7 +644,7 @@ async function compter(base, table) {
  * @param {string} cible base du dossier ouvert
  * @param {?string} uid identifiant du dossier ouvert
  */
-async function examinerSauvegarde(source, cible, uid) {
+async function examinerSauvegarde(source, cible, uid, cles = {}) {
   if (!fs.existsSync(source)) {
     throw Object.assign(new Error('Cette sauvegarde est introuvable.'), { status: 404 });
   }
@@ -484,7 +655,7 @@ async function examinerSauvegarde(source, cible, uid) {
   const copie = path.join(repertoire, `${prefixe}${horodatage()}-${aleatoire()}`);
 
   try {
-    fs.copyFileSync(source, copie);
+    const cle = copieEnClair(source, copie, cles);
     await verifierOuRefuser(copie);
 
     const base = await open({ filename: copie, driver: sqlite3.Database, mode: sqlite3.OPEN_READONLY });
@@ -496,6 +667,7 @@ async function examinerSauvegarde(source, cible, uid) {
         entreprise: reglages.entreprise_nom || '',
         factures: await compter(base, 'factures'),
         clients: await compter(base, 'clients'),
+        chiffree: cle !== null,
         // `null` : copie antérieure à l'identifiant, sa provenance est inconnue.
         meme_dossier: uidCopie ? uidCopie === uid : null
       };
@@ -579,10 +751,19 @@ async function demanderRestauration(source, cible, contexte = {}) {
 
   const preparation = `${cible}${SUFFIXE_PREPARATION}`;
   supprimer(preparation);
-  fs.copyFileSync(source, preparation);
   try {
+    const cle = copieEnClair(source, preparation, contexte.cles);
     await verifierOuRefuser(preparation);
-    await adapterAuPoste(preparation, contexte);
+
+    // La clé qui vient d'ouvrir la copie devient celle du dossier quand il n'en
+    // avait pas, ou que le coffre de ce poste ne savait plus la rendre : c'est
+    // le cas d'une reprise sur un nouvel ordinateur, et les sauvegardes
+    // suivantes restent chiffrées avec la même clé.
+    let poste = contexte.poste;
+    if (cle && poste && (!poste.sauvegarde_cle_empreinte || poste.sauvegarde_cle_empreinte === empreinteDe(cle))) {
+      poste = { ...poste, sauvegarde_cle: secrets.chiffrer(cle), sauvegarde_cle_empreinte: empreinteDe(cle) };
+    }
+    await adapterAuPoste(preparation, { ...contexte, poste });
   } catch (error) {
     supprimer(preparation);
     throw error;
@@ -677,6 +858,11 @@ function appliquerRestaurationEnAttente(dbPath = getDbPath(), dataDir = path.dir
 module.exports = {
   dossierParDefaut,
   lireReglages,
+  lireProtection,
+  enregistrerCle,
+  rechiffrerSerie,
+  anciennesEnClair,
+  etatDesSauvegardes,
   identifiantDuDossier,
   lireIdentifiant,
   serieDe,
@@ -699,5 +885,7 @@ module.exports = {
   AGE_ABANDON_MS,
   MARQUEUR,
   SUFFIXE_PREPARATION,
-  PARTIEL
+  PARTIEL,
+  EXTENSION_CHIFFREE,
+  CLE_ILLISIBLE
 };

@@ -100,6 +100,11 @@ async function ouvrirComptes(chemin = cheminComptes()) {
   // pas à le revoir en changeant de client.
   await addColumn(db, 'users', 'visite_vue', 'INTEGER NOT NULL DEFAULT 0');
 
+  // Code de récupération du mot de passe : seule son empreinte est gardée,
+  // comme pour le mot de passe lui-même.
+  await addColumn(db, 'users', 'recuperation_empreinte', 'TEXT');
+  await addColumn(db, 'users', 'recuperation_le', 'TEXT');
+
   // L'essai commence à la création du registre, donc à la première ouverture
   // de l'application — et non à la première consultation de l'écran de
   // licence, qu'un utilisateur pourrait ne jamais atteindre.

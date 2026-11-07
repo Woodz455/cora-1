@@ -6,6 +6,7 @@
  */
 
 const express = require('express');
+const bcrypt = require('bcryptjs');
 
 const { adminOnly } = require('../authMiddleware.js');
 const { journaliser, ACTIONS } = require('../auditService.js');
@@ -19,8 +20,36 @@ const {
   examinerSauvegarde,
   demanderRestauration,
   dossierParDefaut,
-  memeChemin
+  memeChemin,
+  lireProtection,
+  enregistrerCle,
+  rechiffrerSerie,
+  anciennesEnClair,
+  etatDesSauvegardes,
+  CLE_ILLISIBLE
 } = require('../backupService.js');
+const { genererCle, normaliserCle, formater } = require('../codesSecours.js');
+const { empreinteDe } = require('../chiffrementSauvegardes.js');
+
+/**
+ * Lit la clé saisie dans une requête.
+ * @returns {?string} forme brute, ou `null` si aucune n'a été saisie
+ */
+function cleSaisie(body, champ = 'cle') {
+  const saisie = body && body[champ];
+  if (saisie === undefined || saisie === null || String(saisie).trim() === '') return null;
+  const brute = normaliserCle(saisie);
+  if (!brute) throw httpError(400, "Cette clé n'a pas la bonne forme : 24 caractères, en 6 groupes de 4.");
+  return brute;
+}
+
+/** Vérifie le mot de passe du compte connecté. */
+async function verifierMotDePasse(comptesDb, req) {
+  const compte = comptesDb && await comptesDb.get('SELECT password FROM users WHERE id = ?', [req.user.sub]);
+  const motDePasse = req.body && req.body.motDePasse;
+  const valide = compte && typeof motDePasse === 'string' && await bcrypt.compare(motDePasse, compte.password);
+  if (!valide) throw httpError(401, 'Mot de passe incorrect.');
+}
 
 /**
  * Ouvre un sélecteur de dossier natif.
@@ -100,8 +129,11 @@ module.exports = function sauvegardeRoutes(getDb, getComptesDb = () => null) {
     const { uid, ...reglages } = await lireReglages(getDb());
     const serie = serieDe(uid);
     const toutes = listerSauvegardes(reglages.dossier);
+    const { active, lisible, empreinte } = await lireProtection(getDb());
     res.json({
       ...reglages,
+      // Jamais la clé elle-même : son empreinte suffit à dire qu'elle existe.
+      protection: { active, lisible, empreinte },
       dossier_par_defaut: dossierParDefaut(),
       selecteur_disponible: Boolean(process.versions && process.versions.electron),
       sauvegardes: toutes.filter((s) => serie && s.serie === serie),
@@ -117,7 +149,10 @@ module.exports = function sauvegardeRoutes(getDb, getComptesDb = () => null) {
   router.post('/examiner', asyncRoute(async (req, res) => {
     const reglages = await lireReglages(getDb());
     const sauvegarde = trouverSauvegarde(reglages, String((req.body && req.body.nom) || ''));
-    const contenu = await examinerSauvegarde(sauvegarde.chemin, req.entreprise.chemin, reglages.uid);
+    const { cle } = await lireProtection(getDb());
+    const contenu = await examinerSauvegarde(
+      sauvegarde.chemin, req.entreprise.chemin, reglages.uid, { cleDuDossier: cle, cleSaisie: cleSaisie(req.body) }
+    );
     res.json({ nom: sauvegarde.nom, date: sauvegarde.date, taille: sauvegarde.taille, ...contenu });
   }));
 
@@ -128,8 +163,100 @@ module.exports = function sauvegardeRoutes(getDb, getComptesDb = () => null) {
       const resultat = await creerSauvegarde(getDb(), reglages);
       res.status(201).json({ message: 'Sauvegarde créée.', ...resultat });
     } catch (error) {
+      if (error.code === CLE_ILLISIBLE) {
+        throw httpError(409, "La clé des sauvegardes n'est plus lisible sur cet ordinateur : saisissez-la de nouveau.");
+      }
       throw httpError(500, `La sauvegarde a échoué : ${error.message}`);
     }
+  }));
+
+  /**
+   * Ce que le tableau de bord doit signaler : une clé illisible, une dernière
+   * copie trop ancienne, ou aucune copie réussie.
+   */
+  router.get('/etat', asyncRoute(async (req, res) => {
+    const comptesDb = getComptesDb();
+    const dossier = comptesDb
+      ? await comptesDb.get('SELECT cree_le FROM entreprises WHERE id = ?', [req.entreprise.id])
+      : null;
+    res.json(await etatDesSauvegardes(getDb(), { creeLe: dossier && dossier.cree_le }));
+  }));
+
+  /**
+   * Une clé neuve, tirée au hasard. Rien n'est enregistré : elle ne le sera
+   * qu'une fois ressaisie, preuve qu'elle a bien été notée.
+   */
+  router.post('/cle/generer', asyncRoute(async (req, res) => {
+    res.json({ cle: formater(genererCle()) });
+  }));
+
+  /**
+   * Active la protection, ou remplace la clé.
+   *
+   * La clé doit être saisie deux fois : à l'écran, puis recopiée depuis la
+   * feuille imprimée. Remplacer une clé existante demande en plus le mot de
+   * passe. Les copies de la série sont chiffrées avec la nouvelle clé : les
+   * copies en clair, si on le demande, et celles chiffrées avec l'ancienne.
+   */
+  router.post('/cle', asyncRoute(async (req, res) => {
+    const db = getDb();
+    const cle = cleSaisie(req.body);
+    const confirmation = cleSaisie(req.body, 'confirmation');
+    if (!cle || !confirmation) throw httpError(400, 'Saisissez la clé, puis recopiez-la depuis la feuille de secours.');
+    if (cle !== confirmation) throw httpError(400, 'Les deux saisies de la clé ne concordent pas.');
+
+    const avant = await lireProtection(db);
+    if (avant.active) await verifierMotDePasse(getComptesDb(), req);
+
+    await enregistrerCle(db, cle);
+    const reglages = await lireReglages(db);
+    const { rechiffrees, laissees } = rechiffrerSerie(reglages.dossier, serieDe(reglages.uid), {
+      ancienne: avant.cle,
+      nouvelle: cle,
+      inclureClaires: !req.body || req.body.chiffrer_existantes !== false
+    });
+
+    await journaliser(db, req, {
+      action: ACTIONS.SAUVEGARDE_PROTECTION,
+      entite: 'sauvegarde',
+      details: { empreinte: empreinteDe(cle), remplacement: avant.active, rechiffrees }
+    });
+
+    res.json({
+      message: avant.active ? 'Clé des sauvegardes remplacée.' : 'Les sauvegardes de ce dossier sont désormais chiffrées.',
+      empreinte: empreinteDe(cle),
+      rechiffrees,
+      laissees,
+      anciennes_en_clair: anciennesEnClair(reglages.dossier)
+    });
+  }));
+
+  /** Montre la clé, pour réimprimer la feuille de secours. Le mot de passe est demandé. */
+  router.post('/cle/afficher', asyncRoute(async (req, res) => {
+    await verifierMotDePasse(getComptesDb(), req);
+    const protection = await lireProtection(getDb());
+    if (!protection.active) throw httpError(404, "Les sauvegardes de ce dossier ne sont pas protégées par une clé.");
+    if (!protection.cle) {
+      throw httpError(409, "La clé n'est plus lisible sur cet ordinateur : saisissez-la de nouveau depuis la feuille de secours.");
+    }
+    res.json({ cle: formater(protection.cle) });
+  }));
+
+  /**
+   * Ressaisie de la clé, quand ce poste ne sait plus la lire (profil Windows
+   * recréé, base restaurée sur un autre ordinateur). Elle doit être celle en
+   * vigueur : son empreinte le vérifie.
+   */
+  router.post('/cle/ressaisir', asyncRoute(async (req, res) => {
+    const db = getDb();
+    const cle = cleSaisie(req.body);
+    const protection = await lireProtection(db);
+    if (!cle) throw httpError(400, 'Saisissez la clé imprimée sur la feuille de secours.');
+    if (!protection.active || empreinteDe(cle) !== protection.empreinte) {
+      throw httpError(400, 'Cette clé ne correspond pas à celle des sauvegardes de ce dossier.');
+    }
+    await enregistrerCle(db, cle);
+    res.json({ message: 'Clé enregistrée : les sauvegardes reprennent.' });
   }));
 
   /** Sélecteur de dossier natif, lorsque l'application tourne dans Electron. */
@@ -155,11 +282,14 @@ module.exports = function sauvegardeRoutes(getDb, getComptesDb = () => null) {
     // destination resté vide doit le rester, plutôt que de figer le chemin par
     // défaut de cette installation-ci.
     const poste = await db.get(
-      'SELECT sauvegarde_active, sauvegarde_dossier, sauvegarde_retention FROM settings ORDER BY id LIMIT 1'
+      `SELECT sauvegarde_active, sauvegarde_dossier, sauvegarde_retention, sauvegarde_cle, sauvegarde_cle_empreinte
+       FROM settings ORDER BY id LIMIT 1`
     );
+    const { cle } = await lireProtection(db);
     await demanderRestauration(cible.chemin, req.entreprise.chemin, {
       uid: reglages.uid,
       poste,
+      cles: { cleDuDossier: cle, cleSaisie: cleSaisie(req.body) },
       uidsAilleurs: await identifiantsDesAutresDossiers(getComptesDb(), req.entreprise.chemin)
     });
 

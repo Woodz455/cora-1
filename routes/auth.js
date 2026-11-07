@@ -14,6 +14,7 @@ const { asyncRoute, httpError } = require('../httpUtils.js');
 const { sanitizeText } = require('../validators.js');
 const { listerPourUtilisateur, creerEntreprise, ouvrirEntreprise } = require('../companyStore.js');
 const { parseProfil } = require('../profils.js');
+const { genererCodeRecuperation, normaliserCodeRecuperation, formater } = require('../codesSecours.js');
 
 /**
  * Longueur minimale d'un mot de passe.
@@ -27,6 +28,35 @@ const LANGUES = ['fr', 'en'];
 const parseLangue = (valeur) => (LANGUES.includes(valeur) ? valeur : 'fr');
 
 const SESSION_MS = () => SESSION_HOURS * 60 * 60 * 1000;
+
+/**
+ * Tire un nouveau code de récupération pour un compte et en garde l'empreinte.
+ *
+ * Le code n'est rendu qu'une fois, à l'appelant qui l'affiche : Clora ne peut
+ * pas le montrer de nouveau, seulement en tirer un autre, qui remplace le
+ * précédent.
+ *
+ * @returns {Promise<string>} le code, par groupes de quatre
+ */
+async function nouveauCodeDeRecuperation(comptesDb, userId) {
+  const brut = genererCodeRecuperation();
+  await comptesDb.run(
+    "UPDATE users SET recuperation_empreinte = ?, recuperation_le = datetime('now') WHERE id = ?",
+    [await bcrypt.hash(brut, 12), userId]
+  );
+  return formater(brut);
+}
+
+/**
+ * Empreinte témoin : comparer le code à quelque chose, même quand le compte
+ * n'existe pas ou n'a pas de code, pour que la durée de la réponse ne le
+ * révèle pas.
+ */
+let empreinteTemoin = null;
+async function temoin() {
+  if (!empreinteTemoin) empreinteTemoin = await bcrypt.hash('code-de-recuperation-inexistant', 12);
+  return empreinteTemoin;
+}
 
 /**
  * Consigne un événement de compte au journal de chaque dossier du compte.
@@ -149,7 +179,10 @@ module.exports = function authRoutes(getDb) {
     return res.json({
       success: true,
       message: 'Compte configuré avec succès.',
-      entreprise: { id: ouvert.id, nom: ouvert.nom }
+      entreprise: { id: ouvert.id, nom: ouvert.nom },
+      // Affiché une fois, avant d'entrer dans l'application : c'est le seul
+      // moyen de rentrer si le mot de passe est oublié.
+      code_recuperation: await nouveauCodeDeRecuperation(db, result.lastID)
     });
   }));
 
@@ -234,13 +267,16 @@ module.exports = function authRoutes(getDb) {
     const db = getDb();
     const dossiers = await listerPourUtilisateur(db, req.user.sub);
     const ouvert = dossiers.find((d) => d.id === req.user.entreprise) || null;
-    const compte = await db.get('SELECT langue, visite_vue FROM users WHERE id = ?', [req.user.sub]);
+    const compte = await db.get(
+      'SELECT langue, visite_vue, recuperation_le FROM users WHERE id = ?', [req.user.sub]
+    );
 
     return res.json({
       authenticated: true,
       username: req.user.username,
       langue: parseLangue(compte && compte.langue),
       visite_vue: Boolean(compte && compte.visite_vue),
+      recuperation_le: (compte && compte.recuperation_le) || null,
       role: ouvert ? ouvert.role : null,
       entreprises: dossiers.map(({ id, nom, role }) => ({ id, nom, role })),
       ouvert: ouvert ? { id: ouvert.id, nom: ouvert.nom, role: ouvert.role } : null
@@ -269,6 +305,71 @@ module.exports = function authRoutes(getDb) {
   router.put('/visite', authMiddleware, asyncRoute(async (req, res) => {
     await getDb().run('UPDATE users SET visite_vue = 1 WHERE id = ?', [req.user.sub]);
     res.json({ visite_vue: true });
+  }));
+
+  /**
+   * Crée ou remplace le code de récupération du compte connecté. Le mot de
+   * passe actuel est demandé : une session laissée ouverte ne doit pas suffire
+   * à s'approprier l'accès de secours.
+   */
+  router.post('/recuperation', authMiddleware, asyncRoute(async (req, res) => {
+    const db = getDb();
+    const user = await db.get('SELECT id, password, recuperation_empreinte FROM users WHERE id = ?', [req.user.sub]);
+    const motDePasse = req.body && req.body.motDePasse;
+    const valide = user && typeof motDePasse === 'string' && await bcrypt.compare(motDePasse, user.password);
+    if (!valide) throw httpError(401, 'Mot de passe actuel incorrect.');
+
+    const code = await nouveauCodeDeRecuperation(db, user.id);
+    await journaliserPourLeCompte(db, req, user.id, {
+      action: ACTIONS.CODE_RECUPERATION,
+      entite: 'utilisateur',
+      entite_id: user.id,
+      details: { remplacement: Boolean(user.recuperation_empreinte) }
+    });
+    res.json({ code_recuperation: code });
+  }));
+
+  /**
+   * Mot de passe oublié : un nouveau mot de passe contre le code de
+   * récupération.
+   *
+   * Les tentatives sont limitées comme à la connexion, et la réponse est la
+   * même pour un compte inconnu, un compte sans code et un code erroné. Le code
+   * ne sert qu'une fois : un nouveau est aussitôt tiré et rendu.
+   */
+  router.post('/reinitialiser', loginRateLimit, asyncRoute(async (req, res) => {
+    const db = getDb();
+    const { username, code, nouveauMotDePasse } = req.body || {};
+    validateCredentials(username, nouveauMotDePasse);
+
+    const user = typeof username === 'string'
+      ? await db.get('SELECT id, username, recuperation_empreinte FROM users WHERE username = ?', [username])
+      : null;
+    const brut = normaliserCodeRecuperation(code);
+    const empreinte = (user && user.recuperation_empreinte) || await temoin();
+    const valide = await bcrypt.compare(brut || 'saisie-invalide', empreinte)
+      && Boolean(user && user.recuperation_empreinte && brut);
+    if (!valide) {
+      recordFailure(req.rateLimitKey);
+      throw httpError(401, 'Identifiant ou code de récupération invalide.');
+    }
+    recordSuccess(req.rateLimitKey);
+
+    await db.run('UPDATE users SET password = ? WHERE id = ?', [await bcrypt.hash(nouveauMotDePasse, 12), user.id]);
+    const nouveau = await nouveauCodeDeRecuperation(db, user.id);
+    await journaliserPourLeCompte(db, { user: { username: user.username } }, user.id, {
+      action: ACTIONS.MOT_DE_PASSE_REINITIALISATION,
+      entite: 'utilisateur',
+      entite_id: user.id,
+      details: { username: user.username }
+    });
+
+    res.clearCookie('token');
+    res.json({
+      success: true,
+      message: 'Mot de passe réinitialisé. Notez votre nouveau code de récupération : l\'ancien ne servira plus.',
+      code_recuperation: nouveau
+    });
   }));
 
   router.post('/logout', (req, res) => {
