@@ -1,7 +1,7 @@
 # Clora : état du projet
 
-*Ce qui a été fait, ce qui reste à faire. Arrêté au 7 novembre 2026,
-version 1.9.1.*
+*Ce qui a été fait, ce qui reste à faire. Arrêté au 8 novembre 2026,
+version 1.10.0.*
 
 ---
 
@@ -9,11 +9,11 @@ version 1.9.1.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.9.1, le 7 novembre 2026 |
-| **Publications** | 16 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 74 commits, 34 demandes de fusion, toutes fusionnées |
+| **Version publiée** | 1.10.0, le 8 novembre 2026 |
+| **Publications** | 17 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 76 commits, 36 demandes de fusion, toutes fusionnées |
 | **Tests** | 430, tous au vert, exécutés à chaque fusion |
-| **Durée** | 15 semaines, du 24 juillet au 7 novembre 2026 |
+| **Durée** | 15 semaines, du 24 juillet au 8 novembre 2026 |
 | **Langues** | Interface en français ou en anglais, au choix de chaque utilisateur |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
 | **Ventes** | Aucune : les tests utilisateurs sont en cours |
@@ -402,7 +402,7 @@ bien qu'on lisait la page à travers chaque fenêtre de dialogue ; et la
 confirmation de restauration affichait « a.m.. » en anglais.
 
 ### Phase 17 : des sauvegardes chiffrées et un code de récupération
-*7 novembre · pas encore publié*
+*7 et 8 novembre · publié en 1.10.0 · demande de fusion #36*
 
 Les deux risques les plus concrets relevés en faisant le point sur la sécurité :
 une comptabilité qui part en clair dans le nuage, et un administrateur seul qui
@@ -539,8 +539,8 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.9.1 en offre l'occasion sur toute installation restée en
-  1.9.0.
+  annoncer. La 1.10.0 en offre l'occasion sur toute installation restée en
+  1.9.1.
 - **Le redémarrage après restauration d'une sauvegarde.** Vérifié de bout en
   bout dans l'application de bureau sous Linux depuis la 1.9.1 : la restauration
   s'applique et l'application redémarre seule. Reste à le voir sous Windows.
@@ -615,10 +615,15 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.9.1 par les testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.10.0 par les testeurs et écouter ce qu'ils disent.**
 
-La 1.9.1 rend la restauration sûre : jusque-là, il fallait leur demander de ne
-pas s'en servir. Un essai de restauration sur un vrai Windows, avec des données
+La 1.10.0 leur propose de protéger leurs sauvegardes par une clé et remet à
+chaque administrateur un code de récupération : il faut s'assurer qu'ils
+impriment bien la feuille de secours, et qu'elle se comprend sans aide. Elle
+corrige aussi les fenêtres des dépenses, déplacées par la 1.9.1.
+
+La 1.9.1 a rendu la restauration sûre : jusque-là, il fallait leur demander de
+ne pas s'en servir. Un essai de restauration sur un vrai Windows, avec des données
 de test, reste à faire par l'un d'eux (voir la section 5).
 
 La 1.9.0 répondait à leur dernière question, l'absence d'accueil au lancement.
@@ -631,9 +636,10 @@ profil du dossier, et le sérieux du design. Le reste (la clé de licence, le
 certificat, les améliorations du rapprochement bancaire) attend la suite de ce
 retour, et devrait être priorisé par lui.
 
-**Côté développement, la suite est décidée** : chiffrer les sauvegardes avec une
-clé générée par Clora et imprimée, et ajouter un code de récupération du mot de
-passe administrateur, ensemble en 1.10.0.
+**Côté développement**, les deux protections décidées après le point sécurité
+sont livrées en 1.10.0. Restent, dans l'ordre : le certificat de signature, puis
+les mises à jour automatiques qu'il rendra possibles ; la relecture juridique et
+comptable ; la clé de licence à la fin des tests.
 
 **Tout ce qui avait été relevé en corrigeant le design est fait** : les polices
 embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la
@@ -655,4 +661,4 @@ chez lui.
 ---
 
 *Document maintenu par Safehill Technologies. Dernière mise à jour :
-7 novembre 2026.*
+8 novembre 2026.*
