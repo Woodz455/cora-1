@@ -499,6 +499,21 @@ refusé sans que rien ne soit modifié. L'application redémarre d'elle-même po
 appliquer la restauration, et la base remplacée est conservée à côté : une
 restauration sur le mauvais fichier reste réversible.
 
+**Des sauvegardes chiffrées.** D'un clic dans Paramètres, Clora tire une clé et
+l'imprime sur une feuille de secours, qui dit aussi comment s'en servir. Les
+copies envoyées dans le nuage ne se lisent plus sans cette feuille, même si le
+compte OneDrive est piraté. Sur l'ordinateur habituel, rien ne change : la clé y
+est gardée dans le coffre de Windows, et les sauvegardes comme les restaurations
+ne la demandent jamais. Elle n'est demandée que pour reprendre la comptabilité
+sur un autre ordinateur. Si une sauvegarde échoue, ou si la clé n'est plus
+lisible, le tableau de bord le dit : une comptabilité ne reste jamais sans
+copie en silence.
+
+**Un mot de passe oublié ne ferme plus la porte.** À la création du compte,
+Clora remet un code de récupération à imprimer. À l'écran de connexion,
+« Mot de passe oublié ? » l'échange contre un nouveau mot de passe ; le code ne
+sert qu'une fois, et un nouveau est remis aussitôt.
+
 ---
 
 ## 9. Qui peut faire quoi

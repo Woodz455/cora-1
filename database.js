@@ -402,6 +402,12 @@ async function runMigrations(db) {
   // est attribué à la fin de `initDb`, une fois la ligne de paramètres semée.
   await addColumn(db, 'settings', 'dossier_uid', 'TEXT');
 
+  // Clé des sauvegardes, protégée par le coffre du système comme les autres
+  // secrets ; son empreinte, en clair, dit qu'une protection est en vigueur
+  // même quand le coffre de ce poste ne sait plus rendre la clé.
+  await addColumn(db, 'settings', 'sauvegarde_cle', 'TEXT');
+  await addColumn(db, 'settings', 'sauvegarde_cle_empreinte', 'TEXT');
+
   await figerMontants(db);
 }
 

@@ -18,7 +18,7 @@ module.exports = function demarrageRoutes(getDb, getComptesDb) {
   router.use(adminOnly());
 
   router.get('/', asyncRoute(async (req, res) => {
-    res.json(await etatDemarrage(getDb(), getComptesDb(), req.entreprise.id));
+    res.json(await etatDemarrage(getDb(), getComptesDb(), req.entreprise.id, req.user.sub));
   }));
 
   /**

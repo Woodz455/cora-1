@@ -87,18 +87,32 @@ const ETAPES = {
     vue: 'parametres',
     ancre: 'section-sauvegardes',
     fait: (c) => Boolean(c.settings.sauvegarde_dossier)
+  },
+  protection: {
+    titre: 'Protéger vos sauvegardes par une clé',
+    detail: 'Chiffrées, les copies envoyées dans le nuage ne se lisent pas sans la clé que vous imprimez.',
+    vue: 'parametres',
+    ancre: 'section-sauvegardes',
+    fait: (c) => Boolean(c.settings.sauvegarde_cle_empreinte)
+  },
+  recuperation: {
+    titre: 'Noter votre code de récupération',
+    detail: 'Il vous rend l\'accès à Clora si vous oubliez votre mot de passe.',
+    vue: 'parametres',
+    ancre: 'section-identifiants',
+    fait: (c) => c.recuperation
   }
 };
 
 /** L'ordre des premiers pas, par profil. Tous mènent à la sauvegarde. */
 const PARCOURS = {
-  autonome: ['coordonnees', 'client', 'facture', 'kilometrage', 'sauvegarde'],
-  startup: ['coordonnees', 'client', 'abonnement', 'paiement_en_ligne', 'sauvegarde'],
-  pme: ['coordonnees', 'comptes', 'client', 'facture', 'banque', 'sauvegarde']
+  autonome: ['coordonnees', 'client', 'facture', 'kilometrage', 'sauvegarde', 'protection', 'recuperation'],
+  startup: ['coordonnees', 'client', 'abonnement', 'paiement_en_ligne', 'sauvegarde', 'protection', 'recuperation'],
+  pme: ['coordonnees', 'comptes', 'client', 'facture', 'banque', 'sauvegarde', 'protection', 'recuperation']
 };
 
 /** Dossier antérieur au choix d'un profil : l'essentiel, sans présumer du métier. */
-const PARCOURS_SANS_PROFIL = ['coordonnees', 'client', 'facture', 'sauvegarde'];
+const PARCOURS_SANS_PROFIL = ['coordonnees', 'client', 'facture', 'sauvegarde', 'protection', 'recuperation'];
 
 function profilDe(valeur) {
   return PROFILS.find((p) => p.valeur === valeur) || null;
@@ -124,12 +138,17 @@ function parseProfil(valeur) {
  * @param {import('sqlite').Database} db base du dossier
  * @param {import('sqlite').Database} comptesDb registre des comptes, où vivent les accès
  * @param {number} entrepriseId
+ * @param {?number} [userId] compte connecté : le code de récupération est le sien
  */
-async function etatDemarrage(db, comptesDb, entrepriseId) {
+async function etatDemarrage(db, comptesDb, entrepriseId, userId = null) {
   const settings = await db.get(
-    `SELECT profil, demarrage_masque, entreprise_adresse, sauvegarde_dossier, stripe_cle_chiffree
+    `SELECT profil, demarrage_masque, entreprise_adresse, sauvegarde_dossier, stripe_cle_chiffree,
+            sauvegarde_cle_empreinte
      FROM settings LIMIT 1`
   ) || {};
+  const compte = userId
+    ? await comptesDb.get('SELECT recuperation_empreinte FROM users WHERE id = ?', [userId])
+    : null;
 
   const compter = async (table) => (await db.get(`SELECT COUNT(*) AS n FROM ${table}`)).n;
   const [clients, factures, abonnements, transactions, acces, taux] = await Promise.all([
@@ -144,7 +163,8 @@ async function etatDemarrage(db, comptesDb, entrepriseId) {
   const contexte = {
     settings,
     nb: { clients, factures, abonnements, transactions, comptes: acces.n },
-    tauxKilometrique: Boolean(taux)
+    tauxKilometrique: Boolean(taux),
+    recuperation: Boolean(compte && compte.recuperation_empreinte)
   };
 
   const profil = profilDe(settings.profil);

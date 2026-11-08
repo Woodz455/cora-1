@@ -42,7 +42,8 @@ const LIBELLES_CHAMPS = {
   stripe_actif: 'stripe actif',
   conditions_paiement: 'conditions paiement', fichier: 'fichier', inseres: 'inseres',
   ignores: 'ignores', rejetes: 'rejetes', annee: 'annee', taux_1: 'taux 1', taux_2: 'taux 2',
-  seuil_km: 'seuil km', facture_id: 'facture id', devise: 'devise', mode: 'mode', session: 'session'
+  seuil_km: 'seuil km', facture_id: 'facture id', devise: 'devise', mode: 'mode', session: 'session',
+  empreinte: 'Empreinte de la clé', remplacement: 'Remplacement', rechiffrees: 'Copies chiffrées'
 };
 
 /** Rôles et auteur automatique, enregistrés en français. */

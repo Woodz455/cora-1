@@ -4,6 +4,7 @@ import ChoixProfil from './ChoixProfil';
 import SelecteurLangue from './SelecteurLangue';
 import { useLangue } from '../i18n.js';
 import Logotype from './Logotype';
+import FeuilleDeSecours from './FeuilleDeSecours';
 
 function Setup({ onSetupComplete }) {
   const [username, setUsername] = useState('');
@@ -19,6 +20,10 @@ function Setup({ onSetupComplete }) {
   // La longueur minimale est dictée par le serveur, pour que les deux ne
   // puissent pas diverger.
   const [minLength, setMinLength] = useState(8);
+  // Code de récupération remis à la création du compte : il s'affiche avant
+  // d'entrer dans l'application, et on ne passe qu'après avoir dit qu'il est noté.
+  const [codeRecuperation, setCodeRecuperation] = useState(null);
+  const [codeNote, setCodeNote] = useState(false);
   const { t, langue } = useLangue();
 
   useEffect(() => {
@@ -47,7 +52,20 @@ function Setup({ onSetupComplete }) {
     setLoading(true);
     try {
       // La langue de cet écran devient celle du compte administrateur.
-      await api.post('/api/auth/setup', { username, password, entreprise, profil, langue });
+      const reponse = await api.post('/api/auth/setup', { username, password, entreprise, profil, langue });
+      if (reponse.code_recuperation) {
+        setCodeRecuperation(reponse.code_recuperation);
+        return;
+      }
+      await entrer();
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  const entrer = async () => {
+    try {
       const session = await api.get('/api/auth/check');
       // La configuration crée aussi le premier dossier : le transmettre évite
       // de faire choisir entre une seule possibilité juste après l'inscription.
@@ -83,6 +101,23 @@ function Setup({ onSetupComplete }) {
         </p>
 
         {error && <p className="alert alert-error" role="alert">{error}</p>}
+
+        {codeRecuperation && (
+          <FeuilleDeSecours
+            nature="recuperation"
+            code={codeRecuperation}
+            sujet={username}
+            titre={t('Votre code de récupération')}
+          >
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '20px', cursor: 'pointer', textAlign: 'left' }}>
+              <input type="checkbox" checked={codeNote} onChange={(e) => setCodeNote(e.target.checked)} style={{ width: '18px', height: '18px' }} />
+              {t("J'ai imprimé ou noté ce code en lieu sûr")}
+            </label>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
+              <button type="button" className="btn-primary" disabled={!codeNote} onClick={entrer}>{t('Continuer')}</button>
+            </div>
+          </FeuilleDeSecours>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group" style={{ textAlign: 'left' }}>

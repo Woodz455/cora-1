@@ -601,6 +601,43 @@ nouveau, pour que deux dossiers ne partagent jamais une série. La base remplac�
 est conservée à côté sous `database.sqlite.avant-restauration-<horodatage>`,
 avec son journal WAL : une restauration sur le mauvais fichier reste réversible.
 
+**Sauvegardes chiffrées** (`chiffrementSauvegardes.js`, `codesSecours.js`). Dans
+Paramètres, « Protéger les sauvegardes » tire une **clé de 24 caractères** (base
+32 de Crockford, 120 bits), affichée sur une feuille de secours à imprimer, puis
+recopiée une fois pour prouver qu'elle est notée. Les copies deviennent des
+fichiers `.clora` : AES-256-GCM, clé de fichier dérivée par HKDF-SHA256 avec un
+sel propre au fichier, en-tête authentifié qui porte l'empreinte de la clé. Le
+chiffrement a lieu à côté de la base : **aucune donnée en clair n'atteint le
+dossier de destination**. À l'activation, les copies en clair de la série sont
+chiffrées à leur tour ; remplacer la clé rechiffre les copies existantes.
+
+La clé est gardée dans la base par le coffre du système (`sauvegarde_cle`, via
+`secretStorage.js`), avec son empreinte en clair (`sauvegarde_cle_empreinte`) :
+les sauvegardes automatiques et les restaurations sur le même poste ne la
+demandent jamais. Sur un autre ordinateur, la restauration la demande (réponse
+409), puis la reprend pour la suite. Si le coffre ne sait plus la rendre, **aucune
+copie n'est faite en clair à la place** : le tableau de bord le signale
+(`GET /api/sauvegardes/etat`), comme une dernière copie de plus de trois jours,
+jusqu'à ce qu'on ressaisisse la clé. Afficher la clé demande le mot de passe.
+
+`node scripts/dechiffrer-sauvegarde.js <fichier.clora> <clé>` rend la base sans
+Clora : la comptabilité reste récupérable même si le logiciel ne démarre plus.
+
+## Code de récupération
+
+Un administrateur seul qui oubliait son mot de passe n'avait aucun moyen de
+rentrer. À la création du compte, Clora remet un **code de récupération de 20
+caractères**, affiché sur une feuille de secours avant d'entrer dans
+l'application ; seule son empreinte bcrypt est gardée (`users.recuperation_empreinte`).
+À la connexion, « Mot de passe oublié ? » (`POST /api/auth/reinitialiser`)
+échange le code contre un nouveau mot de passe. Le code ne sert qu'une fois : un
+nouveau est aussitôt remis. Les essais sont limités comme à la connexion, et la
+réponse est la même pour un compte inconnu, sans code ou un code erroné. Un
+administrateur existant crée ou remplace son code dans Paramètres, mot de passe
+à l'appui (`POST /api/auth/recuperation`), et une étape des premiers pas le lui
+rappelle. Les autres rôles n'en ont pas besoin : un administrateur peut leur
+donner un nouveau mot de passe.
+
 ## Mises à jour
 
 Au premier écran suivant la connexion, et une fois par jour au plus, Clora

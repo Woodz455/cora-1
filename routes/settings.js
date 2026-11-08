@@ -32,7 +32,11 @@ function parseConditionsDefaut(valeur) {
 const MAX_LOGO_CHARS = 3 * 1024 * 1024;
 
 /** Champs jamais exposés par l'API, quel que soit le rôle. */
-const CHAMPS_INTERNES = ['admin_username', 'admin_password', 'smtp_pass_chiffre', 'stripe_cle_chiffree'];
+// La clé des sauvegardes ne quitte le serveur que par sa route dédiée, sur
+// présentation du mot de passe : elle n'a rien à faire dans les paramètres.
+const CHAMPS_INTERNES = [
+  'admin_username', 'admin_password', 'smtp_pass_chiffre', 'stripe_cle_chiffree', 'sauvegarde_cle'
+];
 
 /**
  * Retire les champs internes et remplace le mot de passe d'envoi par deux

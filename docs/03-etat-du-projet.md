@@ -12,7 +12,7 @@ version 1.9.1.*
 | **Version publiée** | 1.9.1, le 7 novembre 2026 |
 | **Publications** | 16 versions livrées depuis le 24 juillet 2026 |
 | **Développement** | 74 commits, 34 demandes de fusion, toutes fusionnées |
-| **Tests** | 412, tous au vert, exécutés à chaque fusion |
+| **Tests** | 430, tous au vert, exécutés à chaque fusion |
 | **Durée** | 15 semaines, du 24 juillet au 7 novembre 2026 |
 | **Langues** | Interface en français ou en anglais, au choix de chaque utilisateur |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
@@ -400,6 +400,34 @@ Deux défauts corrigés en passant, antérieurs à cette version : la constructi
 de l'interface supprimait la propriété de flou des fenêtres et des panneaux, si
 bien qu'on lisait la page à travers chaque fenêtre de dialogue ; et la
 confirmation de restauration affichait « a.m.. » en anglais.
+
+### Phase 17 : des sauvegardes chiffrées et un code de récupération
+*7 novembre · pas encore publié*
+
+Les deux risques les plus concrets relevés en faisant le point sur la sécurité :
+une comptabilité qui part en clair dans le nuage, et un administrateur seul qui
+oublie son mot de passe.
+
+- **Sauvegardes chiffrées**, au choix de l'entreprise : une clé tirée par Clora
+  et imprimée sur une feuille de secours, comme la clé de récupération de
+  BitLocker. Rien en clair n'atteint le dossier synchronisé, les copies déjà
+  faites sont chiffrées à l'activation, et la clé n'est demandée que pour
+  reprendre sa comptabilité sur un autre ordinateur. Un outil de dépannage
+  déchiffre une copie sans Clora.
+- **Une alerte au tableau de bord** quand les sauvegardes s'arrêtent : clé
+  illisible, dossier synchronisé hors ligne, plus de trois jours sans copie.
+- **Un code de récupération**, remis à la création du compte et rappelé aux
+  administrateurs existants par les premiers pas. « Mot de passe oublié ? » à la
+  connexion l'échange contre un nouveau mot de passe ; il ne sert qu'une fois.
+
+Le français existant n'a pas changé ; 18 tests de plus.
+
+Un défaut corrigé en passant, introduit par la 1.9.1 : en rétablissant le flou
+des panneaux, la 1.9.1 avait fait d'eux le cadre des fenêtres ouvertes depuis
+l'intérieur. Les deux fenêtres des dépenses (« Ajouter une dépense »,
+« Inscrire un déplacement ») restaient enfermées dans le panneau de la liste au
+lieu de couvrir l'écran. Tant qu'une fenêtre est ouverte, les panneaux derrière
+elle perdent désormais leur flou, que le voile de la fenêtre remplace.
 
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*

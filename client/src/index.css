@@ -692,6 +692,16 @@ textarea:focus-visible {
   animation: fadeIn 0.2s forwards ease-out;
 }
 
+/* Un parent flouté devient le cadre de tout ce qu'il contient : une fenêtre
+   ouverte depuis un panneau (une dépense, un article du catalogue) y restait
+   enfermée au lieu de couvrir l'écran. Tant qu'une fenêtre est ouverte, les
+   panneaux derrière elle perdent donc leur flou, que le voile de la fenêtre
+   remplace de toute façon. */
+body:has(.modal-overlay) :is(.glass-panel, .glass-card):not(.modal-overlay *) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 .modal-content {
   width: 100%;
   max-width: 450px;
@@ -952,3 +962,74 @@ textarea:focus-visible {
 .logotype-sombre { display: none !important; }
 [data-theme='dark'] .logotype-clair { display: none !important; }
 [data-theme='dark'] .logotype-sombre { display: inline !important; }
+
+/* Code de secours à l'écran : grand, à chasse fixe, pour se recopier sans
+   confondre deux caractères. */
+.code-secours {
+  margin: 16px 0;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: var(--hover-subtle);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--text-main);
+  user-select: all;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
+/* La feuille de secours n'existe qu'à l'impression, et s'imprime seule. */
+.feuille-imprimable {
+  display: none;
+}
+
+@media print {
+  /* La fenêtre est dessinée dans `body`, hors de #root : on la masque aussi. */
+  body.impression-feuille #root,
+  body.impression-feuille .modal-overlay {
+    display: none !important;
+  }
+  body.impression-feuille .feuille-imprimable {
+    display: block !important;
+    color: #000;
+    background: #fff;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+  .feuille-imprimable h1 {
+    font-size: 20pt;
+    margin: 0 0 8px 0;
+  }
+  .feuille-imprimable h2 {
+    font-size: 13pt;
+    margin: 24px 0 8px 0;
+  }
+  .feuille-imprimable .feuille-code {
+    margin: 24px 0;
+    padding: 16px;
+    border: 2px solid #000;
+    font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+    font-size: 20pt;
+    letter-spacing: 0.1em;
+    text-align: center;
+  }
+}
+
+/* Un lien d'action discret, sous un formulaire : « Mot de passe oublié ? ». */
+.lien-discret {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
