@@ -840,7 +840,7 @@ que chaque poste croirait ne pas avoir.
 
 Format NSIS, **un seul clic**, sans demande d'autorisation administrateur
 (installation par utilisateur), icône sur le bureau et dans le menu Démarrer.
-Environ 104 Mo.
+Environ 113 Mo.
 
 `deleteAppDataOnUninstall` est à **faux** : désinstaller Clora ne doit pas
 effacer la comptabilité de l'entreprise.
@@ -888,7 +888,7 @@ Trois corrections peuvent être demandées explicitement :
 | **Volume du rapprochement** | Plafond de 5 000 lignes ; le relevé transite en JSON sous une limite de corps de 1 Mo |
 | **Retraits bancaires** | Ignorés : frais et sorties sont hors périmètre |
 | **Windows seul** | Aucune cible macOS ou Linux |
-| **Versions majeures en retard** | Electron 42 n'est plus parmi les trois versions majeures maintenues ; `nodemailer` 8 porte un avis de sécurité que seule la version 10 corrige. Les mises à jour sans rupture sont faites |
+| **Electron en retard d'une version majeure** | Electron 42 n'est plus parmi les trois versions majeures maintenues. La 45 passe sous Linux la fermeture, la restauration et le parcours des écrans, identiques au pixel près, mais elle n'a été ni fabriquée ni installée sous Windows. Elle déclare obsolètes les fonctions synchrones de `safeStorage` dont dépend le coffre des secrets (`secretStorage.js`), que la 46 retirera : il faut passer à leurs versions asynchrones, et vérifier sur un vrai poste qu'une installation existante relit ses secrets après la mise à jour. La demande de fusion #46 de Dependabot reste ouverte pour ce chantier. Toutes les autres dépendances sont à jour, et plus aucun avis de sécurité ne porte sur ce qui est livré |
 | **Facture modifiable après envoi** | Tant qu'elle n'est pas payée, une facture déjà envoyée au client se modifie, sans trace de l'envoi ni du changement |
 | **Journal d'audit incomplet** | Modifier ou supprimer une dépense, rapprocher un dépôt, modifier un abonnement : rien n'est consigné |
 | **Aucune date de verrouillage** | Une dépense d'une période déjà déclarée se modifie ou se supprime librement |
