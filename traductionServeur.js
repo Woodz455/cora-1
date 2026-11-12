@@ -214,6 +214,7 @@ const EXACTS = new Map([
   ['Cette clé Stripe n\'est pas reconnue. Elle commence par « rk_live_ », « rk_test_ », « sk_live_ » ou « sk_test_ ».',
     'This Stripe key is not recognized. It starts with “rk_live_”, “rk_test_”, “sk_live_” or “sk_test_”.'],
   ["Renseignez votre clé Stripe avant d'activer le paiement en ligne.", 'Enter your Stripe key before turning on online payment.'],
+  ['Requête refusée : hôte inconnu.', 'Request refused: unknown host.'],
   ['Le préfixe des factures doit comporter de 2 à 6 lettres ou chiffres.', 'The invoice prefix must be 2 to 6 letters or digits.'],
   ['Les préfixes DEV et NC sont réservés aux devis et aux notes de crédit.', 'The prefixes DEV and NC are reserved for quotes and credit notes.'],
   ['Paramètres mis à jour.', 'Settings updated.'],

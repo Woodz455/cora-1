@@ -5,7 +5,7 @@
  * l'interface compilée en production.
  */
 
-const { app, BrowserWindow, dialog, nativeTheme, shell } = require('electron');
+const { app, BrowserWindow, dialog, nativeTheme, session, shell } = require('electron');
 const path = require('path');
 const { startServer } = require('./server.js');
 const { sauvegardeSiNecessaire } = require('./backupService.js');
@@ -35,6 +35,21 @@ const cheminImage = (nom) => (app.isPackaged
   : path.join(__dirname, 'image', nom));
 
 let mainWindow = null;
+
+/**
+ * Origines que la fenêtre a le droit d'afficher : le serveur local, et Vite en
+ * développement. Renseignées au démarrage, quand le port est connu.
+ */
+const originesInternes = new Set();
+
+/** Vrai pour une adresse servie par l'application elle-même. */
+function estInterne(url) {
+  try {
+    return originesInternes.has(new URL(url).origin);
+  } catch (e) {
+    return false;
+  }
+}
 let serverInstance = null;
 let ecranDemarrage = null;
 let ecranAfficheLe = null;
@@ -152,12 +167,24 @@ async function createWindow() {
     return { action: 'deny' };
   });
 
+  // La fenêtre ne quitte jamais l'application. Un lien ordinaire vers un autre
+  // site y aurait chargé ce site, avec la session de Clora à portée : il
+  // s'ouvre dans le navigateur du système, comme les fenêtres ci-dessus.
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (estInterne(url)) return;
+    event.preventDefault();
+    if (/^https?:\/\//.test(url)) shell.openExternal(url);
+  });
+
   try {
     // En développement le backend reste sur 3000 pour que le proxy de Vite le
     // trouve ; en production le système attribue un port libre.
     serverInstance = await startServer(isDev ? 3000 : 0);
     const backendPort = serverInstance.port;
     console.log(`[Electron] Backend démarré sur le port ${backendPort}`);
+
+    originesInternes.add(`http://127.0.0.1:${backendPort}`);
+    if (isDev) originesInternes.add(`http://localhost:${VITE_PORT}`);
 
     if (isDev) {
       await mainWindow.loadURL(`http://localhost:${VITE_PORT}`);
@@ -198,6 +225,10 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(() => {
+    // Clora n'a besoin ni de la caméra, ni du micro, ni de la position, ni des
+    // notifications : toute demande de permission est refusée d'office.
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, repondre) => repondre(false));
+
     ouvrirEcranDemarrage();
     createWindow();
 

@@ -60,7 +60,59 @@ function securityHeaders(req, res, next) {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Content-Security-Policy', POLITIQUE_DE_CONTENU);
   next();
+}
+
+/**
+ * Politique de sécurité de contenu.
+ *
+ * L'interface ne charge rien d'ailleurs que de son propre serveur : le dire au
+ * navigateur fait qu'un script injecté, par exemple dans un nom de client venu
+ * d'un tableur importé, ne s'exécuterait pas et ne pourrait rien envoyer dehors.
+ * React échappe déjà ce qu'il affiche ; ceci est le second verrou.
+ *
+ * Les styles en ligne sont permis : l'interface en pose partout. Les images
+ * `data:` et `blob:` servent au logo de l'entreprise et à la fabrication des
+ * PDF.
+ */
+const POLITIQUE_DE_CONTENU = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'"
+].join('; ');
+
+/** Noms sous lesquels le poste s'adresse à lui-même. */
+const HOTES_LOCAUX = new Set(['127.0.0.1', 'localhost', '[::1]']);
+
+/**
+ * Refuse les requêtes adressées à un autre nom que celui du poste.
+ *
+ * Le serveur n'écoute que sur la boucle locale, mais un site ouvert dans le
+ * navigateur de l'utilisateur peut faire pointer son propre nom de domaine vers
+ * 127.0.0.1 (« DNS rebinding ») et parler alors à Clora comme s'il en était
+ * l'interface. Une telle requête arrive avec le nom du site dans l'en-tête
+ * `Host` : la refuser ferme cette porte.
+ *
+ * Qui a choisi d'exposer le serveur (`HOST`) sait ce qu'il fait : son hôte est
+ * accepté, et une écoute sur toutes les interfaces lève le contrôle.
+ */
+function hoteLocalSeulement(req, res, next) {
+  if (HOST === '0.0.0.0' || HOST === '::') return next();
+
+  const entete = String(req.headers.host || '').toLowerCase();
+  // Retire le port, sans couper une adresse IPv6 entre crochets.
+  const nom = entete.startsWith('[') ? entete.slice(0, entete.indexOf(']') + 1) : entete.split(':')[0];
+  if (HOTES_LOCAUX.has(nom) || nom === String(HOST).toLowerCase()) return next();
+
+  return res.status(403).json({ error: 'Requête refusée : hôte inconnu.' });
 }
 
 /**
@@ -97,6 +149,7 @@ function createApp(db, options = {}) {
   app.disable('x-powered-by');
 
   app.use(securityHeaders);
+  app.use(hoteLocalSeulement);
 
   // Avant toute route : les messages d'erreur et de confirmation partent dans
   // la langue de l'utilisateur, y compris ceux de la connexion.
