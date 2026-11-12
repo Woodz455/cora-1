@@ -348,6 +348,9 @@ async function runMigrations(db) {
   // changement de terme ne rétroagisse pas sur des documents déjà remis.
   await addColumn(db, 'clients', 'conditions_paiement', "TEXT DEFAULT 'net30'");
   await addColumn(db, 'factures', 'conditions_paiement', "TEXT DEFAULT 'net30'");
+  // Premier envoi de la facture au client par courriel. Sert à prévenir avant
+  // de modifier une facture que le client a déjà en main.
+  await addColumn(db, 'factures', 'envoyee_le', 'TEXT');
 
   // Sauvegardes automatiques : actives par défaut, contrairement aux relances.
   // Une copie de sécurité ne part vers personne et ne coûte rien à l'utilisateur ;

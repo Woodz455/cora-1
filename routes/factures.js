@@ -14,7 +14,7 @@ const {
   addPaiement, annulerPaiement, createFacture, updateFacture, cancelFacture, deleteFacture
 } = require('../invoiceService.js');
 const { anyRole, adminOnly, adminOrAccountant } = require('../authMiddleware.js');
-const { journaliser, ACTIONS } = require('../auditService.js');
+const { journaliser, ecart, ACTIONS } = require('../auditService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { aujourdhui } = require('../dates.js');
 const {
@@ -23,6 +23,11 @@ const {
 } = require('../validators.js');
 
 /** Extrait un identifiant de facture valide, ou lève une 400. */
+/** Champs d'une facture dont un changement est consigné au journal. */
+const CHAMPS_FACTURE_SUIVIS = [
+  'client_id', 'date_echeance', 'devise', 'sous_total', 'montant_taxe_1', 'montant_taxe_2', 'montant_total'
+];
+
 function requireId(req) {
   const id = parseId(req.params.id);
   if (!id) throw httpError(400, 'Identifiant de facture invalide.');
@@ -93,7 +98,23 @@ module.exports = function factureRoutes(getDb) {
 
   router.put('/:id', anyRole(), asyncRoute(async (req, res) => {
     const payload = parseFacturePayload(req.body, { requireDateEmission: false });
-    const facture = await updateFacture(getDb(), requireId(req), payload, payload.lignes);
+    const id = requireId(req);
+    const avant = await getDb().get('SELECT * FROM factures WHERE id = ?', [id]);
+    const facture = await updateFacture(getDb(), id, payload, payload.lignes);
+    const apres = await getDb().get('SELECT * FROM factures WHERE id = ?', [id]);
+
+    // Une facture non payée reste modifiable, même une fois envoyée au client.
+    // Le journal garde donc l'écart, et dit si le client avait déjà reçu
+    // l'ancienne version.
+    const changements = ecart(avant, apres, CHAMPS_FACTURE_SUIVIS);
+    if (changements) {
+      await journaliser(getDb(), req, {
+        action: ACTIONS.FACTURE_MODIFICATION,
+        entite: 'facture',
+        entite_id: id,
+        details: { numero: apres.numero_facture, deja_envoyee: Boolean(avant && avant.envoyee_le), changements }
+      });
+    }
     res.json(facture);
   }));
 

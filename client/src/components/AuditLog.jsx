@@ -43,7 +43,15 @@ const LIBELLES_CHAMPS = {
   conditions_paiement: 'conditions paiement', fichier: 'fichier', inseres: 'inseres',
   ignores: 'ignores', rejetes: 'rejetes', annee: 'annee', taux_1: 'taux 1', taux_2: 'taux 2',
   seuil_km: 'seuil km', facture_id: 'facture id', devise: 'devise', mode: 'mode', session: 'session',
-  empreinte: 'Empreinte de la clé', remplacement: 'Remplacement', rechiffrees: 'Copies chiffrées'
+  empreinte: 'Empreinte de la clé', remplacement: 'Remplacement', rechiffrees: 'Copies chiffrées',
+  fournisseur: 'Fournisseur', description: 'Description', date_depense: 'Date de la dépense',
+  montant_ht: 'Montant hors taxes', tps: 'TPS', tvq: 'TVQ', montant_ttc: 'Montant avec taxes',
+  categorie: 'Catégorie', kilometres: 'Kilomètres', vehicule: 'Véhicule',
+  titre: 'Titre', cycle: 'Cycle', date_prochaine_generation: 'Prochaine facture', statut: 'Statut',
+  lignes_json: 'Lignes', depot: 'Dépôt', date_transaction: 'Date du dépôt',
+  montant_impute: 'Montant imputé', montant: 'Montant', destinataire: 'Destinataire',
+  deja_envoyee: 'Déjà envoyée au client', client_id: 'Client', date_echeance: 'Échéance',
+  sous_total: 'Sous-total', montant_taxe_1: 'Taxe 1', montant_taxe_2: 'Taxe 2'
 };
 
 /** Rôles et auteur automatique, enregistrés en français. */

@@ -558,6 +558,8 @@ async function getFactureDetails(db, factureId) {
     notes_credit,
     date_emission: factureRow.date_emission,
     date_echeance: factureRow.date_echeance,
+    // Premier envoi au client, ou null : l'écran prévient avant de modifier.
+    envoyee_le: factureRow.envoyee_le || null,
     client_details: client,
     lignes,
     paiements,

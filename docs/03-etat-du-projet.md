@@ -1,7 +1,7 @@
 # Clora : état du projet
 
 *Ce qui a été fait, ce qui reste à faire. Arrêté au 12 novembre 2026,
-version 1.11.0.*
+version 1.12.0.*
 
 ---
 
@@ -9,10 +9,10 @@ version 1.11.0.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.11.0, le 12 novembre 2026 |
-| **Publications** | 19 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 99 commits, 49 demandes de fusion : 48 fusionnées, une rendue sans objet |
-| **Tests** | 459, tous au vert, exécutés à chaque fusion, plus deux essais de l'application de bureau |
+| **Version publiée** | 1.12.0, le 12 novembre 2026 |
+| **Publications** | 20 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 106 commits, 51 demandes de fusion : 50 fusionnées, une rendue sans objet |
+| **Tests** | 476, tous au vert, exécutés à chaque fusion, plus deux essais de l'application de bureau |
 | **Durée** | 16 semaines, du 24 juillet au 12 novembre 2026 |
 | **Langues** | Interface en français ou en anglais, au choix de chaque utilisateur |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
@@ -494,6 +494,31 @@ aperçu et impression d'une facture, copie du jour à la fermeture) s'est dérou
 sans défaut. C'était la seule vérification que Linux ne pouvait pas donner : le
 coffre y est celui du système, non celui de Windows.
 
+### Phase 20 : traçabilité et durcissement
+*12 novembre · publié en 1.12.0 · demande de fusion #51*
+
+Le premier lot de ce que la vérification d'ensemble avait relevé sans le
+corriger.
+
+- **Le journal d'audit couvre ce qui lui échappait** : dépenses ajoutées,
+  modifiées ou supprimées, abonnements, dépôts bancaires imputés ou écartés,
+  factures modifiées. Une dépense supprimée y laisse de quoi la reconstituer.
+- **L'envoi d'une facture est daté et consigné.** Une facture non payée reste
+  modifiable après son envoi ; le formulaire prévient alors que le client a
+  l'ancienne version en main, et le journal le note.
+- **Un journal de fonctionnement**, dans le dossier de données, garde ce que
+  l'application signale, et **un diagnostic se télécharge** depuis Paramètres
+  pour le soutien, sans donnée comptable ni secret.
+- **Le serveur local refuse tout hôte étranger** et envoie une politique de
+  sécurité de contenu ; la fenêtre ne quitte plus l'application et refuse
+  toute demande de permission.
+- **Un rappel au tableau de bord** tant que les sauvegardes restent sur le même
+  disque que la comptabilité.
+
+Vérifié dans la vraie application : les onze écrans, le PDF envoyé par
+courriel, une tentative de sortie de la fenêtre et un script injecté, tous deux
+bloqués. 17 tests de plus.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
@@ -579,12 +604,6 @@ décision.
 
 | Sujet | Effort estimé | Pourquoi |
 | --- | --- | --- |
-| **Dépenses hors du journal d'audit** | Petit | Modifier ou supprimer une dépense ne laisse aucune trace, alors qu'elle touche le rapport de taxes |
-| **Facture modifiable après envoi** | Petit | Une facture envoyée reste modifiable tant qu'elle n'est pas payée, sans trace de l'envoi ni du changement. À consigner, avec un avertissement |
-| **Rapprochement et abonnements hors du journal** | Petit | Rapprocher, ignorer un dépôt, modifier un abonnement : rien n'est consigné |
-| **Fichier journal et diagnostic** | Petit | Sur un poste installé, les erreurs ne sont écrites nulle part : le soutien est aveugle |
-| **Durcissement du poste** | Petit | Refuser tout en-tête `Host` étranger, poser une politique de contenu, bloquer la navigation externe de la fenêtre |
-| **Rappel du dossier de sauvegarde** | Petit | Par défaut, les copies restent sur le même disque que les données ; seul un premier pas masquable le signale |
 | **Date de verrouillage** | Moyen | Une fois la déclaration de taxes produite, rien ne devrait plus bouger dans la période |
 | **Pièces justificatives** | Moyen | Joindre le reçu à la dépense : les autorités fiscales exigent de les conserver six ans |
 | **PDF nets** | Moyen | Les factures envoyées sont des images. Electron sait produire un vrai PDF, au texte sélectionnable, et retirerait près d'un mégaoctet du paquet |
@@ -625,8 +644,8 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.11.0 en offre l'occasion sur toute installation restée en
-  1.10.1.
+  annoncer. La 1.12.0 en offre l'occasion sur toute installation restée en
+  1.11.0.
 - **Le redémarrage après restauration d'une sauvegarde.** Vérifié de bout en
   bout dans l'application de bureau sous Linux depuis la 1.9.1 : la restauration
   s'applique et l'application redémarre seule. Reste à le voir sous Windows.
@@ -713,7 +732,15 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.11.0 par les testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.12.0 par les testeurs et écouter ce qu'ils disent.**
+
+La 1.12.0 ne change presque rien à ce qu'ils voient : un avertissement avant de
+modifier une facture déjà envoyée, un rappel au tableau de bord tant que leurs
+sauvegardes restent sur le même disque, et un bouton « Télécharger le
+diagnostic » dans Paramètres, à utiliser quand ils signalent un problème. Le
+reste se passe dans le journal d'audit et dans le durcissement du serveur
+local. Il faut leur demander si un lien, un aperçu ou une impression a cessé de
+fonctionner : c'est là que la nouvelle politique de contenu se ferait sentir.
 
 La 1.11.0 passe à Electron 45 et change la façon dont le coffre du système garde
 leurs secrets. Un poste Windows l'a essayée avec succès ; il faut leur demander
@@ -754,7 +781,9 @@ sont livrées en 1.10.0, et les défauts de la vérification d'ensemble corrigé
 jour automatiques qu'il rendra possibles ; la relecture juridique et comptable ;
 la clé de licence à la fin des tests. Ce que la vérification a relevé sans le
 corriger attend une décision, point par point (section 4). Le passage à
-Electron 45 est fait, éprouvé sous Windows et livré en 1.11.0.
+Electron 45 est fait, éprouvé sous Windows et livré en 1.11.0. Le premier lot
+relevé par la vérification d'ensemble, traçabilité et durcissement, est livré
+en 1.12.0.
 
 **Tout ce qui avait été relevé en corrigeant le design est fait** : les polices
 embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la

@@ -252,6 +252,21 @@ function Dashboard({ naviguer }) {
         </div>
       )}
 
+      {/* Les copies se font, mais à côté de la comptabilité : une panne de
+          disque ou un vol emporterait les deux. Le rappel reste tant que le
+          dossier n'a pas été déplacé ; il cède la place à une vraie alerte. */}
+      {etatSauvegardes && etatSauvegardes.sur_place && !etatSauvegardes.alerte && (
+        <div className="alert alert-warning" role="status" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+          <span>
+            {t("Vos sauvegardes restent sur cet ordinateur, à côté de votre comptabilité : une panne de disque ou un vol emporterait les deux. Choisissez un dossier synchronisé (OneDrive, Google Drive, Dropbox) ou un disque externe.")}
+          </span>
+          <button type="button" className="btn-secondary" style={{ whiteSpace: 'nowrap' }}
+            onClick={() => naviguer('parametres', { ancre: 'section-sauvegardes' })}>
+            {t('Choisir un dossier')}
+          </button>
+        </div>
+      )}
+
       {premiersPasVisibles && (
         <PremiersPas demarrage={demarrage} onMasquer={masquerPremiersPas} naviguer={naviguer} />
       )}
