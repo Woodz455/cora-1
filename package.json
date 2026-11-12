@@ -89,7 +89,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "nodemailer": "^8.0.10",
+    "nodemailer": "^10.4.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^6.0.1"
   },
