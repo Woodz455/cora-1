@@ -16,6 +16,7 @@ const {
 const { anyRole, adminOnly, adminOrAccountant } = require('../authMiddleware.js');
 const { journaliser, ACTIONS } = require('../auditService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
+const { aujourdhui } = require('../dates.js');
 const {
   parseId, parsePositiveAmount, isValidDate,
   sanitizeText, normalizeCurrency, validateLignes
@@ -187,7 +188,7 @@ module.exports = function factureRoutes(getDb) {
 
     await db.run(
       'UPDATE factures SET relances_envoyees = relances_envoyees + 1, date_derniere_relance = ? WHERE id = ?',
-      [new Date().toISOString().split('T')[0], id]
+      [aujourdhui(), id]
     );
     res.json({ success: true });
   }));

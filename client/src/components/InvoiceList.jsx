@@ -12,10 +12,10 @@ import { usePagination } from '../usePagination';
 import Pagination from './Pagination';
 import { useFeedback } from '../FeedbackContext';
 import { useLangue } from '../i18n.js';
+import { aujourdhui } from '../dates.js';
 import { STATUTS_FACTURE } from '../statuts.js';
 
 const STATUTS = ['Tous', ...STATUTS_FACTURE];
-const AUJOURDHUI = new Date().toISOString().split('T')[0];
 const PAR_PAGE = 15;
 
 /**
@@ -47,20 +47,24 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
   const [filtreStatut, setFiltreStatut] = useState(statutInitial || 'Tous');
   const [filtreEchues, setFiltreEchues] = useState(echuesSeulement);
 
+  // Relu à chaque affichage : sur une application laissée ouverte la nuit, les
+  // factures échues la veille doivent le devenir sans redémarrage.
+  const jour = aujourdhui();
+
   // Le filtrage se fait en mémoire : la liste tient largement en RAM pour une
   // PME, et cela évite un aller-retour serveur à chaque frappe.
   const facturesFiltrees = useMemo(() => {
     const terme = recherche.trim().toLowerCase();
     return factures.filter((f) => {
       if (filtreStatut !== 'Tous' && f.statut !== filtreStatut) return false;
-      if (filtreEchues && !(f.statut !== 'Annulée' && f.solde_restant > 0 && f.date_echeance < AUJOURDHUI)) {
+      if (filtreEchues && !(f.statut !== 'Annulée' && f.solde_restant > 0 && f.date_echeance < jour)) {
         return false;
       }
       if (!terme) return true;
       return f.numero_facture.toLowerCase().includes(terme)
         || (f.client || '').toLowerCase().includes(terme);
     });
-  }, [factures, recherche, filtreStatut, filtreEchues]);
+  }, [factures, recherche, filtreStatut, filtreEchues, jour]);
 
   const { setPage, affiches: facturesAffichees, pagination } = usePagination(facturesFiltrees, PAR_PAGE);
 

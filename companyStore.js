@@ -34,6 +34,7 @@ const DOSSIERS_DIRNAME = 'entreprises';
 /** Rôles reconnus, repris de `authMiddleware` pour éviter deux vérités. */
 const { ROLES } = require('./authMiddleware.js');
 const { profilDe } = require('./profils.js');
+const { PREFIXE_FACTURE_DEFAUT } = require('./sequences.js');
 
 /** Connexions ouvertes, indexées par chemin de fichier. */
 const connexions = new Map();
@@ -222,6 +223,60 @@ function versNomDeDossier(nom) {
 }
 
 /**
+ * Inscrit dans la base d'un dossier son nom et, s'il est donné, son profil avec
+ * les valeurs de départ qui vont avec.
+ *
+ * L'initialisation de la base sème déjà une ligne de paramètres. Y ajouter la
+ * nôtre laissait deux lignes, et toute lecture (`LIMIT 1`) tombait sur la
+ * première, au nom vide : le dossier s'appelait « Votre entreprise » sur ses
+ * factures jusqu'à ce qu'on retape son nom dans Paramètres.
+ */
+async function poserIdentite(db, { nom, profil = null }) {
+  const reglages = profilDe(profil);
+  const valeurs = [nom, reglages ? reglages.valeur : null, reglages ? reglages.conditions_defaut : null];
+
+  const existante = await db.get('SELECT id FROM settings ORDER BY id LIMIT 1');
+  if (existante) {
+    await db.run(
+      'UPDATE settings SET entreprise_nom = ?, profil = ?, conditions_defaut = ? WHERE id = ?',
+      [...valeurs, existante.id]
+    );
+  } else {
+    await db.run('INSERT INTO settings (entreprise_nom, profil, conditions_defaut) VALUES (?, ?, ?)', valeurs);
+  }
+
+  // Un dossier qui n'a encore rien facturé prend le préfixe neutre. S'il porte
+  // déjà des factures, sa série en cours ne change pas.
+  const dejaFacture = await db.get('SELECT id FROM factures LIMIT 1');
+  if (!dejaFacture) await db.run('UPDATE settings SET prefixe_facture = ?', [PREFIXE_FACTURE_DEFAUT]);
+}
+
+/**
+ * Donne son identité à un dossier qui n'en a pas encore.
+ *
+ * Jusqu'à la 1.10.0, le premier lancement créait une base vide à la racine des
+ * données. Quitter avant de créer son compte suffisait à la faire prendre, au
+ * lancement suivant, pour un dossier hérité : le nom d'entreprise et le profil
+ * saisis à la création du compte étaient alors ignorés, et le dossier restait
+ * « Mon entreprise ».
+ *
+ * Un dossier est tenu pour vierge quand ses paramètres ne portent ni nom ni
+ * profil. Un vrai dossier hérité, qui porte déjà un nom, garde le sien.
+ *
+ * @returns {Promise<string|null>} le nom posé, ou null si le dossier avait déjà le sien
+ */
+async function nommerSiVierge(comptesDb, entreprise, { nom, profil = null }) {
+  const db = await ouvrirEntreprise(entreprise.chemin);
+  const reglages = await db.get('SELECT entreprise_nom, profil FROM settings ORDER BY id LIMIT 1');
+  const dejaNomme = reglages && String(reglages.entreprise_nom || '').trim() !== '';
+  if (dejaNomme || (reglages && reglages.profil)) return null;
+
+  await poserIdentite(db, { nom, profil });
+  await comptesDb.run('UPDATE entreprises SET nom = ? WHERE id = ?', [nom, entreprise.id]);
+  return nom;
+}
+
+/**
  * Crée un dossier neuf : un répertoire, une base initialisée, et l'accès
  * accordé à son créateur.
  *
@@ -247,22 +302,7 @@ async function creerEntreprise(comptesDb, { nom, userId, profil = null }) {
 
   const chemin = path.join(dossier, DB_FILENAME);
   const db = await initDb(chemin);
-  const reglages = profilDe(profil);
-  const valeurs = [nom, reglages ? reglages.valeur : null, reglages ? reglages.conditions_defaut : null];
-
-  // L'initialisation de la base sème déjà une ligne de paramètres. Y ajouter
-  // la nôtre laissait deux lignes, et toute lecture (`LIMIT 1`) tombait sur la
-  // première, au nom vide : le dossier s'appelait « Votre entreprise » sur ses
-  // factures jusqu'à ce qu'on retape son nom dans Paramètres.
-  const existante = await db.get('SELECT id FROM settings ORDER BY id LIMIT 1');
-  if (existante) {
-    await db.run(
-      'UPDATE settings SET entreprise_nom = ?, profil = ?, conditions_defaut = ? WHERE id = ?',
-      [...valeurs, existante.id]
-    );
-  } else {
-    await db.run('INSERT INTO settings (entreprise_nom, profil, conditions_defaut) VALUES (?, ?, ?)', valeurs);
-  }
+  await poserIdentite(db, { nom, profil });
   connexions.set(chemin, db);
 
   const resultat = await comptesDb.run(
@@ -328,6 +368,7 @@ module.exports = {
   listerPourUtilisateur,
   roleSur,
   creerEntreprise,
+  nommerSiVierge,
   ouvrirEntreprise,
   enregistrerConnexion,
   fermerTout,

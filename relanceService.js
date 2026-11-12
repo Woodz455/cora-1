@@ -21,7 +21,7 @@ const PALIERS_PAR_DEFAUT = [7, 15, 30];
 /** Nombre maximal de courriels envoyés lors d'un même passage. */
 const MAX_ENVOIS_PAR_PASSAGE = 50;
 
-const iso = (date) => date.toISOString().split('T')[0];
+const { dateLocale: iso } = require('./dates.js');
 
 /**
  * Analyse la liste de paliers saisie dans les paramètres.

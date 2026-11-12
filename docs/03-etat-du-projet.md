@@ -1,7 +1,7 @@
 # Clora : état du projet
 
-*Ce qui a été fait, ce qui reste à faire. Arrêté au 8 novembre 2026,
-version 1.10.0.*
+*Ce qui a été fait, ce qui reste à faire. Arrêté au 12 novembre 2026,
+version 1.10.1.*
 
 ---
 
@@ -9,11 +9,11 @@ version 1.10.0.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.10.0, le 8 novembre 2026 |
-| **Publications** | 17 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 76 commits, 36 demandes de fusion, toutes fusionnées |
-| **Tests** | 430, tous au vert, exécutés à chaque fusion |
-| **Durée** | 15 semaines, du 24 juillet au 8 novembre 2026 |
+| **Version publiée** | 1.10.1, le 12 novembre 2026 |
+| **Publications** | 18 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 84 commits, 37 demandes de fusion, toutes fusionnées |
+| **Tests** | 447, tous au vert, exécutés à chaque fusion, plus un essai de l'application de bureau |
+| **Durée** | 16 semaines, du 24 juillet au 12 novembre 2026 |
 | **Langues** | Interface en français ou en anglais, au choix de chaque utilisateur |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
 | **Ventes** | Aucune : les tests utilisateurs sont en cours |
@@ -429,6 +429,40 @@ l'intérieur. Les deux fenêtres des dépenses (« Ajouter une dépense »,
 lieu de couvrir l'écran. Tant qu'une fenêtre est ouverte, les panneaux derrière
 elle perdent désormais leur flou, que le voile de la fenêtre remplace.
 
+### Phase 18 : la vérification d'ensemble
+*11 et 12 novembre · publié en 1.10.1 · demande de fusion #38*
+
+Une relecture complète du logiciel, faite pour répondre à une question simple :
+est-il irréprochable ? La suite de tests, l'analyse statique et la compilation
+étaient propres. Six défauts sont pourtant sortis d'essais menés dans la vraie
+application de bureau et à l'heure de Montréal, deux conditions que les tests
+ne reproduisaient pas.
+
+- **La fermeture plantait, et la sauvegarde de fin de journée n'avait jamais
+  lieu.** Electron n'attendait pas le travail de fermeture : le processus
+  s'arrêtait pendant que la copie démarrait. La fermeture est désormais retenue
+  le temps de la sauvegarde, quinze secondes au plus.
+- **Le soir, « aujourd'hui » devenait demain.** Les dates du jour étaient lues
+  en heure universelle. Dès 19 h ou 20 h au Québec, une pièce était datée du
+  lendemain, une facture due le jour même passait en retard, et le 30 du mois
+  une facture partait dans la série et la période de taxes du mois suivant.
+- **Quitter avant de créer son compte faisait perdre le nom de l'entreprise.**
+  Au lancement suivant, le dossier s'appelait « Mon entreprise », sans nom sur
+  ses factures ni profil.
+- **La facture envoyée par courriel était en A4** au lieu du format lettre.
+- **Toutes les factures commençaient par « SHT »**, les initiales de l'éditeur.
+  Le préfixe se règle maintenant par dossier ; les dossiers existants gardent
+  le leur, les nouveaux reçoivent « FAC ».
+- **Des avis de sécurité étaient ouverts** sur des dépendances livrées, sans
+  aucune surveillance. Les mises à jour sans rupture sont faites, et Dependabot
+  veille.
+
+Pour que ces défauts ne reviennent pas sans bruit, l'intégration continue lance
+désormais la vraie application de bureau et rejoue la suite à l'heure de
+Montréal. 17 tests de plus.
+
+Ce que la relecture a relevé sans le corriger est consigné à la section 4.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
@@ -484,9 +518,11 @@ Deux issues : un service de signature infonuagique (eSigner chez SSL.com, par
 exemple), ou un exécuteur auto-hébergé sur une machine Windows qui porte le
 jeton.
 
-À noter : un certificat de validation d'organisation ne fait pas disparaître
-l'avertissement du jour au lendemain : la réputation se construit avec les
-téléchargements. Seul un certificat EV, plus cher, tend à l'écarter d'emblée.
+À noter : aucun certificat ne fait disparaître l'avertissement du jour au
+lendemain : la réputation se construit avec les téléchargements. Depuis 2024,
+Microsoft traite de la même façon les certificats de validation
+d'organisation et les certificats EV, plus chers : payer un EV n'écarte plus
+l'avertissement d'emblée.
 
 > **Un certificat de signature ne crée aucun numéro de licence par client.** Il
 > signe le fichier `.exe`, une fois, pour tout le monde. Les numéros de licence
@@ -504,6 +540,26 @@ téléchargements. Seul un certificat EV, plus cher, tend à l'écarter d'emblé
 | **Rapprochement bancaire : fenêtre de dates** | Environ une journée pour les trois | ± 3 jours entre l'échéance et le dépôt, au lieu d'aucune considération temporelle |
 | **Rapprochement : tolérance de montant** | | Pour absorber des frais retenus ou une conversion, là où seul le montant exact est reconnu |
 | **Rapprochement : classement des candidats** | | Plusieurs propositions ordonnées, au lieu d'une correspondance binaire |
+
+#### Relevé par la vérification d'ensemble du 12 novembre
+
+Constats vérifiés dans le code ou par essai, non corrigés : chacun demande une
+décision.
+
+| Sujet | Effort estimé | Pourquoi |
+| --- | --- | --- |
+| **Dépenses hors du journal d'audit** | Petit | Modifier ou supprimer une dépense ne laisse aucune trace, alors qu'elle touche le rapport de taxes |
+| **Facture modifiable après envoi** | Petit | Une facture envoyée reste modifiable tant qu'elle n'est pas payée, sans trace de l'envoi ni du changement. À consigner, avec un avertissement |
+| **Rapprochement et abonnements hors du journal** | Petit | Rapprocher, ignorer un dépôt, modifier un abonnement : rien n'est consigné |
+| **Fichier journal et diagnostic** | Petit | Sur un poste installé, les erreurs ne sont écrites nulle part : le soutien est aveugle |
+| **Durcissement du poste** | Petit | Refuser tout en-tête `Host` étranger, poser une politique de contenu, bloquer la navigation externe de la fenêtre |
+| **Rappel du dossier de sauvegarde** | Petit | Par défaut, les copies restent sur le même disque que les données ; seul un premier pas masquable le signale |
+| **Versions majeures** | Moyen | Electron 45 et `nodemailer` 10, l'essai de bout en bout servant de filet |
+| **Date de verrouillage** | Moyen | Une fois la déclaration de taxes produite, rien ne devrait plus bouger dans la période |
+| **Pièces justificatives** | Moyen | Joindre le reçu à la dépense : les autorités fiscales exigent de les conserver six ans |
+| **PDF nets** | Moyen | Les factures envoyées sont des images. Electron sait produire un vrai PDF, au texte sélectionnable, et retirerait près d'un mégaoctet du paquet |
+| **Renommer et archiver** | Moyen | Un dossier ne se renomme ni ne s'archive, un client créé par erreur reste pour toujours |
+| **Essais de l'interface** | Moyen | Aucun test ne pilote les écrans : deux ou trois parcours automatisés éviteraient une régression comme celle des fenêtres de la 1.9.1 |
 
 > **Réserve sur une quatrième idée** souvent proposée : la détection des
 > inversions de chiffres n'a presque aucune valeur ici. Elle attrape les
@@ -539,13 +595,17 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.10.0 en offre l'occasion sur toute installation restée en
-  1.9.1.
+  annoncer. La 1.10.1 en offre l'occasion sur toute installation restée en
+  1.10.0.
 - **Le redémarrage après restauration d'une sauvegarde.** Vérifié de bout en
   bout dans l'application de bureau sous Linux depuis la 1.9.1 : la restauration
   s'applique et l'application redémarre seule. Reste à le voir sous Windows.
+- **La sauvegarde à la fermeture.** Jusqu'à la 1.10.0, elle n'avait jamais lieu.
+  Depuis la 1.10.1, un essai lance la vraie application à chaque fusion, sous
+  Linux. Reste à le voir sous Windows : fermer Clora en fin de journée, puis
+  regarder la date de la dernière copie dans le dossier de sauvegarde.
 
-Ce sont deux choses à regarder pendant les tests utilisateurs.
+Ce sont trois choses à regarder pendant les tests utilisateurs.
 
 ---
 
@@ -615,7 +675,16 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.10.0 par les testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.10.1 par les testeurs et écouter ce qu'ils disent.**
+
+La 1.10.1 corrige six défauts sortis d'une relecture complète, dont deux qui
+touchaient leur quotidien sans qu'ils puissent le deviner : la sauvegarde de fin
+de journée n'avait jamais lieu à la fermeture, et toute pièce saisie le soir
+était datée du lendemain. Il faut leur demander de **vérifier les dates des
+pièces saisies après 19 h** depuis qu'ils utilisent Clora, surtout en fin de
+mois, et de regarder, après avoir fermé l'application, si une copie du jour est
+bien apparue dans leur dossier de sauvegarde (voir la section 5). Leurs factures
+gardent le préfixe « SHT » ; ils peuvent désormais le remplacer dans Paramètres.
 
 La 1.10.0 leur propose de protéger leurs sauvegardes par une clé et remet à
 chaque administrateur un code de récupération : il faut s'assurer qu'ils
@@ -637,9 +706,11 @@ certificat, les améliorations du rapprochement bancaire) attend la suite de ce
 retour, et devrait être priorisé par lui.
 
 **Côté développement**, les deux protections décidées après le point sécurité
-sont livrées en 1.10.0. Restent, dans l'ordre : le certificat de signature, puis
-les mises à jour automatiques qu'il rendra possibles ; la relecture juridique et
-comptable ; la clé de licence à la fin des tests.
+sont livrées en 1.10.0, et les défauts de la vérification d'ensemble corrigés en
+1.10.1. Restent, dans l'ordre : le certificat de signature, puis les mises à
+jour automatiques qu'il rendra possibles ; la relecture juridique et comptable ;
+la clé de licence à la fin des tests. Ce que la vérification a relevé sans le
+corriger attend une décision, point par point (section 4).
 
 **Tout ce qui avait été relevé en corrigeant le design est fait** : les polices
 embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la
@@ -661,4 +732,4 @@ chez lui.
 ---
 
 *Document maintenu par Safehill Technologies. Dernière mise à jour :
-8 novembre 2026.*
+12 novembre 2026.*

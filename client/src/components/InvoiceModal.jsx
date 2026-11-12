@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { api, calculerEcheance, CONDITIONS } from '../api';
 import { useModale } from '../useModale';
 import { useLangue } from '../i18n.js';
+import { aujourdhui, dateLocale } from '../dates.js';
 
 /** Identifiant local d'une ligne, stable pour la clé React. */
 let compteurLignes = 0;
@@ -14,8 +15,6 @@ const nouvelleLigne = (valeurs = {}) => ({
   ...valeurs
 });
 
-const dateISO = (date) => date.toISOString().split('T')[0];
-
 function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' }) {
   const modaleRef = useModale(onClose);
   const estDevis = mode === 'devis';
@@ -23,14 +22,14 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
 
   const [clients, setClients] = useState([]);
   const [catalogue, setCatalogue] = useState([]);
+  const [prefixeFacture, setPrefixeFacture] = useState('SHT');
   const [formData, setFormData] = useState(() => {
-    const aujourdhui = new Date();
     const echeance = new Date();
     echeance.setDate(echeance.getDate() + 15);
     return {
       client_id: '',
-      date_emission: dateISO(aujourdhui),
-      date_echeance: dateISO(echeance),
+      date_emission: aujourdhui(),
+      date_echeance: dateLocale(echeance),
       devise: 'CAD',
       taux_change: 1.0
     };
@@ -70,14 +69,18 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
 
     const charger = async () => {
       try {
-        const [listeClients, listeCatalogue] = await Promise.all([
+        const [listeClients, listeCatalogue, reglages] = await Promise.all([
           api.get('/api/clients'),
-          api.get('/api/catalogue').catch(() => [])
+          api.get('/api/catalogue').catch(() => []),
+          // Seulement pour annoncer la forme du numéro : sans réponse, la
+          // mention garde le préfixe d'origine et rien d'autre n'en dépend.
+          api.get('/api/settings').catch(() => null)
         ]);
         if (annule) return;
 
         setClients(listeClients);
         setCatalogue(listeCatalogue);
+        if (reglages && reglages.prefixe_facture) setPrefixeFacture(reglages.prefixe_facture);
 
         if (factureIdToEdit) {
           const endpoint = estDevis
@@ -212,7 +215,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
               </div>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  {t('Le numéro est généré automatiquement ({prefixe}-AAAAMM-NNNN). Les taxes suivent la province du client.', { prefixe: estDevis ? 'DEV' : 'SHT' })}
+                  {t('Le numéro est généré automatiquement ({prefixe}-AAAAMM-NNNN). Les taxes suivent la province du client.', { prefixe: estDevis ? 'DEV' : prefixeFacture })}
                 </p>
               </div>
             </div>

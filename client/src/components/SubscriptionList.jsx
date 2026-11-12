@@ -8,6 +8,7 @@ import { useTri } from '../useTri';
 import { useFeedback } from '../FeedbackContext';
 import EnTeteTri from './EnTeteTri';
 import { useLangue } from '../i18n.js';
+import { aujourdhui } from '../dates.js';
 import { CYCLES_ABONNEMENT } from '../statuts.js';
 
 let compteurLignes = 0;
@@ -28,7 +29,7 @@ function abonnementVide(t) {
     client_id: '',
     titre: t('Abonnement mensuel'),
     cycle: 'Mensuel',
-    date_prochaine_generation: new Date().toISOString().split('T')[0],
+    date_prochaine_generation: aujourdhui(),
     devise: 'CAD',
     lignes: [nouvelleLigne({ description: t('Services professionnels'), prix_unitaire: 100 })]
   };
@@ -159,7 +160,7 @@ function SubscriptionList() {
     }
   };
 
-  const aujourdhui = new Date().toISOString().split('T')[0];
+  const jour = aujourdhui();
 
   const totalLignes = newSub.lignes.reduce(
     (sum, l) => sum + ((parseFloat(l.quantite) || 0) * (parseFloat(l.prix_unitaire) || 0)), 0
@@ -309,7 +310,7 @@ function SubscriptionList() {
               {subs.length === 0 ? (
                 <tr><td colSpan="6" className="empty-state">{t('Aucun abonnement configuré.')}</td></tr>
               ) : subsAffiches.map((sub) => {
-                const enRetard = sub.statut === 'Actif' && sub.date_prochaine_generation <= aujourdhui;
+                const enRetard = sub.statut === 'Actif' && sub.date_prochaine_generation <= jour;
                 return (
                   <tr key={sub.id} style={{ opacity: sub.statut === 'Inactif' ? 0.6 : 1 }}>
                     <td style={{ fontWeight: 'bold' }}>{sub.client_nom}</td>

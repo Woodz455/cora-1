@@ -231,6 +231,8 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
     // et non au démarrage de l'application.
     const { default: html2pdf } = await import('html2pdf.js');
 
+    // Format lettre, comme l'impression et les rapports : c'est le papier des
+    // imprimantes d'ici. En A4, la pièce jointe s'imprimait rognée ou réduite.
     const pdfBase64 = await html2pdf()
       .from(printRef.current)
       .set({
@@ -238,7 +240,7 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
         filename,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
       })
       .outputPdf('datauristring');
 

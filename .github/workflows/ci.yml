@@ -41,6 +41,14 @@ jobs:
       - name: Exécuter la suite de tests
         run: npm test
 
+      # La machine tourne en heure universelle, pas les postes des clients. Un
+      # second passage à l'heure de Montréal attrape les dates lues dans le
+      # mauvais fuseau, que le premier ne peut pas voir.
+      - name: Exécuter la suite de tests à l'heure de Montréal
+        run: npm test
+        env:
+          TZ: America/Toronto
+
       - name: Installer les dépendances de l'interface
         working-directory: client
         run: npm ci
@@ -52,3 +60,11 @@ jobs:
       - name: Compiler l'interface
         working-directory: client
         run: npm run build
+
+      # La suite ordinaire n'exerce que le serveur. Cet essai lance la vraie
+      # application de bureau, ferme sa fenêtre, et vérifie que la sauvegarde
+      # de fin de journée a eu lieu : un défaut de `main.js` ne se voit que là.
+      # Il vient après la compilation, dont il a besoin, et sous `xvfb` parce
+      # que la machine n'a pas d'écran.
+      - name: Essayer l'application de bureau
+        run: xvfb-run -a npm run test:e2e

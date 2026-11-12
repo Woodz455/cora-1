@@ -15,6 +15,7 @@ const stripe = require('../stripeService.js');
 const kilometrage = require('../kilometrageService.js');
 const { parseProfil } = require('../profils.js');
 const { CONDITIONS } = require('../paymentTerms.js');
+const { normaliserPrefixe, PREFIXES_RESERVES } = require('../sequences.js');
 
 /**
  * Conditions de paiement proposées aux nouveaux clients. Absent : inchangé ;
@@ -26,6 +27,24 @@ function parseConditionsDefaut(valeur) {
     throw httpError(400, `Conditions de paiement inconnues : ${valeur}.`);
   }
   return valeur;
+}
+
+/**
+ * Préfixe des numéros de facture. Absent : inchangé. Les préfixes des devis et
+ * des notes de crédit sont refusés : les compteurs étant tenus par préfixe, les
+ * séries se mêleraient.
+ */
+function parsePrefixeFacture(valeur) {
+  if (valeur === undefined || valeur === null) return null;
+  const brut = String(valeur).trim().toUpperCase();
+  if (PREFIXES_RESERVES.includes(brut)) {
+    throw httpError(400, 'Les préfixes DEV et NC sont réservés aux devis et aux notes de crédit.');
+  }
+  const prefixe = normaliserPrefixe(brut);
+  if (!prefixe) {
+    throw httpError(400, 'Le préfixe des factures doit comporter de 2 à 6 lettres ou chiffres.');
+  }
+  return prefixe;
 }
 
 /** Taille maximale du logo, encodé en data-URI. */
@@ -167,7 +186,7 @@ const CHAMPS_SUIVIS = [
   'taxe_2_nom', 'taxe_2_taux', 'taxe_2_numero',
   'payment_instructions', 'payment_instructions_en', 'relances_actives', 'relances_paliers',
   'sauvegarde_active', 'sauvegarde_dossier', 'sauvegarde_retention',
-  'verifier_maj', 'profil', 'conditions_defaut',
+  'verifier_maj', 'profil', 'conditions_defaut', 'prefixe_facture',
   // Le serveur et le compte d'envoi sont suivis ; le mot de passe ne l'est
   // évidemment pas, et son absence de cette liste est la seule chose qui
   // l'empêche d'être recopié dans un journal conçu pour être inaltérable.
@@ -230,7 +249,8 @@ module.exports = function settingsRoutes(getDb) {
       smtp_user: sanitizeText(body.smtp_user, 200),
       stripe_actif: parseInterrupteur(body.stripe_actif),
       profil: parseProfil(body.profil),
-      conditions_defaut: parseConditionsDefaut(body.conditions_defaut)
+      conditions_defaut: parseConditionsDefaut(body.conditions_defaut),
+      prefixe_facture: parsePrefixeFacture(body.prefixe_facture)
     };
 
     if (!valeurs.entreprise_nom) {

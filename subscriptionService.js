@@ -18,6 +18,9 @@ const DELAI_PAIEMENT_JOURS = 30;
  */
 const MAX_RATTRAPAGE = 24;
 
+const { aujourdhui } = require('./dates.js');
+
+/** Jour d'une date construite en heure universelle, pour l'arithmétique des échéances. */
 const iso = (date) => date.toISOString().split('T')[0];
 
 /**
@@ -132,7 +135,7 @@ async function deleteSubscription(db, id) {
  * @returns {Promise<{generees: number, erreurs: number}>}
  */
 async function checkAndGenerateRecurringInvoices(db) {
-  const today = iso(new Date());
+  const today = aujourdhui();
   const dueSubs = await db.all(
     "SELECT * FROM abonnements WHERE statut = 'Actif' AND date_prochaine_generation <= ?",
     [today]

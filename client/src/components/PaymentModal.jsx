@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api';
+import { aujourdhui } from '../dates.js';
 import { useLangue } from '../i18n.js';
 import { useApiResource } from '../useApiResource';
 import { useHasRole } from '../UserContext';
@@ -12,7 +13,7 @@ function PaymentModal({ facture, onClose }) {
   // Le solde exact est pré-rempli pour faciliter le règlement complet.
   const [montant, setMontant] = useState(facture.solde_restant);
   const [note, setNote] = useState('');
-  const [datePaiement, setDatePaiement] = useState(new Date().toISOString().split('T')[0]);
+  const [datePaiement, setDatePaiement] = useState(aujourdhui);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 

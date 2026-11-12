@@ -49,10 +49,41 @@ async function nextSequence(db, { prefix, table, column }) {
 }
 
 /**
+ * Préfixe des factures des dossiers antérieurs au réglage. Ce sont les
+ * initiales de l'éditeur, restées écrites en dur jusqu'à la 1.10.0 : ces
+ * dossiers le gardent, pour que leur numérotation ne change pas sous leurs
+ * pieds.
+ */
+const PREFIXE_FACTURE_HERITE = 'SHT';
+
+/** Préfixe des factures d'un dossier neuf, que l'administrateur peut changer. */
+const PREFIXE_FACTURE_DEFAUT = 'FAC';
+
+/**
+ * Préfixes des devis et des notes de crédit. Les compteurs sont tenus par
+ * préfixe : une facture qui en prendrait un partagerait sa numérotation avec
+ * ces documents, et chaque série aurait des trous.
+ */
+const PREFIXES_RESERVES = ['DEV', 'NC'];
+
+/**
+ * Met un préfixe de facture en forme : majuscules, 2 à 6 lettres ou chiffres.
+ *
+ * @returns {string|null} le préfixe, ou null s'il n'est pas utilisable
+ */
+function normaliserPrefixe(valeur) {
+  if (typeof valeur !== 'string') return null;
+  const prefixe = valeur.trim().toUpperCase();
+  if (!/^[A-Z0-9]{2,6}$/.test(prefixe)) return null;
+  if (PREFIXES_RESERVES.includes(prefixe)) return null;
+  return prefixe;
+}
+
+/**
  * Construit un numéro de document au format PREFIXE-AAAAMM-NNNN.
  *
  * @param {import('sqlite').Database} db
- * @param {string} code  'SHT' pour une facture, 'DEV' pour un devis
+ * @param {string} code  le préfixe du dossier pour une facture, 'DEV' pour un devis
  * @param {string} dateStr date d'émission au format AAAA-MM-JJ
  * @param {{table: string, column: string}} source
  * @returns {Promise<string>}
@@ -64,4 +95,11 @@ async function nextDocumentNumber(db, code, dateStr, source) {
   return `${prefix}${String(sequence).padStart(4, '0')}`;
 }
 
-module.exports = { nextSequence, nextDocumentNumber };
+module.exports = {
+  nextSequence,
+  nextDocumentNumber,
+  normaliserPrefixe,
+  PREFIXE_FACTURE_HERITE,
+  PREFIXE_FACTURE_DEFAUT,
+  PREFIXES_RESERVES
+};
