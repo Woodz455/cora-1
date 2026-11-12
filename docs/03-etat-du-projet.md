@@ -1,7 +1,7 @@
 # Clora : état du projet
 
 *Ce qui a été fait, ce qui reste à faire. Arrêté au 12 novembre 2026,
-version 1.10.1.*
+version 1.11.0.*
 
 ---
 
@@ -9,10 +9,10 @@ version 1.10.1.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.10.1, le 12 novembre 2026 |
-| **Publications** | 18 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 84 commits, 37 demandes de fusion, toutes fusionnées |
-| **Tests** | 447, tous au vert, exécutés à chaque fusion, plus un essai de l'application de bureau |
+| **Version publiée** | 1.11.0, le 12 novembre 2026 |
+| **Publications** | 19 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 99 commits, 49 demandes de fusion : 48 fusionnées, une rendue sans objet |
+| **Tests** | 459, tous au vert, exécutés à chaque fusion, plus deux essais de l'application de bureau |
 | **Durée** | 16 semaines, du 24 juillet au 12 novembre 2026 |
 | **Langues** | Interface en français ou en anglais, au choix de chaque utilisateur |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
@@ -464,7 +464,7 @@ Montréal. 17 tests de plus.
 Ce que la relecture a relevé sans le corriger est consigné à la section 4.
 
 ### Phase 19 : Electron 45 et le coffre des secrets
-*12 novembre · pas encore publié*
+*12 novembre · publié en 1.11.0 · demande de fusion #49*
 
 Electron 42, sur lequel tournait Clora, n'était plus parmi les trois versions
 majeures maintenues. Dependabot, activé en 1.10.1, a proposé la 45 avec huit
@@ -625,8 +625,8 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.10.1 en offre l'occasion sur toute installation restée en
-  1.10.0.
+  annoncer. La 1.11.0 en offre l'occasion sur toute installation restée en
+  1.10.1.
 - **Le redémarrage après restauration d'une sauvegarde.** Vérifié de bout en
   bout dans l'application de bureau sous Linux depuis la 1.9.1 : la restauration
   s'applique et l'application redémarre seule. Reste à le voir sous Windows.
@@ -713,7 +713,12 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.10.1 par les testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.11.0 par les testeurs et écouter ce qu'ils disent.**
+
+La 1.11.0 passe à Electron 45 et change la façon dont le coffre du système garde
+leurs secrets. Un poste Windows l'a essayée avec succès ; il faut leur demander
+de vérifier, après la mise à jour, qu'aucune alerte de clé illisible n'apparaît
+et qu'un courriel de test part, feuille de secours sous la main.
 
 La 1.10.1 corrige six défauts sortis d'une relecture complète, dont deux qui
 touchaient leur quotidien sans qu'ils puissent le deviner : la sauvegarde de fin
@@ -749,8 +754,7 @@ sont livrées en 1.10.0, et les défauts de la vérification d'ensemble corrigé
 jour automatiques qu'il rendra possibles ; la relecture juridique et comptable ;
 la clé de licence à la fin des tests. Ce que la vérification a relevé sans le
 corriger attend une décision, point par point (section 4). Le passage à
-Electron 45 est fait et éprouvé sous Windows : il partira avec la prochaine
-version.
+Electron 45 est fait, éprouvé sous Windows et livré en 1.11.0.
 
 **Tout ce qui avait été relevé en corrigeant le design est fait** : les polices
 embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la

@@ -13,13 +13,13 @@ Rendez-vous sur la page des versions du projet. Deux fichiers y sont proposés :
 
 ```
 Clora-Installateur.exe          ← toujours la dernière version
-Clora-Installateur-1.10.1.exe    ← la même, avec le numéro de version
+Clora-Installateur-1.11.0.exe    ← la même, avec le numéro de version
 ```
 
 **Prenez le premier.** Le second est identique ; son nom porte le numéro de
 version, ce qui aide à savoir de quoi l'on parle en cas de question au support.
 
-Il fait environ 113 Mo. Votre navigateur le déposera dans le dossier
+Il fait environ 123 Mo. Votre navigateur le déposera dans le dossier
 **Téléchargements**.
 
 Il se peut que le navigateur affiche un avertissement du genre « ce fichier
