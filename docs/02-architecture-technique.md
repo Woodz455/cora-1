@@ -333,6 +333,9 @@ changer.
 | --- | --- |
 | **Écoute locale seulement** | `127.0.0.1`. L'API comptable n'est pas publiée sur le réseau local |
 | **Port aléatoire** | Attribué par le système en production |
+| **Hôte local seulement** | Toute requête dont l'en-tête `Host` n'est pas `127.0.0.1`, `localhost` ou `[::1]` est refusée (403). Un site ouvert dans le navigateur de l'utilisateur peut faire pointer son nom de domaine vers la boucle locale ; sa requête arrive alors avec son propre nom, et s'arrête là |
+| **Politique de contenu** | `Content-Security-Policy` sur chaque réponse : scripts, connexions et polices limités à l'origine, aucun objet, aucun cadre. Un script injecté ne s'exécute pas et rien ne part vers un autre serveur. Les styles en ligne restent permis, l'interface en pose partout |
+| **Fenêtre captive** | `will-navigate` retient la fenêtre dans l'application : un lien externe s'ouvre dans le navigateur du système. Toute demande de permission (caméra, micro, position) est refusée |
 | **Aucun CORS** | Interface et API partagent l'origine. Un `cors()` ouvert répondait auparavant `Access-Control-Allow-Origin: *` à n'importe quel site |
 | **Aucun canal IPC** | Pas de script de préchargement ; l'interface ne parle qu'au HTTP local |
 | **`sandbox: true`** | Le rendu Chromium est en bac à sable |
@@ -888,6 +891,19 @@ ou derrière un pare-feu.
 
 ## 12. Outillage de diagnostic
 
+**Le journal de fonctionnement** (`journalFichier.js`). L'application de bureau
+recopie sa console dans `journaux/clora.log`, dans le dossier de données : dans
+une application installée, personne ne lit la console. Le fichier reste sur le
+poste, tourne à 1 Mo et garde deux fichiers précédents. Il ne contient que ce
+que le code écrit déjà dans la console, où aucun secret n'est consigné.
+
+**Le diagnostic** (`diagnosticService.js`, `GET /api/diagnostic`, réservé à
+l'administrateur, bouton dans Paramètres). Un fichier texte que l'utilisateur
+télécharge et transmet lui-même : version, système, licence, décomptes des
+tables, intégrité de la base, état des sauvegardes, services configurés et fin
+du journal. Aucune donnée comptable, aucun nom de client, aucun secret ; un
+test le vérifie.
+
 `npm run doctor` inspecte une base à la recherche d'anomalies comptables :
 paiements supérieurs au solde, statuts désalignés, transactions bancaires liées à
 une facture disparue. Il signale sans rien modifier.
@@ -914,14 +930,10 @@ Trois corrections peuvent être demandées explicitement :
 | **Retraits bancaires** | Ignorés : frais et sorties sont hors périmètre |
 | **Windows seul** | Aucune cible macOS ou Linux |
 | **Electron 45 chez les autres testeurs** | Le passage à Electron 45 est vérifié sous Linux dans la vraie application, et sous Windows par une fabrication d'essai installée par-dessus la 1.10.1 sur un poste réel : les secrets enregistrés ont été relus par le nouveau coffre. Un seul poste a fait cet essai ; les autres le feront à la publication |
-| **Facture modifiable après envoi** | Tant qu'elle n'est pas payée, une facture déjà envoyée au client se modifie, sans trace de l'envoi ni du changement |
-| **Journal d'audit incomplet** | Modifier ou supprimer une dépense, rapprocher un dépôt, modifier un abonnement : rien n'est consigné |
 | **Aucune date de verrouillage** | Une dépense d'une période déjà déclarée se modifie ou se supprime librement |
 | **Pas de pièces justificatives** | Aucun reçu ne peut être joint à une dépense |
 | **PDF en image** | La facture envoyée par courriel est une image : texte non sélectionnable, illisible par un lecteur d'écran, fichier lourd |
 | **Dossiers et clients** | Ni renommage ni archivage d'un dossier, ni archivage d'un client |
-| **Aucun fichier journal** | Sur un poste installé, les messages d'erreur ne sont écrits nulle part |
-| **Durcissement du poste** | Le serveur local répond à n'importe quel en-tête `Host` ; la fenêtre n'a ni politique de contenu, ni blocage de la navigation externe |
 | **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.11.0 en offre l'occasion sur toute installation restée en 1.10.1 |
 | **Redémarrage après restauration** | Vérifié de bout en bout dans l'application de bureau sous Linux en 1.9.1, puis de nouveau en 1.10.1 (restauration appliquée, redémarrage automatique). Reste à l'observer sur un vrai Windows |
 | **Sauvegarde à la fermeture** | Vérifiée à chaque fusion par l'essai de bout en bout, sous Linux, et observée le 12 novembre sur un poste Windows lors de l'essai d'Electron 45. Reste à la confirmer chez les autres testeurs |

@@ -494,6 +494,31 @@ aperçu et impression d'une facture, copie du jour à la fermeture) s'est dérou
 sans défaut. C'était la seule vérification que Linux ne pouvait pas donner : le
 coffre y est celui du système, non celui de Windows.
 
+### Phase 20 : traçabilité et durcissement
+*12 novembre · pas encore publié*
+
+Le premier lot de ce que la vérification d'ensemble avait relevé sans le
+corriger.
+
+- **Le journal d'audit couvre ce qui lui échappait** : dépenses ajoutées,
+  modifiées ou supprimées, abonnements, dépôts bancaires imputés ou écartés,
+  factures modifiées. Une dépense supprimée y laisse de quoi la reconstituer.
+- **L'envoi d'une facture est daté et consigné.** Une facture non payée reste
+  modifiable après son envoi ; le formulaire prévient alors que le client a
+  l'ancienne version en main, et le journal le note.
+- **Un journal de fonctionnement**, dans le dossier de données, garde ce que
+  l'application signale, et **un diagnostic se télécharge** depuis Paramètres
+  pour le soutien, sans donnée comptable ni secret.
+- **Le serveur local refuse tout hôte étranger** et envoie une politique de
+  sécurité de contenu ; la fenêtre ne quitte plus l'application et refuse
+  toute demande de permission.
+- **Un rappel au tableau de bord** tant que les sauvegardes restent sur le même
+  disque que la comptabilité.
+
+Vérifié dans la vraie application : les onze écrans, le PDF envoyé par
+courriel, une tentative de sortie de la fenêtre et un script injecté, tous deux
+bloqués. 17 tests de plus.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
@@ -579,12 +604,6 @@ décision.
 
 | Sujet | Effort estimé | Pourquoi |
 | --- | --- | --- |
-| **Dépenses hors du journal d'audit** | Petit | Modifier ou supprimer une dépense ne laisse aucune trace, alors qu'elle touche le rapport de taxes |
-| **Facture modifiable après envoi** | Petit | Une facture envoyée reste modifiable tant qu'elle n'est pas payée, sans trace de l'envoi ni du changement. À consigner, avec un avertissement |
-| **Rapprochement et abonnements hors du journal** | Petit | Rapprocher, ignorer un dépôt, modifier un abonnement : rien n'est consigné |
-| **Fichier journal et diagnostic** | Petit | Sur un poste installé, les erreurs ne sont écrites nulle part : le soutien est aveugle |
-| **Durcissement du poste** | Petit | Refuser tout en-tête `Host` étranger, poser une politique de contenu, bloquer la navigation externe de la fenêtre |
-| **Rappel du dossier de sauvegarde** | Petit | Par défaut, les copies restent sur le même disque que les données ; seul un premier pas masquable le signale |
 | **Date de verrouillage** | Moyen | Une fois la déclaration de taxes produite, rien ne devrait plus bouger dans la période |
 | **Pièces justificatives** | Moyen | Joindre le reçu à la dépense : les autorités fiscales exigent de les conserver six ans |
 | **PDF nets** | Moyen | Les factures envoyées sont des images. Electron sait produire un vrai PDF, au texte sélectionnable, et retirerait près d'un mégaoctet du paquet |

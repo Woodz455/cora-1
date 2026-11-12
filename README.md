@@ -301,6 +301,8 @@ config.js          Emplacement des données, secret de session, port et hôte
 database.js        Schéma, migrations et index
 money.js           Arithmétique monétaire (JavaScript et SQL alignés)
 sequences.js       Numérotation des documents, jamais réattribuée
+journalFichier.js  Journal de fonctionnement, dans le dossier de données
+diagnosticService.js  Rapport à télécharger pour le soutien, sans donnée comptable
 dates.js           La date du jour, lue à l'horloge du poste
 dbUtils.js         Transactions sérialisées et réentrantes
 validators.js      Validation des données entrantes
@@ -774,7 +776,9 @@ Les actions sensibles sont consignées dans `logs_audit` : annulation d'un
 encaissement, annulation ou suppression d'une facture, suppression d'une note de
 crédit, modification d'un client, **changement des taux de taxe**, création,
 modification ou suppression d'un compte, changement d'identifiants,
-restauration d'une sauvegarde. Un changement d'identifiants touche l'accès à
+restauration d'une sauvegarde, ajout, modification ou suppression d'une
+dépense ou d'un abonnement, dépôt bancaire imputé ou écarté, envoi d'une
+facture par courriel et modification d'une facture. Un changement d'identifiants touche l'accès à
 tous les dossiers du compte : il est consigné dans le journal de chacun.
 Jusqu'à la 1.9.0, il était écrit dans le registre des comptes, qui n'a pas de
 journal, et ne laissait aucune trace.
