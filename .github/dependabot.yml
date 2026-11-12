@@ -1,0 +1,40 @@
+# Surveillance des dépendances.
+#
+# Rien ne signalait qu'une bibliothèque livrée avec Clora portait un avis de
+# sécurité : il fallait penser à lancer « npm audit ». Dependabot ouvre une
+# demande de fusion quand une mise à jour existe, et l'intégration continue dit
+# aussitôt si elle casse quelque chose.
+#
+# Les mises à jour sont regroupées, une demande par semaine et par dossier, pour
+# ne pas noyer le dépôt. Les sauts de version majeure arrivent à part : ce sont
+# eux qui demandent une lecture attentive.
+version: 2
+
+updates:
+  # Le serveur et l'application de bureau.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      mises-a-jour-mineures:
+        update-types: [minor, patch]
+
+  # L'interface.
+  - package-ecosystem: npm
+    directory: /client
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      mises-a-jour-mineures:
+        update-types: [minor, patch]
+
+  # Les actions des workflows de vérification et de publication.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
