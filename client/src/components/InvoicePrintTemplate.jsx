@@ -250,7 +250,10 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
       subject: emailData.subject,
       text: emailData.message,
       attachmentBase64: pdfBase64,
-      filename
+      filename,
+      // Seule une facture garde la trace de son envoi : c'est elle qui reste
+      // modifiable après coup.
+      facture_id: estDevis || estNote ? undefined : factureId
     });
 
     if (isRelance) {

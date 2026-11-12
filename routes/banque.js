@@ -11,6 +11,7 @@ const {
 const { adminOrAccountant } = require('../authMiddleware.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { parseId, parsePositiveAmount, isValidDate, sanitizeText } = require('../validators.js');
+const { journaliser, ACTIONS } = require('../auditService.js');
 
 /** Normalise une ligne de relevé, ou retourne null si elle est illisible. */
 function validerLigne(ligne) {
@@ -82,7 +83,20 @@ module.exports = function banqueRoutes(getDb) {
       if (!montant) throw httpError(400, 'Le montant à imputer est invalide.');
     }
 
+    const avant = await getTransaction(getDb(), transactionId);
     const transaction = await rapprocher(getDb(), transactionId, factureId, montant);
+    const facture = await getDb().get('SELECT numero_facture FROM factures WHERE id = ?', [factureId]);
+    await journaliser(getDb(), req, {
+      action: ACTIONS.BANQUE_RAPPROCHEMENT,
+      entite: 'transaction_bancaire',
+      entite_id: transactionId,
+      details: {
+        depot: transaction.description,
+        date_transaction: transaction.date_transaction,
+        facture: facture ? facture.numero_facture : factureId,
+        montant_impute: Math.round(((transaction.montant_rapproche || 0) - ((avant && avant.montant_rapproche) || 0)) * 100) / 100
+      }
+    });
     res.json({
       success: true,
       message: transaction.statut === STATUTS.RAPPROCHE
@@ -96,7 +110,15 @@ module.exports = function banqueRoutes(getDb) {
     const id = parseId(req.params.id);
     if (!id) throw httpError(400, 'Identifiant de transaction invalide.');
 
-    res.json(await ignorer(getDb(), id));
+    const transaction = await getTransaction(getDb(), id);
+    const resultat = await ignorer(getDb(), id);
+    await journaliser(getDb(), req, {
+      action: ACTIONS.BANQUE_DEPOT_IGNORE,
+      entite: 'transaction_bancaire',
+      entite_id: id,
+      details: { depot: transaction.description, date_transaction: transaction.date_transaction, montant: transaction.montant }
+    });
+    res.json(resultat);
   }));
 
   return router;

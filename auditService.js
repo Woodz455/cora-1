@@ -28,7 +28,22 @@ const ACTIONS = {
   PAIEMENT_EN_LIGNE: 'paiement.en_ligne',
   // Un règlement reçu chez Stripe que Clora n'a pas pu imputer. Consigné au
   // même titre qu'un encaissement : c'est de l'argent réellement entré.
-  PAIEMENT_EN_LIGNE_REFUSE: 'paiement.en_ligne_refuse'
+  PAIEMENT_EN_LIGNE_REFUSE: 'paiement.en_ligne_refuse',
+  // Une dépense touche le rapport de taxes : la modifier ou la supprimer sans
+  // trace permettait de changer une déclaration déjà produite sans que rien ne
+  // le dise.
+  DEPENSE_CREATION: 'depense.creation',
+  DEPENSE_MODIFICATION: 'depense.modification',
+  DEPENSE_SUPPRESSION: 'depense.suppression',
+  // Une facture non payée reste modifiable, même après son envoi au client :
+  // l'envoi et la modification sont consignés pour que l'écart se retrouve.
+  FACTURE_ENVOI: 'facture.envoi',
+  FACTURE_MODIFICATION: 'facture.modification',
+  ABONNEMENT_CREATION: 'abonnement.creation',
+  ABONNEMENT_MODIFICATION: 'abonnement.modification',
+  ABONNEMENT_SUPPRESSION: 'abonnement.suppression',
+  BANQUE_RAPPROCHEMENT: 'banque.rapprochement',
+  BANQUE_DEPOT_IGNORE: 'banque.depot_ignore'
 };
 
 /** Libellés lisibles, partagés avec l'interface. */
@@ -49,7 +64,17 @@ const LIBELLES = {
   [ACTIONS.SAUVEGARDE_RESTAURATION]: 'Sauvegarde restaurée',
   [ACTIONS.IMPORT]: 'Import depuis un tableur',
   [ACTIONS.PAIEMENT_EN_LIGNE]: 'Encaissement en ligne',
-  [ACTIONS.PAIEMENT_EN_LIGNE_REFUSE]: 'Encaissement en ligne non imputé'
+  [ACTIONS.PAIEMENT_EN_LIGNE_REFUSE]: 'Encaissement en ligne non imputé',
+  [ACTIONS.DEPENSE_CREATION]: 'Dépense ajoutée',
+  [ACTIONS.DEPENSE_MODIFICATION]: 'Dépense modifiée',
+  [ACTIONS.DEPENSE_SUPPRESSION]: 'Dépense supprimée',
+  [ACTIONS.FACTURE_ENVOI]: 'Facture envoyée par courriel',
+  [ACTIONS.FACTURE_MODIFICATION]: 'Facture modifiée',
+  [ACTIONS.ABONNEMENT_CREATION]: 'Abonnement créé',
+  [ACTIONS.ABONNEMENT_MODIFICATION]: 'Abonnement modifié',
+  [ACTIONS.ABONNEMENT_SUPPRESSION]: 'Abonnement supprimé',
+  [ACTIONS.BANQUE_RAPPROCHEMENT]: 'Dépôt bancaire imputé',
+  [ACTIONS.BANQUE_DEPOT_IGNORE]: 'Dépôt bancaire ignoré'
 };
 
 /** Longueur maximale du détail sérialisé, pour qu'une ligne reste une ligne. */

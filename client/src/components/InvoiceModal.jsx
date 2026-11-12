@@ -18,11 +18,12 @@ const nouvelleLigne = (valeurs = {}) => ({
 function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' }) {
   const modaleRef = useModale(onClose);
   const estDevis = mode === 'devis';
-  const { t, montant } = useLangue();
+  const { t, montant, langue } = useLangue();
 
   const [clients, setClients] = useState([]);
   const [catalogue, setCatalogue] = useState([]);
   const [prefixeFacture, setPrefixeFacture] = useState('SHT');
+  const [envoyeeLe, setEnvoyeeLe] = useState(null);
   const [formData, setFormData] = useState(() => {
     const echeance = new Date();
     echeance.setDate(echeance.getDate() + 15);
@@ -88,6 +89,7 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
             : `/api/factures/${factureIdToEdit}/details`;
           const data = await api.get(endpoint);
           if (annule) return;
+          if (!estDevis) setEnvoyeeLe(data.envoyee_le || null);
 
           setFormData({
             client_id: data.client_details.id,
@@ -183,6 +185,13 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
         </h3>
 
         {error && <p className="alert alert-error" role="alert">{error}</p>}
+
+        {envoyeeLe && (
+          <p className="alert alert-warning" role="status">
+            {t("Cette facture a été envoyée au client le {date}. Si vous la modifiez, renvoyez-lui la nouvelle version : il a l'ancienne en main. La modification sera consignée au journal.",
+              { date: new Date(envoyeeLe).toLocaleDateString(langue === 'en' ? 'en-CA' : 'fr-CA') })}
+          </p>
+        )}
 
         {chargement ? (
           <p style={{ color: 'var(--text-muted)' }}>{t('Chargement du document…')}</p>

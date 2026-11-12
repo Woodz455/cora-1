@@ -7,7 +7,8 @@ const express = require('express');
 const { sendEmailWithAttachment } = require('../emailService.js');
 const { anyRole } = require('../authMiddleware.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
-const { isValidEmailList, sanitizeText } = require('../validators.js');
+const { isValidEmailList, sanitizeText, parseId } = require('../validators.js');
+const { journaliser, ACTIONS } = require('../auditService.js');
 
 module.exports = function emailRoutes(getDb) {
   const router = express.Router();
@@ -42,6 +43,25 @@ module.exports = function emailRoutes(getDb) {
       attachmentBase64,
       filename: sanitizeText(filename, 150) || 'document.pdf'
     }, settings || {});
+
+    // L'interface dit quelle facture part : l'envoi est daté sur la facture (le
+    // premier seulement) et consigné au journal à chaque fois.
+    const factureId = parseId(req.body.facture_id);
+    if (factureId) {
+      const facture = await getDb().get('SELECT id, numero_facture FROM factures WHERE id = ?', [factureId]);
+      if (facture) {
+        await getDb().run(
+          'UPDATE factures SET envoyee_le = COALESCE(envoyee_le, ?) WHERE id = ?',
+          [new Date().toISOString(), factureId]
+        );
+        await journaliser(getDb(), req, {
+          action: ACTIONS.FACTURE_ENVOI,
+          entite: 'facture',
+          entite_id: factureId,
+          details: { numero: facture.numero_facture, destinataire: sanitizeText(to, 300) }
+        });
+      }
+    }
 
     res.json({ message: 'Courriel envoyé avec succès.' });
   }));
