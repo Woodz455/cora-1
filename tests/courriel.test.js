@@ -50,29 +50,29 @@ function sansEnvironnement(t) {
 
 // --- Chiffrement au repos ---------------------------------------------------
 
-test('un secret chiffré se relit à l\'identique', () => {
+test('un secret chiffré se relit à l\'identique', async () => {
   const secret = 'mot-de-passe-application-1234';
-  const enregistre = chiffrer(secret);
+  const enregistre = await chiffrer(secret);
 
   assert.notEqual(enregistre, secret, 'le secret ne doit jamais être stocké tel quel');
-  assert.equal(dechiffrer(enregistre), secret);
+  assert.equal(await dechiffrer(enregistre), secret);
 });
 
-test('une valeur vide reste vide et n\'est pas déclarée protégée', () => {
-  assert.equal(chiffrer(''), '');
-  assert.equal(chiffrer(null), '');
-  assert.equal(chiffrer(undefined), '');
-  assert.equal(dechiffrer(''), '');
+test('une valeur vide reste vide et n\'est pas déclarée protégée', async () => {
+  assert.equal(await chiffrer(''), '');
+  assert.equal(await chiffrer(null), '');
+  assert.equal(await chiffrer(undefined), '');
+  assert.equal(await dechiffrer(''), '');
   assert.equal(estProtege(''), false);
 });
 
-test('un secret chiffré par le coffre d\'une autre machine est illisible, sans planter', () => {
+test('un secret chiffré par le coffre d\'une autre machine est illisible, sans planter', async () => {
   // Hors Electron, aucun coffre n'existe : c'est exactement la situation d'une
   // base restaurée sur un autre poste. Le mot de passe doit être traité comme
   // absent — et non produire une exception au moment d'envoyer une facture.
   const venuDAilleurs = `${PREFIXE_COFFRE}bG9yZW0taXBzdW0tbm9uLWRlY2hpZmZyYWJsZQ==`;
 
-  assert.equal(dechiffrer(venuDAilleurs), '');
+  assert.equal(await dechiffrer(venuDAilleurs), '');
   assert.equal(estProtege(venuDAilleurs), true);
 });
 

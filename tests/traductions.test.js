@@ -63,7 +63,9 @@ const MESSAGES_INTERNES = new Set([
   'la demande ne désigne pas ce dossier, elle est écartée',
   // Erreurs de programmation : un appel sans série ou sans base cible.
   'série de sauvegardes non précisée',
-  'base à restaurer non précisée'
+  'base à restaurer non précisée',
+  // Erreur de programmation : `lireSecret` appelée hors de sa liste fermée.
+  'colonne de secret inconnue'
 ]);
 
 /** Lit le dictionnaire, qui ne contient que des données. */

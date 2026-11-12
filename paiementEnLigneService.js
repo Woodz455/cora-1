@@ -26,7 +26,7 @@
 
 const { roundCents } = require('./money.js');
 const { withTransaction } = require('./dbUtils.js');
-const { dechiffrer } = require('./secretStorage.js');
+const { lireSecret } = require('./secretStorage.js');
 const { journaliser, ACTIONS } = require('./auditService.js');
 const { addPaiement, getSoldeFacture } = require('./invoiceService.js');
 const { aujourdhui } = require('./dates.js');
@@ -80,7 +80,7 @@ async function configuration(db) {
   // système ne sait plus déchiffrer. Le dire permet à l'écran des paramètres
   // d'inviter à ressaisir la clé, plutôt que de laisser croire que le paiement
   // en ligne fonctionne alors qu'il ne part plus rien.
-  const cle = dechiffrer(ligne.stripe_cle_chiffree);
+  const cle = await lireSecret(db, 'stripe_cle_chiffree', ligne.stripe_cle_chiffree);
   if (!cleValide(cle)) {
     return { ...absente, cleIllisible: Boolean(ligne.stripe_cle_chiffree) };
   }

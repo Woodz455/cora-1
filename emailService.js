@@ -12,7 +12,7 @@
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
-const { dechiffrer } = require('./secretStorage.js');
+const { lireSecret } = require('./secretStorage.js');
 
 /** Taille maximale de la pièce jointe, une fois décodée. */
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
@@ -49,7 +49,7 @@ async function chargerConfiguration(db) {
       if (s && s.smtp_host && s.smtp_user) {
         // Vide si la base a été restaurée sur une autre machine : le coffre du
         // système ne sait plus déchiffrer. L'appelant invitera à la ressaisie.
-        const pass = dechiffrer(s.smtp_pass_chiffre);
+        const pass = await lireSecret(db, 'smtp_pass_chiffre', s.smtp_pass_chiffre);
         if (pass) {
           return {
             host: String(s.smtp_host),
