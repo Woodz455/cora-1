@@ -463,6 +463,32 @@ Montréal. 17 tests de plus.
 
 Ce que la relecture a relevé sans le corriger est consigné à la section 4.
 
+### Phase 19 : Electron 45 et le coffre des secrets
+*12 novembre · pas encore publié*
+
+Electron 42, sur lequel tournait Clora, n'était plus parmi les trois versions
+majeures maintenues. Dependabot, activé en 1.10.1, a proposé la 45 avec huit
+autres mises à jour ; celles-ci ont été relues, essayées en conditions réelles
+(dont de vrais envois de courriel) et fusionnées. Electron a été traité à part,
+parce qu'il touchait le coffre des secrets.
+
+- **Le coffre passe aux nouvelles fonctions d'Electron.** La 45 déclare
+  obsolètes celles sur lesquelles il reposait, et la 46 les retire. Les
+  remplaçantes relisent ce que les anciennes ont chiffré : le mot de passe du
+  courriel, la clé Stripe et la clé des sauvegardes d'une installation existante
+  restent lisibles.
+- **Un secret est rechiffré quand le système le demande**, à sa première
+  lecture, pour ne pas être perdu le jour où une ancienne clé ne serait plus
+  reconnue.
+- **Electron 45**, sans autre changement de code.
+
+Un second essai lance la vraie application à chaque fusion : il pose des
+secrets, ferme, relance, et vérifie qu'ils sont relus à l'identique. 12 tests
+de plus.
+
+**Ce passage n'est pas encore éprouvé sous Windows** (voir la section 5) : il ne
+sera publié qu'après un essai sur un vrai poste.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
@@ -554,7 +580,6 @@ décision.
 | **Fichier journal et diagnostic** | Petit | Sur un poste installé, les erreurs ne sont écrites nulle part : le soutien est aveugle |
 | **Durcissement du poste** | Petit | Refuser tout en-tête `Host` étranger, poser une politique de contenu, bloquer la navigation externe de la fenêtre |
 | **Rappel du dossier de sauvegarde** | Petit | Par défaut, les copies restent sur le même disque que les données ; seul un premier pas masquable le signale |
-| **Electron 45** | Moyen | Electron 42 n'est plus maintenu. La 45 passe tous les essais sous Linux ; il reste à la fabriquer et à l'installer sous Windows, et à remplacer les fonctions du coffre des secrets, qu'elle déclare obsolètes et que la 46 retirera. Les autres mises à jour proposées par Dependabot le 12 novembre, dont `nodemailer` 10, sont fusionnées et partiront avec la prochaine version |
 | **Date de verrouillage** | Moyen | Une fois la déclaration de taxes produite, rien ne devrait plus bouger dans la période |
 | **Pièces justificatives** | Moyen | Joindre le reçu à la dépense : les autorités fiscales exigent de les conserver six ans |
 | **PDF nets** | Moyen | Les factures envoyées sont des images. Electron sait produire un vrai PDF, au texte sélectionnable, et retirerait près d'un mégaoctet du paquet |
@@ -604,8 +629,15 @@ jamais été observés sur une machine réelle :
   Depuis la 1.10.1, un essai lance la vraie application à chaque fusion, sous
   Linux. Reste à le voir sous Windows : fermer Clora en fin de journée, puis
   regarder la date de la dernière copie dans le dossier de sauvegarde.
+- **Les secrets après le passage à Electron 45.** Sous Linux, des secrets
+  chiffrés par l'ancienne méthode sont relus par la nouvelle version. Sous
+  Windows, le coffre est celui du système : il faut installer la nouvelle
+  version par-dessus une installation existante et constater qu'aucune alerte
+  « clé illisible » n'apparaît, qu'un courriel de test part, et que la copie du
+  jour est bien chiffrée. À faire avant de publier, après avoir copié le
+  dossier `%APPDATA%\Clora` pour pouvoir revenir en arrière.
 
-Ce sont trois choses à regarder pendant les tests utilisateurs.
+Ce sont quatre choses à regarder, la dernière avant toute publication.
 
 ---
 
@@ -710,7 +742,8 @@ sont livrées en 1.10.0, et les défauts de la vérification d'ensemble corrigé
 1.10.1. Restent, dans l'ordre : le certificat de signature, puis les mises à
 jour automatiques qu'il rendra possibles ; la relecture juridique et comptable ;
 la clé de licence à la fin des tests. Ce que la vérification a relevé sans le
-corriger attend une décision, point par point (section 4).
+corriger attend une décision, point par point (section 4). Le passage à
+Electron 45 est prêt et attend son essai sous Windows pour être publié.
 
 **Tout ce qui avait été relevé en corrigeant le design est fait** : les polices
 embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la

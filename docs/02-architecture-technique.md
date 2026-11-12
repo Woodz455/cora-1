@@ -411,6 +411,23 @@ Une base restaurée sur une autre machine ne sait plus déchiffrer : le paiement
 ligne se désactive et l'écran des paramètres invite à ressaisir la clé, plutôt
 que de laisser croire qu'il fonctionne encore.
 
+Le module est **asynchrone**. Electron 45 a déclaré obsolètes les fonctions
+synchrones de `safeStorage` (`isEncryptionAvailable`, `encryptString`,
+`decryptString`), et la 46 les retire. Leurs remplaçantes rendent des promesses
+et relisent ce que les anciennes ont chiffré : une installation existante garde
+ses secrets. Les anciennes ne servent plus qu'à un Electron qui ignorerait les
+nouvelles.
+
+La nouvelle lecture peut aussi **demander de rechiffrer** une valeur
+(`shouldReEncrypt`), quand elle a été lue avec une clé que le système a
+remplacée. `lireSecret` le fait à la première lecture, pour les trois colonnes
+qui portent un secret (`smtp_pass_chiffre`, `stripe_cle_chiffree`,
+`sauvegarde_cle`). La réécriture ne touche la ligne que si la valeur n'a pas
+changé entre-temps, et n'empêche jamais de lire. Sans elle, le secret serait
+perdu d'un coup le jour où l'ancienne clé ne serait plus reconnue. Contrepartie :
+une version de Clora antérieure à ce changement pourrait ne plus relire une
+valeur ainsi rechiffrée.
+
 **Les sauvegardes, elles, peuvent être chiffrées pour de bon.** La clé des
 sauvegardes est tirée par Clora (24 caractères, 120 bits) et imprimée sur une
 feuille de secours ; le coffre du système n'en garde qu'un exemplaire de travail.
@@ -794,10 +811,17 @@ npm ci  →  npm test  →  npm test (heure de Montréal)  →  npm ci (client)
 Deux étapes existent parce que la suite ordinaire ne pouvait pas voir ce
 qu'elles attrapent. Le **second passage à l'heure de Montréal** (`TZ`) révèle
 une date lue dans le mauvais fuseau, invisible sur une machine en heure
-universelle. L'**essai de bout en bout** (`tests/e2e/fermeture.js`) lance la
-vraie application de bureau, crée un compte, ferme la fenêtre et vérifie la
-sortie propre, la sauvegarde de fin de journée et la consolidation des
-journaux : tout ce qui ne vit que dans `main.js`.
+universelle. Les **essais de bout en bout** (`tests/e2e/`) lancent la vraie
+application de bureau. `fermeture.js` crée un compte, ferme la fenêtre et
+vérifie la sortie propre, la sauvegarde de fin de journée et la consolidation
+des journaux : tout ce qui ne vit que dans `main.js`. `coffre.js` pose une clé
+de sauvegarde et un mot de passe de courriel, ferme, relance, et vérifie que le
+coffre du système les a protégés puis rendus à l'identique, sans qu'aucune
+fonction déclarée obsolète par Electron ne soit appelée. Il est le filet des
+mises à jour d'Electron : c'est une version majeure qui avait rendu obsolètes
+les fonctions sur lesquelles reposait le coffre. Sous Linux, le coffre n'est pas
+celui de Windows : cet essai ne dit rien de la relecture, sur un vrai poste, des
+secrets d'une installation existante.
 
 `.github/dependabot.yml` surveille les dépendances du serveur, de l'interface
 et des workflows, et propose leurs mises à jour chaque semaine.
@@ -888,7 +912,7 @@ Trois corrections peuvent être demandées explicitement :
 | **Volume du rapprochement** | Plafond de 5 000 lignes ; le relevé transite en JSON sous une limite de corps de 1 Mo |
 | **Retraits bancaires** | Ignorés : frais et sorties sont hors périmètre |
 | **Windows seul** | Aucune cible macOS ou Linux |
-| **Electron en retard d'une version majeure** | Electron 42 n'est plus parmi les trois versions majeures maintenues. La 45 passe sous Linux la fermeture, la restauration et le parcours des écrans, identiques au pixel près, mais elle n'a été ni fabriquée ni installée sous Windows. Elle déclare obsolètes les fonctions synchrones de `safeStorage` dont dépend le coffre des secrets (`secretStorage.js`), que la 46 retirera : il faut passer à leurs versions asynchrones, et vérifier sur un vrai poste qu'une installation existante relit ses secrets après la mise à jour. La demande de fusion #46 de Dependabot reste ouverte pour ce chantier. Toutes les autres dépendances sont à jour, et plus aucun avis de sécurité ne porte sur ce qui est livré |
+| **Electron 45 non éprouvé sous Windows** | Le passage à Electron 45 est vérifié sous Linux dans la vraie application : fermeture, coffre des secrets, restauration, écrans identiques au pixel près. Sous Windows, où le coffre est DPAPI, il reste à fabriquer l'installateur, à l'installer par-dessus une version antérieure et à constater que les secrets déjà enregistrés sont relus |
 | **Facture modifiable après envoi** | Tant qu'elle n'est pas payée, une facture déjà envoyée au client se modifie, sans trace de l'envoi ni du changement |
 | **Journal d'audit incomplet** | Modifier ou supprimer une dépense, rapprocher un dépôt, modifier un abonnement : rien n'est consigné |
 | **Aucune date de verrouillage** | Une dépense d'une période déjà déclarée se modifie ou se supprime librement |
