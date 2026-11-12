@@ -10,6 +10,7 @@ import { useTri } from '../useTri';
 import { useFeedback } from '../FeedbackContext';
 import EnTeteTri from './EnTeteTri';
 import { useLangue } from '../i18n.js';
+import { aujourdhui } from '../dates.js';
 import { CATEGORIES_DEPENSE as CATEGORIES } from '../statuts.js';
 
 const AUTRES = 'Autres dépenses';
@@ -24,8 +25,6 @@ const ACCESSEURS = {
   montant_ttc: (d) => Number(d.montant_ttc) || 0,
   kilometres: (d) => Number(d.kilometres) || 0
 };
-
-const aujourdhui = () => new Date().toISOString().split('T')[0];
 
 function depenseVide() {
   return {

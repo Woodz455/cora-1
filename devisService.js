@@ -6,6 +6,7 @@ const { createFacture, getTaxRatesForProvince } = require('./invoiceService.js')
 const { computeTotals } = require('./money.js');
 const { withTransaction } = require('./dbUtils.js');
 const { nextDocumentNumber } = require('./sequences.js');
+const { aujourdhui } = require('./dates.js');
 
 /** Statuts possibles d'un devis. */
 const STATUTS = {
@@ -232,7 +233,7 @@ async function convertDevisToFacture(db, devisId) {
     // La facture est émise au jour de la conversion. Son échéance découle du
     // terme convenu avec le client, et non plus d'un délai de trente jours
     // imposé à tous indistinctement.
-    const dateEmission = new Date().toISOString().split('T')[0];
+    const dateEmission = aujourdhui();
 
     const facture = await createFacture(db, {
       client_id: devis.client_id,

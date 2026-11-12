@@ -6,6 +6,7 @@ const { roundCents, computeTotals, formatMontant } = require('./money.js');
 const { withTransaction } = require('./dbUtils.js');
 const { nextDocumentNumber } = require('./sequences.js');
 const { normaliserCondition, calculerEcheance, CONDITION_DEFAUT } = require('./paymentTerms.js');
+const { aujourdhui: dateDuJour } = require('./dates.js');
 
 /** Statuts possibles d'une facture. */
 const STATUTS = {
@@ -236,7 +237,7 @@ async function syncStatut(db, factureId) {
  * @returns {Promise<Object>} facture mise à jour
  */
 async function addPaiement(db, factureId, montant, note = '', datePaiement = null, transactionId = null) {
-  const date = datePaiement || new Date().toISOString().split('T')[0];
+  const date = datePaiement || dateDuJour();
   const valeur = roundCents(montant);
 
   if (!(valeur > 0)) {
@@ -297,7 +298,7 @@ async function annulerPaiement(db, paiementId, { motif = '', utilisateur = '' } 
 
     await db.run(
       'UPDATE paiements SET annule_le = ?, annule_par = ?, motif_annulation = ? WHERE id = ?',
-      [new Date().toISOString().split('T')[0], utilisateur || null, motif || null, paiementId]
+      [dateDuJour(), utilisateur || null, motif || null, paiementId]
     );
 
     // Un paiement issu du rapprochement bancaire laisserait sinon sa transaction
@@ -408,11 +409,11 @@ async function getReportStats(db) {
     FROM factures f
     JOIN clients c ON f.client_id = c.id
     ${JOINTURES_FINANCIERES}
-    WHERE f.date_echeance < date('now')
+    WHERE f.date_echeance < ?
       AND f.statut != '${STATUTS.ANNULEE}'
       AND ${SOLDE} > 0
     ORDER BY f.date_echeance ASC
-  `);
+  `, [dateDuJour()]);
 
   return {
     ...stats,
@@ -677,18 +678,21 @@ async function deleteFacture(db, factureId) {
  * attente n'apparaissait donc nulle part.
  */
 async function getDashboardStats(db) {
+  // Le jour est lu une fois : une facture ne doit pas tomber à la fois « en
+  // attente » et « en retard », ni dans aucun des deux, à minuit pile.
+  const jour = dateDuJour();
   const totaux = await db.get(`
     ${CTE_TOTAUX}
     SELECT
       COALESCE(SUM(ROUND(${PAYE} * ${TAUX}, 2)), 0) AS chiffreAffaires,
-      COALESCE(SUM(CASE WHEN ${SOLDE} > 0 AND f.date_echeance >= date('now')
+      COALESCE(SUM(CASE WHEN ${SOLDE} > 0 AND f.date_echeance >= ?
                         THEN ROUND(${SOLDE} * ${TAUX}, 2) ELSE 0 END), 0) AS facturesEnAttente,
-      COALESCE(SUM(CASE WHEN ${SOLDE} > 0 AND f.date_echeance < date('now')
+      COALESCE(SUM(CASE WHEN ${SOLDE} > 0 AND f.date_echeance < ?
                         THEN ROUND(${SOLDE} * ${TAUX}, 2) ELSE 0 END), 0) AS facturesEnRetard
     FROM factures f
     ${JOINTURES_FINANCIERES}
     WHERE f.statut != '${STATUTS.ANNULEE}'
-  `);
+  `, [jour, jour]);
 
   // Revenus par mois d'encaissement (et non d'émission) : c'est la trésorerie
   // réellement entrée sur la période.
@@ -851,7 +855,7 @@ const TRANCHES_AGE = [
  * @param {import('sqlite').Database} db
  * @param {string} [aujourdhui] date de référence AAAA-MM-JJ, pour les tests
  */
-async function getBalanceAgee(db, aujourdhui = new Date().toISOString().split('T')[0]) {
+async function getBalanceAgee(db, aujourdhui = dateDuJour()) {
   // Le retard se calcule en jours entiers depuis l'échéance ; `julianday`
   // évite les pièges de fuseau d'un calcul fait côté JavaScript.
   const RETARD = "CAST(julianday(?) - julianday(f.date_echeance) AS INTEGER)";
@@ -1054,7 +1058,7 @@ const CLIENTS_BALANCE_SOMMAIRE = 8;
  * @param {{annee: string, mois?: string, trimestre?: string}} periode
  * @param {string} [aujourdhui] date de référence AAAA-MM-JJ, pour les tests
  */
-async function getSommaire(db, periode, aujourdhui = new Date().toISOString().split('T')[0]) {
+async function getSommaire(db, periode, aujourdhui = dateDuJour()) {
   if (!periode.annee) {
     throw Object.assign(
       new Error('Le compte rendu porte sur une année, un trimestre ou un mois : indiquez l\'année.'),

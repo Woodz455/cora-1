@@ -29,6 +29,7 @@ const { withTransaction } = require('./dbUtils.js');
 const { dechiffrer } = require('./secretStorage.js');
 const { journaliser, ACTIONS } = require('./auditService.js');
 const { addPaiement, getSoldeFacture } = require('./invoiceService.js');
+const { aujourdhui } = require('./dates.js');
 const {
   creerLien, sessionsDuLien, desactiverLien, cleValide, modeDeLaCle, estRestreinte
 } = require('./stripeService.js');
@@ -232,7 +233,7 @@ async function inscrire(db, lien, session) {
   // La date retenue est celle du relevé, non celle de la session : pour un
   // débit préautorisé, la session est ouverte plusieurs jours avant que
   // l'argent n'arrive, et c'est la réception qui fait foi aux comptes.
-  const date = new Date().toISOString().split('T')[0];
+  const date = aujourdhui();
 
   try {
     const inscription = await withTransaction(db, async () => {

@@ -15,7 +15,14 @@ const { createNoteCredit } = require('../noteCreditService.js');
 const { createTestDb, insertClient } = require('./helpers.js');
 
 const LIGNES = [{ description: 'Service', quantite: 1, prix_unitaire: 1000 }];
-const AUJOURDHUI = new Date('2026-08-15T12:00:00Z');
+/**
+ * Le 15 août 2026 à midi, à l'horloge du poste : le jour se lit dans le fuseau
+ * local, et midi tombe le même jour sous tous les fuseaux.
+ */
+const AUJOURDHUI = new Date(2026, 7, 15, 12);
+
+/** Le même jour, pour l'arithmétique des échéances, qui se fait en heure universelle. */
+const JOUR_UTC = '2026-08-15T00:00:00Z';
 
 /** Collecte les courriels au lieu de les envoyer. */
 function collecteur() {
@@ -35,7 +42,7 @@ async function preparer(t, { retard = 20, paliers = '7,15,30', actives = 1, lang
   );
 
   const clientId = await insertClient(db, { langue, email: 'client@exemple.ca' });
-  const echeance = new Date(AUJOURDHUI);
+  const echeance = new Date(JOUR_UTC);
   echeance.setUTCDate(echeance.getUTCDate() - retard);
 
   const facture = await createFacture(db, {
@@ -187,7 +194,7 @@ test('un échec d\'envoi est journalisé sans interrompre les suivants', async (
   const { db, clientId, facture } = await preparer(t, { retard: 20 });
 
   // Deuxième facture échue, pour vérifier que la première n'a pas tout arrêté.
-  const echeance = new Date(AUJOURDHUI);
+  const echeance = new Date(JOUR_UTC);
   echeance.setUTCDate(echeance.getUTCDate() - 20);
   const seconde = await createFacture(db, {
     client_id: clientId, date_emission: '2026-07-01', date_echeance: echeance.toISOString().split('T')[0]

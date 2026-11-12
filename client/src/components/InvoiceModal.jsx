@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { api, calculerEcheance, CONDITIONS } from '../api';
 import { useModale } from '../useModale';
 import { useLangue } from '../i18n.js';
+import { aujourdhui, dateLocale } from '../dates.js';
 
 /** Identifiant local d'une ligne, stable pour la clé React. */
 let compteurLignes = 0;
@@ -14,8 +15,6 @@ const nouvelleLigne = (valeurs = {}) => ({
   ...valeurs
 });
 
-const dateISO = (date) => date.toISOString().split('T')[0];
-
 function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' }) {
   const modaleRef = useModale(onClose);
   const estDevis = mode === 'devis';
@@ -24,13 +23,12 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
   const [clients, setClients] = useState([]);
   const [catalogue, setCatalogue] = useState([]);
   const [formData, setFormData] = useState(() => {
-    const aujourdhui = new Date();
     const echeance = new Date();
     echeance.setDate(echeance.getDate() + 15);
     return {
       client_id: '',
-      date_emission: dateISO(aujourdhui),
-      date_echeance: dateISO(echeance),
+      date_emission: aujourdhui(),
+      date_echeance: dateLocale(echeance),
       devise: 'CAD',
       taux_change: 1.0
     };

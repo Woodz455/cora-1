@@ -3,6 +3,7 @@ import { TriangleAlert } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { api } from '../api';
 import { useLangue } from '../i18n.js';
+import { aujourdhui } from '../dates.js';
 import { useFeedback } from '../FeedbackContext';
 
 /**
@@ -153,10 +154,10 @@ function Dashboard({ naviguer }) {
       ]);
       if (annule) return;
 
-      const aujourdhui = new Date().toISOString().split('T')[0];
+      const jour = aujourdhui();
       setAFaire({
         factures: factures.filter((f) => f.statut !== 'Annulée'
-          && f.solde_restant > 0 && f.date_echeance < aujourdhui),
+          && f.solde_restant > 0 && f.date_echeance < jour),
         devis: devis.filter((d) => d.statut !== 'Converti' && d.statut !== 'Refusé'),
         depots: depots
       });

@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { api } from '../api';
 import { useModale } from '../useModale';
 import { useLangue } from '../i18n.js';
+import { aujourdhui } from '../dates.js';
 
 /** Identifiant local d'une ligne, stable pour la clé React. */
 let compteurLignes = 0;
@@ -35,7 +36,7 @@ function CreditNoteModal({ facture, onClose, onSuccess }) {
   const { t, montant } = useLangue();
   const [lignes, setLignes] = useState([nouvelleLigne()]);
   const [motif, setMotif] = useState('');
-  const [dateEmission, setDateEmission] = useState(new Date().toISOString().split('T')[0]);
+  const [dateEmission, setDateEmission] = useState(aujourdhui);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 

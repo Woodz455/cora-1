@@ -9,6 +9,7 @@ const {
   createSubscription, updateSubscription, checkAndGenerateRecurringInvoices, addCycle
 } = require('../subscriptionService.js');
 const { createTestDb, insertClient } = require('./helpers.js');
+const { dateLocale, aujourdhui: dateDuJour } = require('../dates.js');
 
 const LIGNES = [{ description: 'Hébergement', quantite: 1, prix_unitaire: 100 }];
 
@@ -16,7 +17,7 @@ const LIGNES = [{ description: 'Hébergement', quantite: 1, prix_unitaire: 100 }
 function ilYA(jours) {
   const d = new Date();
   d.setDate(d.getDate() - jours);
-  return d.toISOString().split('T')[0];
+  return dateLocale(d);
 }
 
 async function prepare(t) {
@@ -79,7 +80,7 @@ test('la prochaine échéance est reportée dans le futur', async (t) => {
   await checkAndGenerateRecurringInvoices(db);
 
   const sub = await db.get('SELECT date_prochaine_generation FROM abonnements');
-  const aujourdhui = new Date().toISOString().split('T')[0];
+  const aujourdhui = dateDuJour();
   assert.ok(sub.date_prochaine_generation > aujourdhui,
     `${sub.date_prochaine_generation} devrait être postérieure à ${aujourdhui}`);
 });
