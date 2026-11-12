@@ -11,6 +11,13 @@ const { startServer } = require('./server.js');
 const { sauvegardeSiNecessaire } = require('./backupService.js');
 const { connexionsOuvertes, fermerTout } = require('./companyStore.js');
 const { traduire } = require('./traductionServeur.js');
+const { getDataDir } = require('./config.js');
+const journalFichier = require('./journalFichier.js');
+
+// Avant tout le reste : ce qui échoue au démarrage doit lui aussi laisser une
+// trace. Seule l'application de bureau tient ce journal ; le serveur lancé
+// seul et les tests gardent leur console.
+journalFichier.installer(getDataDir());
 
 /**
  * `CLORA_UI_COMPILEE=1` force le chemin de production sur une application non

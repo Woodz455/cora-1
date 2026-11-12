@@ -42,6 +42,7 @@ const demarrageRoutes = require('./routes/demarrage.js');
 const licenceRoutes = require('./routes/licence.js');
 const importRoutes = require('./routes/import.js');
 const paiementEnLigneRoutes = require('./routes/paiementsEnLigne.js');
+const diagnosticRoutes = require('./routes/diagnostic.js');
 
 /** Limite de corps par défaut. */
 const LIMITE_CORPS = '1mb';
@@ -269,6 +270,7 @@ function createApp(db, options = {}) {
   app.use('/api/import', importRoutes(getDb));
   app.use('/api/paiements-en-ligne', paiementEnLigneRoutes(getDb));
   app.use('/api/settings', settingsRoutes(getDb));
+  app.use('/api/diagnostic', diagnosticRoutes(getDb, getComptesDb));
   app.use('/api', rapportRoutes(getDb));
 
   // Toute autre route d'API répond en JSON, et non par la page d'accueil React.

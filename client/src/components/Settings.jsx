@@ -1134,6 +1134,16 @@ function Settings({ ancre, naviguer }) {
             </small>
           </div>
 
+          <div className="form-group">
+            <a className="btn-secondary" href="/api/diagnostic" download>
+              {t('Télécharger le diagnostic')}
+            </a>
+            <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '8px' }}>
+              {t("Un fichier texte à transmettre au soutien en cas de problème : version, état des sauvegardes et journal de fonctionnement. "
+                + "Il ne contient ni donnée comptable, ni nom de client, ni mot de passe, et Clora ne l'envoie nulle part.")}
+            </small>
+          </div>
+
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
             <button type="button" className="btn-secondary" disabled={sauvegardeEnCours} onClick={sauvegarderMaintenant}>
               {sauvegardeEnCours ? t('Sauvegarde en cours…') : t('Sauvegarder maintenant')}
