@@ -96,7 +96,7 @@
   "devDependencies": {
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
-    "electron": "^42.4.1",
+    "electron": "^45.2.3",
     "electron-builder": "^26.15.3",
     "electron-is-dev": "^3.0.1",
     "playwright-core": "^1.65.0",
