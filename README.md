@@ -88,6 +88,7 @@ thème sombre, où le bleu marine disparaîtrait sur le panneau foncé.
 | `npm run build` | Compile l'interface et produit l'installateur (sous Windows) |
 | `npm run visuels` | Régénère logotype, symbole et icône depuis `image/clora-source.png` |
 | `npm test` | Suite de tests (calculs financiers, rôles, API) |
+| `npm run test:e2e` | Lance la vraie application de bureau, ferme sa fenêtre et vérifie la sauvegarde de fin de journée (interface compilée et affichage requis) |
 | `npm run doctor` | Diagnostique les anomalies dans les données comptables |
 | `npm run doctor -- --corriger-statuts` | Réaligne le statut des factures sur leurs montants |
 | `npm run doctor -- --refiger-montants` | Recalcule les montants depuis les lignes, en cas de dérive signalée |
@@ -300,6 +301,7 @@ config.js          Emplacement des données, secret de session, port et hôte
 database.js        Schéma, migrations et index
 money.js           Arithmétique monétaire (JavaScript et SQL alignés)
 sequences.js       Numérotation des documents, jamais réattribuée
+dates.js           La date du jour, lue à l'horloge du poste
 dbUtils.js         Transactions sérialisées et réentrantes
 validators.js      Validation des données entrantes
 rateLimit.js       Limitation des tentatives de connexion
@@ -332,6 +334,17 @@ client/src/        Interface React
   l'émission. Les rapports consolident tout en dollars canadiens.
 - **Conservation.** Une facture comportant un paiement ne peut être ni modifiée,
   ni annulée, ni supprimée : elle doit faire l'objet d'une note de crédit.
+- **Numérotation.** Une facture porte le numéro `PRÉFIXE-AAAAMM-NNNN`. Le
+  préfixe se règle par dossier dans Paramètres (2 à 6 lettres ou chiffres) : un
+  dossier neuf reçoit `FAC`, un dossier antérieur à la 1.10.1 garde `SHT`, pour
+  que sa série continue. Changer de préfixe ouvre une série neuve ; un numéro
+  émis n'est jamais réutilisé. `DEV` et `NC` restent réservés aux devis et aux
+  notes de crédit.
+- **Date du jour.** Elle se lit à l'horloge du poste, jamais en heure
+  universelle : au Québec, celle-ci passe au lendemain dès 19 h ou 20 h, et une
+  facture du 30 novembre au soir serait partie dans la série et la période de
+  taxes de décembre. Seule cette lecture est locale (`dates.js`) ; le calcul
+  des échéances et des jours de retard reste en heure universelle.
 - **Note de crédit ou annulation de paiement ?** La note de crédit corrige ce
   que le client **doit**, et reprend les taxes correspondantes : elle vaut pour
   un retour de marchandise ou une remise accordée après coup. L'annulation d'un
@@ -554,7 +567,9 @@ est donc produite automatiquement, **activée par défaut**.
 
 - **Quand.** Une par jour, vérifiée à chaque passage horaire du planificateur,
   plus une à la fermeture de l'application : un poste éteint chaque soir
-  n'atteindrait jamais l'échéance autrement.
+  n'atteindrait jamais l'échéance autrement. La fermeture attend la fin de
+  cette copie, quinze secondes au plus, pour qu'un dossier injoignable ne
+  retienne pas l'application.
 - **Où.** `sauvegardes/` dans le dossier de données, ou tout dossier choisi
   dans les Paramètres. **Viser un dossier synchronisé** (OneDrive, Dropbox,
   Google Drive) est ce qui fait sortir la copie de la machine, et donc ce qui
@@ -790,7 +805,9 @@ trace. Un échec part en erreur console.
 ## Tests
 
 ```bash
-npm test
+npm test                          # la suite, côté serveur
+TZ=America/Toronto npm test       # la même, à l'heure de Montréal
+xvfb-run -a npm run test:e2e      # la vraie application de bureau (Linux)
 ```
 
 La suite couvre l'arithmétique monétaire (dont l'égalité entre les calculs
@@ -800,3 +817,10 @@ relances automatiques, la conversion des devis, la facturation récurrente, le
 rapprochement bancaire (y compris la répartition d'un dépôt sur plusieurs
 factures), le cloisonnement des rôles et la traduction anglaise de chaque écran
 et de chaque message.
+
+L'intégration continue l'exécute deux fois : en heure universelle, puis à
+l'heure de Montréal, où une date lue dans le mauvais fuseau se voit. Elle lance
+ensuite `npm run test:e2e`, qui ouvre l'application de bureau sur l'interface
+compilée, crée un compte, ferme la fenêtre et vérifie que le processus sort
+proprement, que la sauvegarde de fin de journée existe et que les journaux de
+la base sont consolidés. Ce qui ne vit que dans `main.js` ne se voit que là.

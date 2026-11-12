@@ -65,13 +65,37 @@ l'intégration parle directement à l'API REST par le module `https` de Node.
 3. Le serveur Express démarre. En production, sur **un port libre attribué par
    le système** ; en développement, sur 3000 pour que le proxy de Vite le trouve.
 4. Le registre `comptes.sqlite` s'ouvre, migre si nécessaire, et désigne le
-   dossier d'entreprise à charger.
+   dossier d'entreprise à charger. **Sans dossier enregistré, aucune base
+   n'est créée** : le premier dossier naît avec le compte de son
+   administrateur. Jusqu'à la 1.10.0, une base vide naissait ici, à la racine
+   des données ; quitter avant de créer son compte la faisait prendre, au
+   lancement suivant, pour un dossier hérité, et le nom d'entreprise saisi
+   était ignoré. La création du compte donne désormais son identité à un
+   dossier resté vierge (`nommerSiVierge`, `companyStore.js`).
 5. Le planificateur horaire démarre.
 6. La fenêtre charge `http://127.0.0.1:<port>` et s'affiche ; l'écran de
    démarrage se ferme, après être resté au moins 0,6 seconde.
 
 Un échec à l'étape 3 ferme l'écran de démarrage et ouvre une boîte de dialogue
 d'erreur explicite, au lieu de laisser l'utilisateur devant une fenêtre blanche.
+
+### Ce qui se passe à la fermeture
+
+Electron n'attend pas un gestionnaire asynchrone sur `before-quit`. La
+fermeture est donc **suspendue une fois** (`event.preventDefault()`), le temps
+de trois choses, puis relancée :
+
+1. le serveur cesse d'accepter des requêtes ;
+2. chaque dossier ouvert pendant la session reçoit sa sauvegarde de fin de
+   journée, si la dernière a plus de 24 h ;
+3. les bases sont fermées, ce qui consolide leurs journaux WAL.
+
+Un délai de garde de 15 secondes laisse l'application se fermer même si le
+dossier de sauvegarde ne répond pas. Jusqu'à la 1.10.0, rien n'était retenu :
+le processus s'arrêtait pendant que la sauvegarde démarrait, elle n'avait donc
+jamais lieu, et SQLite, interrompu en plein travail, faisait planter la sortie.
+La restauration d'une sauvegarde passe par `app.exit(0)` et ne traverse pas ce
+chemin : elle fait son propre point de contrôle avant de relancer.
 
 À la première ouverture d'un dossier par un compte, l'interface lance la
 **visite guidée** (`VisiteGuidee.jsx`). Les éléments présentés portent un
@@ -244,6 +268,28 @@ séquence comptable à trous est acceptable, une séquence qui réutilise un num
 ne l'est pas.
 
 Format des notes de crédit : `NC-AAAAMM-NNNN`.
+
+Le **préfixe des factures** est un réglage du dossier
+(`settings.prefixe_facture`, Paramètres, administrateur seulement) : 2 à 6
+lettres ou chiffres, mis en majuscules. Les dossiers antérieurs à la 1.10.1
+gardent `SHT`, les initiales de l'éditeur, qui étaient écrites en dur ; un
+dossier neuf, qui n'a encore rien facturé, reçoit `FAC`. Les compteurs étant
+tenus par préfixe et par mois, changer de préfixe ouvre une série neuve sans
+réutiliser aucun numéro, et `DEV` comme `NC` sont refusés pour que les séries
+ne se mêlent pas. Le changement est consigné au journal d'audit.
+
+### La date du jour
+
+`dates.js` (et son double `client/src/dates.js`) rend le jour civil **dans le
+fuseau du poste**. `new Date().toISOString()` et `date('now')` le rendent en
+heure universelle, en avance de quatre ou cinq heures sur le Québec : dès 19 h
+ou 20 h, « aujourd'hui » devenait le lendemain, ce qui datait mal les pièces,
+affichait en retard une facture due le jour même et, en fin de mois, envoyait
+une facture dans la série et la période de taxes du mois suivant.
+
+Seule la **lecture** de la date du jour est locale. L'arithmétique sur des
+dates déjà enregistrées (échéances, jours de retard, cycles d'abonnement) reste
+en heure universelle, où un jour compte toujours vingt-quatre heures.
 
 ### L'arithmétique monétaire
 
@@ -739,8 +785,20 @@ qu'aucun test ni aucun testeur ne l'ait vu.
 poussée vers `master` :
 
 ```
-npm ci  →  npm test  →  npm ci (client)  →  npx eslint .  →  npm run build
+npm ci  →  npm test  →  npm test (heure de Montréal)  →  npm ci (client)
+        →  npx eslint .  →  npm run build  →  xvfb-run npm run test:e2e
 ```
+
+Deux étapes existent parce que la suite ordinaire ne pouvait pas voir ce
+qu'elles attrapent. Le **second passage à l'heure de Montréal** (`TZ`) révèle
+une date lue dans le mauvais fuseau, invisible sur une machine en heure
+universelle. L'**essai de bout en bout** (`tests/e2e/fermeture.js`) lance la
+vraie application de bureau, crée un compte, ferme la fenêtre et vérifie la
+sortie propre, la sauvegarde de fin de journée et la consolidation des
+journaux : tout ce qui ne vit que dans `main.js`.
+
+`.github/dependabot.yml` surveille les dépendances du serveur, de l'interface
+et des workflows, et propose leurs mises à jour chaque semaine.
 
 Aucune fusion n'a lieu au rouge.
 
@@ -828,6 +886,15 @@ Trois corrections peuvent être demandées explicitement :
 | **Volume du rapprochement** | Plafond de 5 000 lignes ; le relevé transite en JSON sous une limite de corps de 1 Mo |
 | **Retraits bancaires** | Ignorés : frais et sorties sont hors périmètre |
 | **Windows seul** | Aucune cible macOS ou Linux |
+| **Versions majeures en retard** | Electron 42 n'est plus parmi les trois versions majeures maintenues ; `nodemailer` 8 porte un avis de sécurité que seule la version 10 corrige. Les mises à jour sans rupture sont faites |
+| **Facture modifiable après envoi** | Tant qu'elle n'est pas payée, une facture déjà envoyée au client se modifie, sans trace de l'envoi ni du changement |
+| **Journal d'audit incomplet** | Modifier ou supprimer une dépense, rapprocher un dépôt, modifier un abonnement : rien n'est consigné |
+| **Aucune date de verrouillage** | Une dépense d'une période déjà déclarée se modifie ou se supprime librement |
+| **Pas de pièces justificatives** | Aucun reçu ne peut être joint à une dépense |
+| **PDF en image** | La facture envoyée par courriel est une image : texte non sélectionnable, illisible par un lecteur d'écran, fichier lourd |
+| **Dossiers et clients** | Ni renommage ni archivage d'un dossier, ni archivage d'un client |
+| **Aucun fichier journal** | Sur un poste installé, les messages d'erreur ne sont écrits nulle part |
+| **Durcissement du poste** | Le serveur local répond à n'importe quel en-tête `Host` ; la fenêtre n'a ni politique de contenu, ni blocage de la navigation externe |
 | **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.10.0 en offre l'occasion sur toute installation restée en 1.9.1 |
 | **Redémarrage après restauration** | Vérifié de bout en bout dans l'application de bureau sous Linux en 1.9.1 (restauration appliquée, redémarrage automatique). Reste à l'observer sur un vrai Windows |
 

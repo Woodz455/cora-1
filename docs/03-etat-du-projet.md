@@ -429,6 +429,40 @@ l'intérieur. Les deux fenêtres des dépenses (« Ajouter une dépense »,
 lieu de couvrir l'écran. Tant qu'une fenêtre est ouverte, les panneaux derrière
 elle perdent désormais leur flou, que le voile de la fenêtre remplace.
 
+### Phase 18 : la vérification d'ensemble
+*11 et 12 novembre · à publier en 1.10.1*
+
+Une relecture complète du logiciel, faite pour répondre à une question simple :
+est-il irréprochable ? La suite de tests, l'analyse statique et la compilation
+étaient propres. Six défauts sont pourtant sortis d'essais menés dans la vraie
+application de bureau et à l'heure de Montréal, deux conditions que les tests
+ne reproduisaient pas.
+
+- **La fermeture plantait, et la sauvegarde de fin de journée n'avait jamais
+  lieu.** Electron n'attendait pas le travail de fermeture : le processus
+  s'arrêtait pendant que la copie démarrait. La fermeture est désormais retenue
+  le temps de la sauvegarde, quinze secondes au plus.
+- **Le soir, « aujourd'hui » devenait demain.** Les dates du jour étaient lues
+  en heure universelle. Dès 19 h ou 20 h au Québec, une pièce était datée du
+  lendemain, une facture due le jour même passait en retard, et le 30 du mois
+  une facture partait dans la série et la période de taxes du mois suivant.
+- **Quitter avant de créer son compte faisait perdre le nom de l'entreprise.**
+  Au lancement suivant, le dossier s'appelait « Mon entreprise », sans nom sur
+  ses factures ni profil.
+- **La facture envoyée par courriel était en A4** au lieu du format lettre.
+- **Toutes les factures commençaient par « SHT »**, les initiales de l'éditeur.
+  Le préfixe se règle maintenant par dossier ; les dossiers existants gardent
+  le leur, les nouveaux reçoivent « FAC ».
+- **Des avis de sécurité étaient ouverts** sur des dépendances livrées, sans
+  aucune surveillance. Les mises à jour sans rupture sont faites, et Dependabot
+  veille.
+
+Pour que ces défauts ne reviennent pas sans bruit, l'intégration continue lance
+désormais la vraie application de bureau et rejoue la suite à l'heure de
+Montréal. 17 tests de plus.
+
+Ce que la relecture a relevé sans le corriger est consigné à la section 4.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
@@ -484,9 +518,11 @@ Deux issues : un service de signature infonuagique (eSigner chez SSL.com, par
 exemple), ou un exécuteur auto-hébergé sur une machine Windows qui porte le
 jeton.
 
-À noter : un certificat de validation d'organisation ne fait pas disparaître
-l'avertissement du jour au lendemain : la réputation se construit avec les
-téléchargements. Seul un certificat EV, plus cher, tend à l'écarter d'emblée.
+À noter : aucun certificat ne fait disparaître l'avertissement du jour au
+lendemain : la réputation se construit avec les téléchargements. Depuis 2024,
+Microsoft traite de la même façon les certificats de validation
+d'organisation et les certificats EV, plus chers : payer un EV n'écarte plus
+l'avertissement d'emblée.
 
 > **Un certificat de signature ne crée aucun numéro de licence par client.** Il
 > signe le fichier `.exe`, une fois, pour tout le monde. Les numéros de licence
@@ -504,6 +540,26 @@ téléchargements. Seul un certificat EV, plus cher, tend à l'écarter d'emblé
 | **Rapprochement bancaire : fenêtre de dates** | Environ une journée pour les trois | ± 3 jours entre l'échéance et le dépôt, au lieu d'aucune considération temporelle |
 | **Rapprochement : tolérance de montant** | | Pour absorber des frais retenus ou une conversion, là où seul le montant exact est reconnu |
 | **Rapprochement : classement des candidats** | | Plusieurs propositions ordonnées, au lieu d'une correspondance binaire |
+
+#### Relevé par la vérification d'ensemble du 12 novembre
+
+Constats vérifiés dans le code ou par essai, non corrigés : chacun demande une
+décision.
+
+| Sujet | Effort estimé | Pourquoi |
+| --- | --- | --- |
+| **Dépenses hors du journal d'audit** | Petit | Modifier ou supprimer une dépense ne laisse aucune trace, alors qu'elle touche le rapport de taxes |
+| **Facture modifiable après envoi** | Petit | Une facture envoyée reste modifiable tant qu'elle n'est pas payée, sans trace de l'envoi ni du changement. À consigner, avec un avertissement |
+| **Rapprochement et abonnements hors du journal** | Petit | Rapprocher, ignorer un dépôt, modifier un abonnement : rien n'est consigné |
+| **Fichier journal et diagnostic** | Petit | Sur un poste installé, les erreurs ne sont écrites nulle part : le soutien est aveugle |
+| **Durcissement du poste** | Petit | Refuser tout en-tête `Host` étranger, poser une politique de contenu, bloquer la navigation externe de la fenêtre |
+| **Rappel du dossier de sauvegarde** | Petit | Par défaut, les copies restent sur le même disque que les données ; seul un premier pas masquable le signale |
+| **Versions majeures** | Moyen | Electron 45 et `nodemailer` 10, l'essai de bout en bout servant de filet |
+| **Date de verrouillage** | Moyen | Une fois la déclaration de taxes produite, rien ne devrait plus bouger dans la période |
+| **Pièces justificatives** | Moyen | Joindre le reçu à la dépense : les autorités fiscales exigent de les conserver six ans |
+| **PDF nets** | Moyen | Les factures envoyées sont des images. Electron sait produire un vrai PDF, au texte sélectionnable, et retirerait près d'un mégaoctet du paquet |
+| **Renommer et archiver** | Moyen | Un dossier ne se renomme ni ne s'archive, un client créé par erreur reste pour toujours |
+| **Essais de l'interface** | Moyen | Aucun test ne pilote les écrans : deux ou trois parcours automatisés éviteraient une régression comme celle des fenêtres de la 1.9.1 |
 
 > **Réserve sur une quatrième idée** souvent proposée : la détection des
 > inversions de chiffres n'a presque aucune valeur ici. Elle attrape les
