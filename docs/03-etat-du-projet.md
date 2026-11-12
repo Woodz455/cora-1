@@ -463,6 +463,37 @@ Montréal. 17 tests de plus.
 
 Ce que la relecture a relevé sans le corriger est consigné à la section 4.
 
+### Phase 19 : Electron 45 et le coffre des secrets
+*12 novembre · pas encore publié*
+
+Electron 42, sur lequel tournait Clora, n'était plus parmi les trois versions
+majeures maintenues. Dependabot, activé en 1.10.1, a proposé la 45 avec huit
+autres mises à jour ; celles-ci ont été relues, essayées en conditions réelles
+(dont de vrais envois de courriel) et fusionnées. Electron a été traité à part,
+parce qu'il touchait le coffre des secrets.
+
+- **Le coffre passe aux nouvelles fonctions d'Electron.** La 45 déclare
+  obsolètes celles sur lesquelles il reposait, et la 46 les retire. Les
+  remplaçantes relisent ce que les anciennes ont chiffré : le mot de passe du
+  courriel, la clé Stripe et la clé des sauvegardes d'une installation existante
+  restent lisibles.
+- **Un secret est rechiffré quand le système le demande**, à sa première
+  lecture, pour ne pas être perdu le jour où une ancienne clé ne serait plus
+  reconnue.
+- **Electron 45**, sans autre changement de code.
+
+Un second essai lance la vraie application à chaque fusion : il pose des
+secrets, ferme, relance, et vérifie qu'ils sont relus à l'identique. 12 tests
+de plus.
+
+**Éprouvé sous Windows le 12 novembre**, avant toute publication : une
+fabrication d'essai installée par-dessus la 1.10.1, sur un poste réel, après
+copie du dossier de données. Les secrets déjà enregistrés ont été relus, et le
+reste du parcours prévu (courriel de test, choix du dossier de sauvegarde,
+aperçu et impression d'une facture, copie du jour à la fermeture) s'est déroulé
+sans défaut. C'était la seule vérification que Linux ne pouvait pas donner : le
+coffre y est celui du système, non celui de Windows.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
@@ -554,7 +585,6 @@ décision.
 | **Fichier journal et diagnostic** | Petit | Sur un poste installé, les erreurs ne sont écrites nulle part : le soutien est aveugle |
 | **Durcissement du poste** | Petit | Refuser tout en-tête `Host` étranger, poser une politique de contenu, bloquer la navigation externe de la fenêtre |
 | **Rappel du dossier de sauvegarde** | Petit | Par défaut, les copies restent sur le même disque que les données ; seul un premier pas masquable le signale |
-| **Electron 45** | Moyen | Electron 42 n'est plus maintenu. La 45 passe tous les essais sous Linux ; il reste à la fabriquer et à l'installer sous Windows, et à remplacer les fonctions du coffre des secrets, qu'elle déclare obsolètes et que la 46 retirera. Les autres mises à jour proposées par Dependabot le 12 novembre, dont `nodemailer` 10, sont fusionnées et partiront avec la prochaine version |
 | **Date de verrouillage** | Moyen | Une fois la déclaration de taxes produite, rien ne devrait plus bouger dans la période |
 | **Pièces justificatives** | Moyen | Joindre le reçu à la dépense : les autorités fiscales exigent de les conserver six ans |
 | **PDF nets** | Moyen | Les factures envoyées sont des images. Electron sait produire un vrai PDF, au texte sélectionnable, et retirerait près d'un mégaoctet du paquet |
@@ -600,12 +630,20 @@ jamais été observés sur une machine réelle :
 - **Le redémarrage après restauration d'une sauvegarde.** Vérifié de bout en
   bout dans l'application de bureau sous Linux depuis la 1.9.1 : la restauration
   s'applique et l'application redémarre seule. Reste à le voir sous Windows.
-- **La sauvegarde à la fermeture.** Jusqu'à la 1.10.0, elle n'avait jamais lieu.
-  Depuis la 1.10.1, un essai lance la vraie application à chaque fusion, sous
-  Linux. Reste à le voir sous Windows : fermer Clora en fin de journée, puis
-  regarder la date de la dernière copie dans le dossier de sauvegarde.
 
-Ce sont trois choses à regarder pendant les tests utilisateurs.
+Ce sont deux choses à regarder pendant les tests utilisateurs.
+
+Deux autres points figuraient ici et n'y sont plus, observés le 12 novembre sur
+un poste Windows, lors de l'essai d'une fabrication installée par-dessus la
+1.10.1 :
+
+- **La sauvegarde à la fermeture.** Jusqu'à la 1.10.0, elle n'avait jamais lieu.
+  La copie du jour était bien là après la fermeture de Clora.
+- **Les secrets après le passage à Electron 45.** Les secrets déjà enregistrés
+  ont été relus par le nouveau coffre.
+
+Un seul poste a fait cet essai : il reste à le confirmer chez les autres
+testeurs à la publication, chacun gardant sa feuille de secours sous la main.
 
 ---
 
@@ -710,7 +748,9 @@ sont livrées en 1.10.0, et les défauts de la vérification d'ensemble corrigé
 1.10.1. Restent, dans l'ordre : le certificat de signature, puis les mises à
 jour automatiques qu'il rendra possibles ; la relecture juridique et comptable ;
 la clé de licence à la fin des tests. Ce que la vérification a relevé sans le
-corriger attend une décision, point par point (section 4).
+corriger attend une décision, point par point (section 4). Le passage à
+Electron 45 est fait et éprouvé sous Windows : il partira avec la prochaine
+version.
 
 **Tout ce qui avait été relevé en corrigeant le design est fait** : les polices
 embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la

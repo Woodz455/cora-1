@@ -9,7 +9,9 @@ const { journaliser, ecart, ACTIONS } = require('../auditService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { sanitizeText, isValidEmailList } = require('../validators.js');
 const { parsePaliers: analyserPaliers } = require('../relanceService.js');
-const { chiffrer, dechiffrer, estProtege, coffreDisponible } = require('../secretStorage.js');
+const {
+  chiffrer, dechiffrer, lireSecret, estProtege, coffreDisponible
+} = require('../secretStorage.js');
 const { envoyerCourrielTest } = require('../emailService.js');
 const stripe = require('../stripeService.js');
 const kilometrage = require('../kilometrageService.js');
@@ -68,13 +70,13 @@ const CHAMPS_INTERNES = [
  * coffre du système — c'est faux hors Electron, et l'utilisateur mérite de le
  * savoir plutôt que de le supposer.
  */
-function nettoyer(settings) {
+async function nettoyer(settings) {
   if (!settings) return {};
   const copie = { ...settings };
 
   copie.smtp_pass_defini = Boolean(settings.smtp_pass_chiffre);
   copie.smtp_pass_protege = estProtege(settings.smtp_pass_chiffre);
-  copie.coffre_disponible = coffreDisponible();
+  copie.coffre_disponible = await coffreDisponible();
 
   // Même régime pour la clé Stripe. Son *mode* est en revanche exposé : une
   // installation restée en mode test encaisserait de l'argent fictif sans que
@@ -82,7 +84,7 @@ function nettoyer(settings) {
   copie.stripe_cle_definie = Boolean(settings.stripe_cle_chiffree);
   copie.stripe_cle_protegee = estProtege(settings.stripe_cle_chiffree);
 
-  const cleStripe = dechiffrer(settings.stripe_cle_chiffree);
+  const cleStripe = await dechiffrer(settings.stripe_cle_chiffree);
   copie.stripe_mode = cleStripe ? stripe.modeDeLaCle(cleStripe) : '';
   copie.stripe_cle_restreinte = cleStripe ? stripe.estRestreinte(cleStripe) : false;
   // Vraie lorsqu'une clé est enregistrée mais que le coffre ne sait plus la
@@ -210,7 +212,7 @@ module.exports = function settingsRoutes(getDb) {
    */
   router.get('/', anyRole(), asyncRoute(async (req, res) => {
     const settings = await getDb().get('SELECT * FROM settings LIMIT 1');
-    res.json(nettoyer(settings));
+    res.json(await nettoyer(settings));
   }));
 
   router.put('/', adminOnly(), asyncRoute(async (req, res) => {
@@ -266,7 +268,7 @@ module.exports = function settingsRoutes(getDb) {
     // laisserait dans chaque sauvegarde produite ensuite.
     const motDePasse = typeof body.smtp_pass === 'string' ? body.smtp_pass : '';
     if (motDePasse) {
-      valeurs.smtp_pass_chiffre = chiffrer(motDePasse);
+      valeurs.smtp_pass_chiffre = await chiffrer(motDePasse);
     } else if (!valeurs.smtp_host) {
       valeurs.smtp_pass_chiffre = '';
     }
@@ -285,7 +287,7 @@ module.exports = function settingsRoutes(getDb) {
         throw httpError(400, 'Cette clé Stripe n\'est pas reconnue. Elle commence par « rk_live_ », '
           + '« rk_test_ », « sk_live_ » ou « sk_test_ ».');
       }
-      valeurs.stripe_cle_chiffree = chiffrer(cleStripe);
+      valeurs.stripe_cle_chiffree = await chiffrer(cleStripe);
     }
 
     const avant = await db.get('SELECT * FROM settings LIMIT 1');
@@ -335,7 +337,7 @@ module.exports = function settingsRoutes(getDb) {
       });
     }
 
-    res.json({ message: 'Paramètres mis à jour.', settings: nettoyer(settings) });
+    res.json({ message: 'Paramètres mis à jour.', settings: await nettoyer(settings) });
   }));
 
   /**
@@ -383,7 +385,7 @@ module.exports = function settingsRoutes(getDb) {
    */
   router.post('/stripe/test', adminOnly(), asyncRoute(async (req, res) => {
     const ligne = await getDb().get('SELECT stripe_cle_chiffree FROM settings LIMIT 1');
-    const cle = dechiffrer(ligne && ligne.stripe_cle_chiffree);
+    const cle = await lireSecret(getDb(), 'stripe_cle_chiffree', ligne && ligne.stripe_cle_chiffree);
 
     if (!cle) {
       throw httpError(400, ligne && ligne.stripe_cle_chiffree

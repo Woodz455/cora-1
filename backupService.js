@@ -285,7 +285,7 @@ async function lireProtection(db) {
   }
   const empreinte = (ligne && ligne.sauvegarde_cle_empreinte) || null;
   if (!empreinte) return { active: false, lisible: false, empreinte: null, cle: null };
-  const cle = secrets.dechiffrer(ligne.sauvegarde_cle) || null;
+  const cle = (await secrets.lireSecret(db, 'sauvegarde_cle', ligne.sauvegarde_cle)) || null;
   const lisible = Boolean(cle) && empreinteDe(cle) === empreinte;
   return { active: true, lisible, empreinte, cle: lisible ? cle : null };
 }
@@ -294,7 +294,7 @@ async function lireProtection(db) {
 async function enregistrerCle(db, cle) {
   await db.run(
     'UPDATE settings SET sauvegarde_cle = ?, sauvegarde_cle_empreinte = ?',
-    [secrets.chiffrer(cle), empreinteDe(cle)]
+    [await secrets.chiffrer(cle), empreinteDe(cle)]
   );
 }
 
@@ -761,7 +761,7 @@ async function demanderRestauration(source, cible, contexte = {}) {
     // suivantes restent chiffrées avec la même clé.
     let poste = contexte.poste;
     if (cle && poste && (!poste.sauvegarde_cle_empreinte || poste.sauvegarde_cle_empreinte === empreinteDe(cle))) {
-      poste = { ...poste, sauvegarde_cle: secrets.chiffrer(cle), sauvegarde_cle_empreinte: empreinteDe(cle) };
+      poste = { ...poste, sauvegarde_cle: await secrets.chiffrer(cle), sauvegarde_cle_empreinte: empreinteDe(cle) };
     }
     await adapterAuPoste(preparation, { ...contexte, poste });
   } catch (error) {

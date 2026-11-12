@@ -88,7 +88,7 @@ thème sombre, où le bleu marine disparaîtrait sur le panneau foncé.
 | `npm run build` | Compile l'interface et produit l'installateur (sous Windows) |
 | `npm run visuels` | Régénère logotype, symbole et icône depuis `image/clora-source.png` |
 | `npm test` | Suite de tests (calculs financiers, rôles, API) |
-| `npm run test:e2e` | Lance la vraie application de bureau, ferme sa fenêtre et vérifie la sauvegarde de fin de journée (interface compilée et affichage requis) |
+| `npm run test:e2e` | Lance la vraie application de bureau : fermeture et sauvegarde de fin de journée, puis coffre des secrets d'un lancement au suivant (interface compilée et affichage requis) |
 | `npm run doctor` | Diagnostique les anomalies dans les données comptables |
 | `npm run doctor -- --corriger-statuts` | Réaligne le statut des factures sur leurs montants |
 | `npm run doctor -- --refiger-montants` | Recalcule les montants depuis les lignes, en cas de dérive signalée |
@@ -820,7 +820,11 @@ et de chaque message.
 
 L'intégration continue l'exécute deux fois : en heure universelle, puis à
 l'heure de Montréal, où une date lue dans le mauvais fuseau se voit. Elle lance
-ensuite `npm run test:e2e`, qui ouvre l'application de bureau sur l'interface
-compilée, crée un compte, ferme la fenêtre et vérifie que le processus sort
-proprement, que la sauvegarde de fin de journée existe et que les journaux de
-la base sont consolidés. Ce qui ne vit que dans `main.js` ne se voit que là.
+ensuite `npm run test:e2e`, deux essais dans la vraie application de bureau, sur
+l'interface compilée. Le premier crée un compte, ferme la fenêtre et vérifie
+que le processus sort proprement, que la sauvegarde de fin de journée existe et
+que les journaux de la base sont consolidés : ce qui ne vit que dans `main.js`
+ne se voit que là. Le second pose une clé de sauvegarde et un mot de passe de
+courriel, ferme, relance, et vérifie que le coffre du système les a protégés
+puis rendus à l'identique, sans appeler aucune fonction qu'Electron déclare
+obsolète : c'est le filet des mises à jour d'Electron.
