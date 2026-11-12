@@ -211,31 +211,71 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-app.on('before-quit', async () => {
-  if (serverInstance) {
-    if (serverInstance.server) serverInstance.server.close();
+/**
+ * Délai accordé au travail de fermeture. Un dossier de sauvegarde sur un
+ * lecteur réseau injoignable ne doit pas retenir l'application indéfiniment :
+ * passé ce délai, elle se ferme quand même.
+ */
+const DELAI_FERMETURE_MS = 15000;
 
-    // Sauvegarde de fin de journée, avant fermeture : sur un poste éteint
-    // chaque soir, le planificateur horaire n'a pas toujours l'occasion
-    // d'atteindre son échéance de 24 h.
-    //
-    // Tous les dossiers ouverts pendant la session y passent, pas seulement le
-    // dernier consulté : un comptable qui a travaillé sur trois clients dans la
-    // journée doit repartir avec trois copies, pas une.
-    for (const { chemin, db } of connexionsOuvertes()) {
-      try {
-        await sauvegardeSiNecessaire(db);
-      } catch (error) {
-        console.error(`[Electron] Sauvegarde à la fermeture (${chemin}) :`, error.message);
-      }
-    }
+/**
+ * Sauvegarde de fin de journée et fermeture des bases.
+ *
+ * Sur un poste éteint chaque soir, le planificateur horaire n'a pas toujours
+ * l'occasion d'atteindre son échéance de 24 h : la fermeture est alors la
+ * seule occasion de sauvegarder.
+ *
+ * Tous les dossiers ouverts pendant la session y passent, pas seulement le
+ * dernier consulté : un comptable qui a travaillé sur trois clients dans la
+ * journée doit repartir avec trois copies, pas une.
+ */
+async function travailDeFermeture() {
+  if (serverInstance.server) serverInstance.server.close();
 
-    // Ferme proprement les bases pour que les journaux WAL soient consolidés.
+  for (const { chemin, db } of connexionsOuvertes()) {
     try {
-      await fermerTout();
-      if (serverInstance.comptesDb) await serverInstance.comptesDb.close();
+      await sauvegardeSiNecessaire(db);
     } catch (error) {
-      console.error('[Electron] Fermeture des bases :', error.message);
+      console.error(`[Electron] Sauvegarde à la fermeture (${chemin}) :`, error.message);
     }
   }
+
+  // Ferme proprement les bases pour que les journaux WAL soient consolidés.
+  try {
+    await fermerTout();
+    if (serverInstance.comptesDb) await serverInstance.comptesDb.close();
+  } catch (error) {
+    console.error('[Electron] Fermeture des bases :', error.message);
+  }
+}
+
+let fermetureEngagee = false;
+
+/**
+ * Electron n'attend pas un gestionnaire asynchrone : sans retenir la
+ * fermeture, le processus s'arrêtait pendant que la sauvegarde démarrait. Elle
+ * n'avait donc jamais lieu, les journaux WAL restaient en plan et la
+ * bibliothèque SQLite, interrompue en plein travail, faisait planter la sortie.
+ *
+ * La fermeture est donc suspendue une fois, le temps du travail, puis relancée.
+ */
+app.on('before-quit', (event) => {
+  if (fermetureEngagee || !serverInstance) return;
+  fermetureEngagee = true;
+  event.preventDefault();
+
+  let minuterie = null;
+  const delai = new Promise((resolve) => {
+    minuterie = setTimeout(() => {
+      console.error('[Electron] Fermeture : délai dépassé, arrêt sans attendre la fin du travail.');
+      resolve();
+    }, DELAI_FERMETURE_MS);
+  });
+
+  Promise.race([travailDeFermeture(), delai])
+    .catch((error) => console.error('[Electron] Fermeture :', error.message))
+    .finally(() => {
+      clearTimeout(minuterie);
+      app.quit();
+    });
 });
