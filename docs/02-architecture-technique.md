@@ -1,6 +1,6 @@
 # Clora : architecture, sécurité et licence
 
-*Document technique. Version 1.11.0, novembre 2026.*
+*Document technique. Version 1.12.0, novembre 2026.*
 
 Ce document décrit comment Clora est construit, ce qui protège les données, et
 comment fonctionne le modèle de licence. Pour la description fonctionnelle, voir
@@ -128,7 +128,7 @@ traductionServeur.js  Messages du serveur traduits en anglais à la sortie
 routes/            21 modules de points d'entrée HTTP
 client/src/        Interface React (37 composants, 14 crochets et modules,
                    dictionnaire anglais dans traductions/en.js)
-tests/             33 fichiers, 459 tests, et deux essais de bout en bout dans e2e/
+tests/             36 fichiers, 476 tests, et deux essais de bout en bout dans e2e/
 ```
 
 Le découpage est strict : **`server.js` ne fait que câbler**. Il ne contient
@@ -725,7 +725,7 @@ facture émise), donc une vérification fréquente est sans risque.
 
 ## 10. Tests et intégration continue
 
-**459 tests**, exécutés par `node --test`. Répartition :
+**476 tests**, exécutés par `node --test`. Répartition :
 
 | Domaine | Tests |
 | --- | --- |
@@ -755,6 +755,9 @@ facture émise), donc une vérification fréquente est sans risque.
 | Balance âgée | 9 |
 | Multi-entreprise et premier lancement | 11 |
 | Coffre des secrets | 12 |
+| Traçabilité au journal | 7 |
+| Journal de fonctionnement et diagnostic | 6 |
+| Durcissement du serveur local | 4 |
 | Préfixe des factures | 8 |
 | Date du jour et fuseau horaire | 6 |
 | Abonnements | 8 |
@@ -934,7 +937,7 @@ Trois corrections peuvent être demandées explicitement :
 | **Pas de pièces justificatives** | Aucun reçu ne peut être joint à une dépense |
 | **PDF en image** | La facture envoyée par courriel est une image : texte non sélectionnable, illisible par un lecteur d'écran, fichier lourd |
 | **Dossiers et clients** | Ni renommage ni archivage d'un dossier, ni archivage d'un client |
-| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.11.0 en offre l'occasion sur toute installation restée en 1.10.1 |
+| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.12.0 en offre l'occasion sur toute installation restée en 1.11.0 |
 | **Redémarrage après restauration** | Vérifié de bout en bout dans l'application de bureau sous Linux en 1.9.1, puis de nouveau en 1.10.1 (restauration appliquée, redémarrage automatique). Reste à l'observer sur un vrai Windows |
 | **Sauvegarde à la fermeture** | Vérifiée à chaque fusion par l'essai de bout en bout, sous Linux, et observée le 12 novembre sur un poste Windows lors de l'essai d'Electron 45. Reste à la confirmer chez les autres testeurs |
 
