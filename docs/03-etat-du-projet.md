@@ -554,7 +554,7 @@ décision.
 | **Fichier journal et diagnostic** | Petit | Sur un poste installé, les erreurs ne sont écrites nulle part : le soutien est aveugle |
 | **Durcissement du poste** | Petit | Refuser tout en-tête `Host` étranger, poser une politique de contenu, bloquer la navigation externe de la fenêtre |
 | **Rappel du dossier de sauvegarde** | Petit | Par défaut, les copies restent sur le même disque que les données ; seul un premier pas masquable le signale |
-| **Versions majeures** | Moyen | Electron 45 et `nodemailer` 10, l'essai de bout en bout servant de filet |
+| **Electron 45** | Moyen | Electron 42 n'est plus maintenu. La 45 passe tous les essais sous Linux ; il reste à la fabriquer et à l'installer sous Windows, et à remplacer les fonctions du coffre des secrets, qu'elle déclare obsolètes et que la 46 retirera. Les autres mises à jour proposées par Dependabot le 12 novembre, dont `nodemailer` 10, sont fusionnées et partiront avec la prochaine version |
 | **Date de verrouillage** | Moyen | Une fois la déclaration de taxes produite, rien ne devrait plus bouger dans la période |
 | **Pièces justificatives** | Moyen | Joindre le reçu à la dépense : les autorités fiscales exigent de les conserver six ans |
 | **PDF nets** | Moyen | Les factures envoyées sont des images. Electron sait produire un vrai PDF, au texte sélectionnable, et retirerait près d'un mégaoctet du paquet |
