@@ -12,7 +12,9 @@ const { getJwtSecret, isProduction, SESSION_HOURS } = require('../config.js');
 const { loginRateLimit, recordFailure, recordSuccess } = require('../rateLimit.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { sanitizeText } = require('../validators.js');
-const { listerPourUtilisateur, creerEntreprise, ouvrirEntreprise } = require('../companyStore.js');
+const {
+  listerPourUtilisateur, creerEntreprise, nommerSiVierge, ouvrirEntreprise
+} = require('../companyStore.js');
 const { parseProfil } = require('../profils.js');
 const { genererCodeRecuperation, normaliserCodeRecuperation, formater } = require('../codesSecours.js');
 
@@ -159,13 +161,21 @@ module.exports = function authRoutes(getDb) {
     // le cas d'une base héritée d'une version mono-entreprise dont la table des
     // comptes était vide. En créer un second placerait l'utilisateur devant un
     // dossier vierge, sa comptabilité restant invisible à côté.
-    const existants = await db.all('SELECT id, nom FROM entreprises WHERE archive = 0 ORDER BY id');
+    const existants = await db.all('SELECT id, nom, chemin FROM entreprises WHERE archive = 0 ORDER BY id');
+    const nomSaisi = sanitizeText(req.body.entreprise, 200);
 
     let ouvert;
     if (existants.length === 0) {
-      const nom = sanitizeText(req.body.entreprise, 200) || 'Mon entreprise';
-      ouvert = await creerEntreprise(db, { nom, userId: result.lastID, profil });
+      ouvert = await creerEntreprise(db, { nom: nomSaisi || 'Mon entreprise', userId: result.lastID, profil });
     } else {
+      // Un seul dossier, resté vierge : c'est la base vide qu'une version
+      // antérieure créait au premier lancement, pas une comptabilité héritée.
+      // Elle prend le nom et le profil que l'utilisateur vient de saisir.
+      if (existants.length === 1 && (nomSaisi || profil)) {
+        const pose = await nommerSiVierge(db, existants[0], { nom: nomSaisi || existants[0].nom, profil });
+        if (pose) existants[0].nom = pose;
+      }
+
       for (const dossier of existants) {
         await db.run(
           "INSERT INTO acces (user_id, entreprise_id, role) VALUES (?, ?, 'admin')",

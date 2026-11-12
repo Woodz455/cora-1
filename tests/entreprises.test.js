@@ -246,3 +246,86 @@ test('la migration ne se rejoue pas sur un registre déjà peuplé', async (t) =
   const { count } = await comptes.get('SELECT COUNT(*) AS count FROM entreprises');
   assert.equal(count, 1);
 });
+
+// --- Le premier lancement -----------------------------------------------------
+
+test('le premier lancement ne crée aucune base avant le premier compte', async (t) => {
+  resetRateLimit();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clora-premier-'));
+  const precedent = process.env.CLORA_DATA_DIR;
+  process.env.CLORA_DATA_DIR = dir;
+
+  const { startServer } = require('../server.js');
+  const { stopScheduler } = require('../scheduler.js');
+
+  let instance = null;
+  const arreter = async () => {
+    if (!instance) return;
+    stopScheduler();
+    await new Promise((resolve) => instance.server.close(resolve));
+    await fermerTout();
+    await instance.comptesDb.close();
+    instance = null;
+  };
+  t.after(async () => {
+    await arreter();
+    process.env.CLORA_DATA_DIR = precedent;
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  // Premier lancement : on regarde l'écran de création du compte, puis on quitte.
+  instance = await startServer(0);
+  assert.ok(!fs.existsSync(path.join(dir, 'database.sqlite')), 'aucune base ne doit naître sans dossier');
+  await arreter();
+
+  // Second lancement : le compte est créé, avec le nom de l'entreprise.
+  instance = await startServer(0);
+  const reponse = await fetch(`http://127.0.0.1:${instance.port}/api/auth/setup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: 'patron', password: MOT_DE_PASSE, entreprise: 'Plomberie Tremblay', profil: 'autonome'
+    })
+  });
+  const corps = await reponse.json();
+  assert.equal(reponse.status, 200, JSON.stringify(corps));
+  assert.equal(corps.entreprise.nom, 'Plomberie Tremblay');
+  assert.ok(!fs.existsSync(path.join(dir, 'database.sqlite')), 'le dossier naît sous « entreprises », pas à la racine');
+});
+
+test('un dossier resté vierge prend le nom et le profil saisis à la création du compte', async (t) => {
+  // L'état laissé par les versions jusqu'à la 1.10.0 : une base vide, créée au
+  // premier lancement, enregistrée comme dossier « Mon entreprise » au suivant.
+  resetRateLimit();
+  const api = await startTestServer({ entreprise: 'Mon entreprise' });
+  t.after(async () => { await api.close(); });
+
+  const res = await api.post('/api/auth/setup', {
+    username: 'patron', password: MOT_DE_PASSE, entreprise: 'Plomberie Tremblay', profil: 'autonome'
+  });
+  assert.equal(res.status, 200, JSON.stringify(res.data));
+  assert.equal(res.data.entreprise.nom, 'Plomberie Tremblay');
+
+  const reglages = await api.db.get('SELECT entreprise_nom, profil, conditions_defaut FROM settings ORDER BY id LIMIT 1');
+  assert.deepEqual(reglages, { entreprise_nom: 'Plomberie Tremblay', profil: 'autonome', conditions_defaut: 'reception' });
+  assert.equal((await api.db.get('SELECT COUNT(*) AS n FROM settings')).n, 1, 'une seule ligne de paramètres');
+
+  const dossiers = await api.get('/api/entreprises');
+  assert.deepEqual(dossiers.data.entreprises.map((d) => d.nom), ['Plomberie Tremblay']);
+});
+
+test('un dossier hérité qui porte déjà un nom garde le sien', async (t) => {
+  resetRateLimit();
+  const api = await startTestServer({ entreprise: 'Boulangerie Côté' });
+  t.after(async () => { await api.close(); });
+  await api.db.run("UPDATE settings SET entreprise_nom = 'Boulangerie Côté'");
+
+  const res = await api.post('/api/auth/setup', {
+    username: 'patron', password: MOT_DE_PASSE, entreprise: 'Autre nom', profil: 'pme'
+  });
+  assert.equal(res.status, 200, JSON.stringify(res.data));
+  assert.equal(res.data.entreprise.nom, 'Boulangerie Côté');
+
+  const reglages = await api.db.get('SELECT entreprise_nom, profil FROM settings ORDER BY id LIMIT 1');
+  assert.deepEqual(reglages, { entreprise_nom: 'Boulangerie Côté', profil: null });
+});

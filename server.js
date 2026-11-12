@@ -10,7 +10,6 @@ const cookieParser = require('cookie-parser');
 const fs = require('fs');
 const path = require('path');
 
-const { initDb } = require('./database.js');
 const { authMiddleware } = require('./authMiddleware.js');
 const { startScheduler } = require('./scheduler.js');
 const { apiNotFound, errorHandler } = require('./httpUtils.js');
@@ -257,8 +256,11 @@ async function startServer(port = PORT) {
   const comptesDb = await ouvrirComptes();
   await migrerSiNecessaire(comptesDb);
 
+  // Sans dossier enregistré, aucune base n'est créée : le premier dossier naît
+  // avec le compte de son administrateur. Créer ici une base vide à la racine
+  // la faisait prendre, au lancement suivant, pour un dossier hérité.
   const premier = await comptesDb.get('SELECT chemin FROM entreprises WHERE archive = 0 ORDER BY id LIMIT 1');
-  const db = premier ? await ouvrirEntreprise(premier.chemin) : await initDb();
+  const db = premier ? await ouvrirEntreprise(premier.chemin) : null;
 
   const app = createApp(db, { comptesDb });
 
