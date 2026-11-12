@@ -962,6 +962,12 @@ export default {
   'Conditions de paiement proposées aux nouveaux clients': 'Payment terms suggested for new clients',
   "Proposées à la création d'une fiche client ; chaque fiche garde son propre terme.":
     'Suggested when a client record is created; each record keeps its own terms.',
+  "Vos sauvegardes restent sur cet ordinateur, à côté de votre comptabilité : une panne de disque ou un vol emporterait les deux. Choisissez un dossier synchronisé (OneDrive, Google Drive, Dropbox) ou un disque externe.":
+    'Your backups stay on this computer, next to your books: a disk failure or a theft would take both. Choose a synced folder (OneDrive, Google Drive, Dropbox) or an external drive.',
+  'Choisir un dossier': 'Choose a folder',
+  'Télécharger le diagnostic': 'Download the diagnostic file',
+  "Un fichier texte à transmettre au soutien en cas de problème : version, état des sauvegardes et journal de fonctionnement. Il ne contient ni donnée comptable, ni nom de client, ni mot de passe, et Clora ne l'envoie nulle part.":
+    'A text file to send to support if something goes wrong: version, backup status and activity log. It contains no accounting data, client names or passwords, and Clora does not send it anywhere.',
   'Préfixe des numéros de facture': 'Invoice number prefix',
   'De 2 à 6 lettres ou chiffres. Vos prochaines factures seront numérotées {exemple} ; celles déjà émises gardent leur numéro.':
     '2 to 6 letters or digits. Your next invoices will be numbered {exemple}; those already issued keep their number.',

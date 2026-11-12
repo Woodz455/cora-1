@@ -497,18 +497,24 @@ function anciennesEnClair(dossier) {
  */
 async function etatDesSauvegardes(db, { creeLe = null, maintenant = new Date() } = {}) {
   const reglages = await lireReglages(db);
-  if (!reglages.active) return { alerte: null, derniere: null };
+  if (!reglages.active) return { alerte: null, derniere: null, sur_place: false };
+
+  // Les copies restent-elles dans le dossier de données, donc sur le même
+  // disque que la comptabilité ? Elles ne protègent alors ni d'une panne de
+  // disque ni d'un vol. Ce n'est pas une alerte, les copies se font ; c'est un
+  // rappel, qui dure tant que le dossier n'a pas été déplacé.
+  const sur_place = memeChemin(reglages.dossier, dossierParDefaut());
 
   const protection = await lireProtection(db);
   const derniere = derniereSauvegarde(reglages.dossier, serieDe(reglages.uid));
   const iso = derniere ? derniere.toISOString() : null;
-  if (protection.active && !protection.lisible) return { alerte: 'cle_illisible', derniere: iso };
+  if (protection.active && !protection.lisible) return { alerte: 'cle_illisible', derniere: iso, sur_place };
   if (derniere) {
-    return { alerte: maintenant - derniere > 3 * INTERVALLE_MS ? 'en_retard' : null, derniere: iso };
+    return { alerte: maintenant - derniere > 3 * INTERVALLE_MS ? 'en_retard' : null, derniere: iso, sur_place };
   }
   const cree = creeLe ? new Date(`${String(creeLe).replace(' ', 'T')}Z`) : null;
   const age = cree && !Number.isNaN(cree.getTime()) ? maintenant - cree : Infinity;
-  return { alerte: age > INTERVALLE_MS ? 'aucune' : null, derniere: null };
+  return { alerte: age > INTERVALLE_MS ? 'aucune' : null, derniere: null, sur_place };
 }
 
 /** Date de la sauvegarde la plus récente d'une série, ou `null`. */
