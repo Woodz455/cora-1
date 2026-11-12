@@ -34,6 +34,7 @@ const DOSSIERS_DIRNAME = 'entreprises';
 /** Rôles reconnus, repris de `authMiddleware` pour éviter deux vérités. */
 const { ROLES } = require('./authMiddleware.js');
 const { profilDe } = require('./profils.js');
+const { PREFIXE_FACTURE_DEFAUT } = require('./sequences.js');
 
 /** Connexions ouvertes, indexées par chemin de fichier. */
 const connexions = new Map();
@@ -243,6 +244,11 @@ async function poserIdentite(db, { nom, profil = null }) {
   } else {
     await db.run('INSERT INTO settings (entreprise_nom, profil, conditions_defaut) VALUES (?, ?, ?)', valeurs);
   }
+
+  // Un dossier qui n'a encore rien facturé prend le préfixe neutre. S'il porte
+  // déjà des factures, sa série en cours ne change pas.
+  const dejaFacture = await db.get('SELECT id FROM factures LIMIT 1');
+  if (!dejaFacture) await db.run('UPDATE settings SET prefixe_facture = ?', [PREFIXE_FACTURE_DEFAUT]);
 }
 
 /**

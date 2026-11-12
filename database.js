@@ -395,6 +395,11 @@ async function runMigrations(db) {
   await addColumn(db, 'settings', 'profil', 'TEXT');
   // Conditions de paiement proposées à chaque nouveau client.
   await addColumn(db, 'settings', 'conditions_defaut', 'TEXT');
+  // Préfixe des numéros de facture. « SHT », les initiales de l'éditeur, était
+  // écrit en dur : les dossiers existants le reçoivent ici pour que leur
+  // numérotation continue sans rupture. Un dossier neuf reçoit le sien à sa
+  // création (voir `poserIdentite`), et l'administrateur le change à volonté.
+  await addColumn(db, 'settings', 'prefixe_facture', "TEXT DEFAULT 'SHT'");
   // La liste des premiers pas, une fois masquée par l'administrateur.
   await addColumn(db, 'settings', 'demarrage_masque', 'INTEGER DEFAULT 0');
 

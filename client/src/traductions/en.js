@@ -935,6 +935,9 @@ export default {
   'Conditions de paiement proposées aux nouveaux clients': 'Payment terms suggested for new clients',
   "Proposées à la création d'une fiche client ; chaque fiche garde son propre terme.":
     'Suggested when a client record is created; each record keeps its own terms.',
+  'Préfixe des numéros de facture': 'Invoice number prefix',
+  'De 2 à 6 lettres ou chiffres. Vos prochaines factures seront numérotées {exemple} ; celles déjà émises gardent leur numéro.':
+    '2 to 6 letters or digits. Your next invoices will be numbered {exemple}; those already issued keep their number.',
   'Paiement': 'Payment',
   "Ces instructions s'affichent au bas de chaque facture (virement Interac, lien de paiement…), dans la langue du client. Sans texte anglais, les clients anglophones reçoivent le texte français.":
     'These instructions appear at the bottom of each invoice (Interac e-Transfer, payment link…), in the client’s language. Without an English text, English-speaking clients receive the French text.',

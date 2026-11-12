@@ -4,7 +4,7 @@
 
 const { roundCents, computeTotals, formatMontant } = require('./money.js');
 const { withTransaction } = require('./dbUtils.js');
-const { nextDocumentNumber } = require('./sequences.js');
+const { nextDocumentNumber, normaliserPrefixe, PREFIXE_FACTURE_HERITE } = require('./sequences.js');
 const { normaliserCondition, calculerEcheance, CONDITION_DEFAUT } = require('./paymentTerms.js');
 const { aujourdhui: dateDuJour } = require('./dates.js');
 
@@ -434,11 +434,27 @@ async function getReportStats(db) {
 const SOURCE_NUMERO = { table: 'factures', column: 'numero_facture' };
 
 /**
- * Génère le prochain numéro de facture au format SHT-AAAAMM-NNNN.
+ * Préfixe des factures du dossier.
+ *
+ * Il était écrit en dur : toutes les entreprises émettaient des factures aux
+ * initiales de l'éditeur. Il se règle désormais par dossier ; une valeur
+ * absente ou abîmée retombe sur le préfixe d'origine plutôt que d'interrompre
+ * la facturation.
+ */
+async function prefixeDesFactures(db) {
+  const reglages = await db.get('SELECT prefixe_facture FROM settings ORDER BY id LIMIT 1');
+  return normaliserPrefixe(reglages && reglages.prefixe_facture) || PREFIXE_FACTURE_HERITE;
+}
+
+/**
+ * Génère le prochain numéro de facture au format PREFIXE-AAAAMM-NNNN.
  * À appeler à l'intérieur d'une transaction.
+ *
+ * Les compteurs sont tenus par préfixe et par mois : changer de préfixe ouvre
+ * une nouvelle série, sans jamais réutiliser un numéro déjà émis.
  */
 async function generateInvoiceNumber(db, dateStr) {
-  return nextDocumentNumber(db, 'SHT', dateStr, SOURCE_NUMERO);
+  return nextDocumentNumber(db, await prefixeDesFactures(db), dateStr, SOURCE_NUMERO);
 }
 
 /**

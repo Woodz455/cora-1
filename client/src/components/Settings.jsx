@@ -754,6 +754,19 @@ function Settings({ ancre, naviguer }) {
               {t("Proposées à la création d'une fiche client ; chaque fiche garde son propre terme.")}
             </p>
           </div>
+          <div className="form-group">
+            <label htmlFor="prefixe_facture">{t('Préfixe des numéros de facture')}</label>
+            <input
+              id="prefixe_facture" className="form-control" name="prefixe_facture" type="text"
+              value={settings.prefixe_facture || ''} onChange={handleChange}
+              maxLength={6} autoComplete="off" spellCheck={false}
+              style={{ maxWidth: '160px', textTransform: 'uppercase' }}
+            />
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+              {t('De 2 à 6 lettres ou chiffres. Vos prochaines factures seront numérotées {exemple} ; celles déjà émises gardent leur numéro.',
+                { exemple: `${(settings.prefixe_facture || 'FAC').toUpperCase()}-AAAAMM-0001` })}
+            </p>
+          </div>
         </div>
 
         <div>
