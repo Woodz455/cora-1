@@ -1,7 +1,7 @@
 # Clora : état du projet
 
-*Ce qui a été fait, ce qui reste à faire. Arrêté au 8 novembre 2026,
-version 1.10.0.*
+*Ce qui a été fait, ce qui reste à faire. Arrêté au 12 novembre 2026,
+version 1.10.1.*
 
 ---
 
@@ -9,11 +9,11 @@ version 1.10.0.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.10.0, le 8 novembre 2026 |
-| **Publications** | 17 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 76 commits, 36 demandes de fusion, toutes fusionnées |
-| **Tests** | 430, tous au vert, exécutés à chaque fusion |
-| **Durée** | 15 semaines, du 24 juillet au 8 novembre 2026 |
+| **Version publiée** | 1.10.1, le 12 novembre 2026 |
+| **Publications** | 18 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 84 commits, 37 demandes de fusion, toutes fusionnées |
+| **Tests** | 447, tous au vert, exécutés à chaque fusion, plus un essai de l'application de bureau |
+| **Durée** | 16 semaines, du 24 juillet au 12 novembre 2026 |
 | **Langues** | Interface en français ou en anglais, au choix de chaque utilisateur |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
 | **Ventes** | Aucune : les tests utilisateurs sont en cours |
@@ -430,7 +430,7 @@ lieu de couvrir l'écran. Tant qu'une fenêtre est ouverte, les panneaux derriè
 elle perdent désormais leur flou, que le voile de la fenêtre remplace.
 
 ### Phase 18 : la vérification d'ensemble
-*11 et 12 novembre · à publier en 1.10.1*
+*11 et 12 novembre · publié en 1.10.1 · demande de fusion #38*
 
 Une relecture complète du logiciel, faite pour répondre à une question simple :
 est-il irréprochable ? La suite de tests, l'analyse statique et la compilation
@@ -595,13 +595,17 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.10.0 en offre l'occasion sur toute installation restée en
-  1.9.1.
+  annoncer. La 1.10.1 en offre l'occasion sur toute installation restée en
+  1.10.0.
 - **Le redémarrage après restauration d'une sauvegarde.** Vérifié de bout en
   bout dans l'application de bureau sous Linux depuis la 1.9.1 : la restauration
   s'applique et l'application redémarre seule. Reste à le voir sous Windows.
+- **La sauvegarde à la fermeture.** Jusqu'à la 1.10.0, elle n'avait jamais lieu.
+  Depuis la 1.10.1, un essai lance la vraie application à chaque fusion, sous
+  Linux. Reste à le voir sous Windows : fermer Clora en fin de journée, puis
+  regarder la date de la dernière copie dans le dossier de sauvegarde.
 
-Ce sont deux choses à regarder pendant les tests utilisateurs.
+Ce sont trois choses à regarder pendant les tests utilisateurs.
 
 ---
 
@@ -671,7 +675,16 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.10.0 par les testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.10.1 par les testeurs et écouter ce qu'ils disent.**
+
+La 1.10.1 corrige six défauts sortis d'une relecture complète, dont deux qui
+touchaient leur quotidien sans qu'ils puissent le deviner : la sauvegarde de fin
+de journée n'avait jamais lieu à la fermeture, et toute pièce saisie le soir
+était datée du lendemain. Il faut leur demander de **vérifier les dates des
+pièces saisies après 19 h** depuis qu'ils utilisent Clora, surtout en fin de
+mois, et de regarder, après avoir fermé l'application, si une copie du jour est
+bien apparue dans leur dossier de sauvegarde (voir la section 5). Leurs factures
+gardent le préfixe « SHT » ; ils peuvent désormais le remplacer dans Paramètres.
 
 La 1.10.0 leur propose de protéger leurs sauvegardes par une clé et remet à
 chaque administrateur un code de récupération : il faut s'assurer qu'ils
@@ -693,9 +706,11 @@ certificat, les améliorations du rapprochement bancaire) attend la suite de ce
 retour, et devrait être priorisé par lui.
 
 **Côté développement**, les deux protections décidées après le point sécurité
-sont livrées en 1.10.0. Restent, dans l'ordre : le certificat de signature, puis
-les mises à jour automatiques qu'il rendra possibles ; la relecture juridique et
-comptable ; la clé de licence à la fin des tests.
+sont livrées en 1.10.0, et les défauts de la vérification d'ensemble corrigés en
+1.10.1. Restent, dans l'ordre : le certificat de signature, puis les mises à
+jour automatiques qu'il rendra possibles ; la relecture juridique et comptable ;
+la clé de licence à la fin des tests. Ce que la vérification a relevé sans le
+corriger attend une décision, point par point (section 4).
 
 **Tout ce qui avait été relevé en corrigeant le design est fait** : les polices
 embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la
@@ -717,4 +732,4 @@ chez lui.
 ---
 
 *Document maintenu par Safehill Technologies. Dernière mise à jour :
-8 novembre 2026.*
+12 novembre 2026.*
