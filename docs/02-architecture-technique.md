@@ -912,7 +912,7 @@ Trois corrections peuvent être demandées explicitement :
 | **Volume du rapprochement** | Plafond de 5 000 lignes ; le relevé transite en JSON sous une limite de corps de 1 Mo |
 | **Retraits bancaires** | Ignorés : frais et sorties sont hors périmètre |
 | **Windows seul** | Aucune cible macOS ou Linux |
-| **Electron 45 non éprouvé sous Windows** | Le passage à Electron 45 est vérifié sous Linux dans la vraie application : fermeture, coffre des secrets, restauration, écrans identiques au pixel près. Sous Windows, où le coffre est DPAPI, il reste à fabriquer l'installateur, à l'installer par-dessus une version antérieure et à constater que les secrets déjà enregistrés sont relus |
+| **Electron 45 chez les autres testeurs** | Le passage à Electron 45 est vérifié sous Linux dans la vraie application, et sous Windows par une fabrication d'essai installée par-dessus la 1.10.1 sur un poste réel : les secrets enregistrés ont été relus par le nouveau coffre. Un seul poste a fait cet essai ; les autres le feront à la publication |
 | **Facture modifiable après envoi** | Tant qu'elle n'est pas payée, une facture déjà envoyée au client se modifie, sans trace de l'envoi ni du changement |
 | **Journal d'audit incomplet** | Modifier ou supprimer une dépense, rapprocher un dépôt, modifier un abonnement : rien n'est consigné |
 | **Aucune date de verrouillage** | Une dépense d'une période déjà déclarée se modifie ou se supprime librement |
@@ -923,7 +923,7 @@ Trois corrections peuvent être demandées explicitement :
 | **Durcissement du poste** | Le serveur local répond à n'importe quel en-tête `Host` ; la fenêtre n'a ni politique de contenu, ni blocage de la navigation externe |
 | **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.10.1 en offre l'occasion sur toute installation restée en 1.10.0 |
 | **Redémarrage après restauration** | Vérifié de bout en bout dans l'application de bureau sous Linux en 1.9.1, puis de nouveau en 1.10.1 (restauration appliquée, redémarrage automatique). Reste à l'observer sur un vrai Windows |
-| **Sauvegarde à la fermeture** | Vérifiée à chaque fusion par l'essai de bout en bout, sous Linux. Reste à l'observer sur un vrai Windows : fermer Clora, puis regarder la date de la dernière copie dans le dossier de sauvegarde |
+| **Sauvegarde à la fermeture** | Vérifiée à chaque fusion par l'essai de bout en bout, sous Linux, et observée le 12 novembre sur un poste Windows lors de l'essai d'Electron 45. Reste à la confirmer chez les autres testeurs |
 
 ---
 

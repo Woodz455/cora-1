@@ -486,8 +486,13 @@ Un second essai lance la vraie application à chaque fusion : il pose des
 secrets, ferme, relance, et vérifie qu'ils sont relus à l'identique. 12 tests
 de plus.
 
-**Ce passage n'est pas encore éprouvé sous Windows** (voir la section 5) : il ne
-sera publié qu'après un essai sur un vrai poste.
+**Éprouvé sous Windows le 12 novembre**, avant toute publication : une
+fabrication d'essai installée par-dessus la 1.10.1, sur un poste réel, après
+copie du dossier de données. Les secrets déjà enregistrés ont été relus, et le
+reste du parcours prévu (courriel de test, choix du dossier de sauvegarde,
+aperçu et impression d'une facture, copie du jour à la fermeture) s'est déroulé
+sans défaut. C'était la seule vérification que Linux ne pouvait pas donner : le
+coffre y est celui du système, non celui de Windows.
 
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
@@ -625,19 +630,20 @@ jamais été observés sur une machine réelle :
 - **Le redémarrage après restauration d'une sauvegarde.** Vérifié de bout en
   bout dans l'application de bureau sous Linux depuis la 1.9.1 : la restauration
   s'applique et l'application redémarre seule. Reste à le voir sous Windows.
-- **La sauvegarde à la fermeture.** Jusqu'à la 1.10.0, elle n'avait jamais lieu.
-  Depuis la 1.10.1, un essai lance la vraie application à chaque fusion, sous
-  Linux. Reste à le voir sous Windows : fermer Clora en fin de journée, puis
-  regarder la date de la dernière copie dans le dossier de sauvegarde.
-- **Les secrets après le passage à Electron 45.** Sous Linux, des secrets
-  chiffrés par l'ancienne méthode sont relus par la nouvelle version. Sous
-  Windows, le coffre est celui du système : il faut installer la nouvelle
-  version par-dessus une installation existante et constater qu'aucune alerte
-  « clé illisible » n'apparaît, qu'un courriel de test part, et que la copie du
-  jour est bien chiffrée. À faire avant de publier, après avoir copié le
-  dossier `%APPDATA%\Clora` pour pouvoir revenir en arrière.
 
-Ce sont quatre choses à regarder, la dernière avant toute publication.
+Ce sont deux choses à regarder pendant les tests utilisateurs.
+
+Deux autres points figuraient ici et n'y sont plus, observés le 12 novembre sur
+un poste Windows, lors de l'essai d'une fabrication installée par-dessus la
+1.10.1 :
+
+- **La sauvegarde à la fermeture.** Jusqu'à la 1.10.0, elle n'avait jamais lieu.
+  La copie du jour était bien là après la fermeture de Clora.
+- **Les secrets après le passage à Electron 45.** Les secrets déjà enregistrés
+  ont été relus par le nouveau coffre.
+
+Un seul poste a fait cet essai : il reste à le confirmer chez les autres
+testeurs à la publication, chacun gardant sa feuille de secours sous la main.
 
 ---
 
@@ -743,7 +749,8 @@ sont livrées en 1.10.0, et les défauts de la vérification d'ensemble corrigé
 jour automatiques qu'il rendra possibles ; la relecture juridique et comptable ;
 la clé de licence à la fin des tests. Ce que la vérification a relevé sans le
 corriger attend une décision, point par point (section 4). Le passage à
-Electron 45 est prêt et attend son essai sous Windows pour être publié.
+Electron 45 est fait et éprouvé sous Windows : il partira avec la prochaine
+version.
 
 **Tout ce qui avait été relevé en corrigeant le design est fait** : les polices
 embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la
