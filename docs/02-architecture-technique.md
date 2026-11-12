@@ -840,7 +840,7 @@ que chaque poste croirait ne pas avoir.
 
 Format NSIS, **un seul clic**, sans demande d'autorisation administrateur
 (installation par utilisateur), icône sur le bureau et dans le menu Démarrer.
-Environ 104 Mo.
+Environ 113 Mo.
 
 `deleteAppDataOnUninstall` est à **faux** : désinstaller Clora ne doit pas
 effacer la comptabilité de l'entreprise.
