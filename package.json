@@ -101,6 +101,6 @@
     "electron-is-dev": "^3.0.1",
     "playwright-core": "^1.65.0",
     "png-to-ico": "^3.0.1",
-    "wait-on": "^9.0.10"
+    "wait-on": "^9.5.1"
   }
 }
