@@ -881,6 +881,18 @@ export default {
   'Supprimer « {nom} »': 'Delete “{nom}”',
   'Voir le client archivé ({n})': 'Show the archived client ({n})',
   'Voir les clients archivés ({n})': 'Show archived clients ({n})',
+  'Archive ZIP de {poids}, avec la liste des dépenses': 'ZIP archive of {poids}, with the list of expenses',
+  'Aucun reçu joint aux dépenses de cette période.': 'No receipt is attached to the expenses of this period.',
+  'Aucun reçu sur la période': 'No receipts for the period',
+  'Déclaration produite ? Verrouillez la période : plus rien ne pourra y changer.':
+    'Return filed? Lock the period: nothing in it will be able to change.',
+  "Les factures, dépenses, notes de crédit et encaissements datés jusqu'à cette date ne pourront plus être créés, modifiés ni supprimés. Une facture de la période se corrigera par une note de crédit. Un administrateur pourra rouvrir la période dans Paramètres.":
+    'Invoices, expenses, credit notes and payments dated up to this date can no longer be created, edited or deleted. An invoice from the period will be corrected with a credit note. An administrator can unlock the period in Settings.',
+  'Période verrouillée : ce rapport ne peut plus changer.': 'Locked period: this report can no longer change.',
+  'Reçus de la période ({n})': 'Receipts for the period ({n})',
+  'Reçus de la période ({n})|pluriel': 'Receipts for the period ({n})',
+  "Verrouiller jusqu'au {date} ?": 'Lock through {date}?',
+  "Verrouiller jusqu'au {date}": 'Lock through {date}',
   'Dépense enregistrée, mais un reçu a été refusé : {raison}': 'Expense saved, but a receipt was rejected: {raison}',
   'Joindre un reçu': 'Attach a receipt',
   'Reçu (facultatif, PDF ou image)': 'Receipt (optional, PDF or image)',

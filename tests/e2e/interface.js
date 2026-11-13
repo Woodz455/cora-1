@@ -174,11 +174,31 @@ async function parcoursDepense(page, donnees) {
     await page.getByRole('button', { name: 'Pièces justificatives (1)' }).waitFor();
   });
 
-  await etape('la période se verrouille depuis Paramètres', async () => {
+  await etape('une période se verrouille depuis Paramètres', async () => {
+    // Le 30 novembre : la dépense du 10 décembre reste dans la période ouverte.
     await naviguer(page, 'Paramètres');
-    await page.getByLabel("Verrouiller jusqu'au").fill('2025-12-31');
+    await page.getByLabel("Verrouiller jusqu'au").fill('2025-11-30');
     await page.getByRole('button', { name: 'Verrouiller', exact: true }).click();
-    await page.getByText("Périodes verrouillées jusqu'au 2025-12-31.", { exact: true }).waitFor();
+    await page.getByText("Périodes verrouillées jusqu'au 2025-11-30.", { exact: true }).waitFor();
+  });
+
+  await etape('Rapports remet les reçus du trimestre et le clôt après sa déclaration', async () => {
+    await naviguer(page, 'Rapports');
+    await page.getByLabel('Année', { exact: true }).selectOption('2025');
+    await page.getByLabel('Trimestre', { exact: true }).selectOption('4');
+    const recus = page.getByRole('link', { name: 'Reçus de la période (1)' });
+    await recus.waitFor();
+    assert.match(await recus.getAttribute('href'), /\/api\/rapports\/export\/recus\?annee=2025&trimestre=4/);
+    // Le lien sert bien une archive : l'en-tête suffit, sans télécharger.
+    const entete = await page.evaluate(async (url) => {
+      const r = await fetch(url);
+      return { status: r.status, type: r.headers.get('content-type') };
+    }, await recus.getAttribute('href'));
+    assert.deepEqual(entete, { status: 200, type: 'application/zip' });
+
+    await page.getByRole('button', { name: "Verrouiller jusqu'au 2025-12-31" }).click();
+    await page.getByRole('button', { name: 'Verrouiller', exact: true }).click();
+    await page.getByText('Période verrouillée : ce rapport ne peut plus changer.').waitFor();
   });
 
   await etape('la dépense close ne se modifie plus, son reçu reste consultable', async () => {

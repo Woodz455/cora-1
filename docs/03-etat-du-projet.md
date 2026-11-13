@@ -630,12 +630,10 @@ l'avertissement d'emblée.
 
 Les deux lots qu'elle avait relevés sont faits : traçabilité et durcissement
 (phase 20), puis verrouillage, reçus, PDF, archivage et essais des écrans
-(phase 21). Ce qu'ils laissent ouvert :
-
-| Sujet | Effort estimé | Pourquoi |
-| --- | --- | --- |
-| **Remettre les reçus d'une période** | Petit | Un comptable voudra les reçus d'un trimestre d'un seul coup ; ils s'ouvrent aujourd'hui un à un |
-| **Verrouiller depuis Rapports** | Petit | Proposer de clore la période juste après avoir produit son rapport de taxes, plutôt que d'aller dans Paramètres |
+(phase 21). Les deux petites suites que la phase 21 laissait ouvertes le sont
+aussi, après la 1.13.0 : les reçus d'une période se remettent au comptable en
+une archive, et la période se verrouille depuis le rapport de taxes. Il ne
+reste rien de ce que la vérification avait relevé.
 
 > **Réserve sur une quatrième idée** souvent proposée : la détection des
 > inversions de chiffres n'a presque aucune valeur ici. Elle attrape les
@@ -831,7 +829,9 @@ corriger attend une décision, point par point (section 4). Le passage à
 Electron 45 est fait, éprouvé sous Windows et livré en 1.11.0. Le premier lot
 relevé par la vérification d'ensemble, traçabilité et durcissement, est livré
 en 1.12.0. Le second (verrouillage des périodes, reçus joints, vrais PDF,
-renommage et archivage, essais des écrans) est livré en 1.13.0.
+renommage et archivage, essais des écrans) est livré en 1.13.0. Ses deux
+petites suites (les reçus d'une période en archive, la clôture depuis le
+rapport de taxes) sont faites et attendent la prochaine version.
 
 **Tout ce qui avait été relevé en corrigeant le design est fait** : les polices
 embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la
