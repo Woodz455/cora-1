@@ -37,7 +37,7 @@ Clora est une application de bureau Windows qui embarque un serveur web complet.
 
 | Couche | Technologie | Version |
 | --- | --- | --- |
-| Enveloppe de bureau | Electron | 42 |
+| Enveloppe de bureau | Electron | 45 |
 | Serveur | Express | 5 |
 | Base de données | SQLite (`sqlite3` + `sqlite`) | 6 / 5 |
 | Interface | React + Vite | 19 / 8 |
@@ -45,10 +45,11 @@ Clora est une application de bureau Windows qui embarque un serveur web complet.
 
 **Huit dépendances de production seulement** côté serveur : `bcryptjs`,
 `cookie-parser`, `dotenv`, `express`, `jsonwebtoken`, `nodemailer`, `sqlite`,
-`sqlite3`. Huit côté interface : `react`, `react-dom`, `recharts`,
-`lucide-react`, `papaparse`, `html2pdf.js`, et les deux polices du produit,
+`sqlite3`. Sept côté interface : `react`, `react-dom`, `recharts`,
+`lucide-react`, `papaparse`, et les deux polices du produit,
 `@fontsource-variable/inter` et `@fontsource-variable/outfit`, qui n'apportent
-que des fichiers.
+que des fichiers. `html2pdf.js` a été retiré : les PDF sont désormais
+imprimés par Chromium lui-même (voir §3.4).
 
 Cette frugalité est délibérée : chaque dépendance est une surface d'attaque et
 une dette de mise à jour. **Il n'y a notamment aucune bibliothèque Stripe** :
@@ -120,15 +121,18 @@ scheduler.js       Passage horaire : abonnements, relances, Stripe, sauvegardes
 licenceService.js  Vérification Ed25519 des clés, essai, maintenance
 kilometrageService.js  Indemnité kilométrique : paliers et recalcul de l'année
 secretStorage.js   Chiffrement des secrets au repos
+verrouillage.js    Date de verrouillage des périodes, tenue par des déclencheurs SQLite
+piecesService.js   Reçus joints aux dépenses : rangement, sauvegarde, reprise
+pdfService.js      PDF au texte réel, imprimés par Chromium dans une fenêtre cachée
 chiffrementSauvegardes.js  Format chiffré des sauvegardes (AES-256-GCM)
 codesSecours.js    Clé des sauvegardes et code de récupération (base 32 de Crockford)
 companyStore.js    Registre des dossiers d'entreprise et comptes partagés
 traductionServeur.js  Messages du serveur traduits en anglais à la sortie
-*Service.js        Logique métier par domaine (19 services)
-routes/            21 modules de points d'entrée HTTP
-client/src/        Interface React (37 composants, 14 crochets et modules,
+*Service.js        Logique métier par domaine (22 services)
+routes/            23 modules de points d'entrée HTTP
+client/src/        Interface React (38 composants, 15 crochets et modules,
                    dictionnaire anglais dans traductions/en.js)
-tests/             36 fichiers, 476 tests, et deux essais de bout en bout dans e2e/
+tests/             40 fichiers, 502 tests, et trois essais de bout en bout dans e2e/
 ```
 
 Le découpage est strict : **`server.js` ne fait que câbler**. Il ne contient
@@ -203,11 +207,12 @@ de commande, que l'utilisateur ne lance jamais, en sont exclus.
 
 ## 3. Le modèle de données
 
-**Vingt tables** dans la base d'une entreprise : `clients`, `factures`,
+**Vingt et une tables** dans la base d'une entreprise : `clients`, `factures`,
 `lignes_facture`, `paiements`, `catalogue`, `settings`, `devis`, `lignes_devis`,
 `depenses`, `taux_kilometriques`, `users`, `transactions_bancaires`,
 `notes_credit`, `lignes_note_credit`, `relances`, `document_sequences`,
-`abonnements`, `liens_paiement`, `encaissements_stripe`, `logs_audit`.
+`abonnements`, `liens_paiement`, `encaissements_stripe`, `pieces_jointes`,
+`logs_audit`.
 
 Plus une base séparée, `comptes.sqlite` : le registre des dossiers d'entreprise
 et les comptes d'utilisateurs.
@@ -290,6 +295,66 @@ une facture dans la série et la période de taxes du mois suivant.
 Seule la **lecture** de la date du jour est locale. L'arithmétique sur des
 dates déjà enregistrées (échéances, jours de retard, cycles d'abonnement) reste
 en heure universelle, où un jour compte toujours vingt-quatre heures.
+
+### 3.2 La date de verrouillage
+
+`settings.date_verrouillage`, posée par l'administrateur une fois la
+déclaration produite. Jusqu'à elle, inclusivement, les pièces de la période ne
+se créent, ne se modifient ni ne se suppriment plus.
+
+**La règle est tenue par SQLite**, comme l'inviolabilité du journal d'audit.
+`verrouillage.js` pose des déclencheurs `BEFORE INSERT`, `UPDATE` et `DELETE`
+sur `factures`, `paiements`, `notes_credit` et `depenses` (chacune sur sa
+propre date), sur leurs lignes (sur la date de leur parent), et un
+`BEFORE DELETE` sur `pieces_jointes`. Les routes vérifient d'abord et rendent un
+message utile (409) ; le déclencheur couvre tout le reste. Son refus porte la
+marque `CLORA_PERIODE_VERROUILLEE`, que le gestionnaire d'erreurs traduit en
+409 lisible.
+
+Une modification n'est refusée que si une valeur **déclarée** change : montants,
+taux, dates, client, numéro, et l'entrée ou la sortie de l'état « Annulée », qui
+retire une facture du rapport de taxes. Le passage de « En attente » à « Payée »
+(un encaissement d'aujourd'hui), le compteur de relances ou la date d'envoi
+restent libres, et un recalcul d'indemnités qui retombe sur les mêmes montants
+passe. Les déclencheurs sont retirés et reposés à chaque ouverture, une fois
+les migrations faites, pour qu'une base ancienne reçoive toujours leur version
+en vigueur.
+
+### 3.3 Les pièces justificatives
+
+`pieces_jointes` décrit chaque reçu (nom, type, taille, empreinte SHA-256,
+auteur, date) ; le fichier, lui, vit à côté de la base, dans `pieces/`, sous le
+nom de son empreinte. Le garder dans la base l'aurait fait recopier par chacune
+des trente sauvegardes quotidiennes. Le format est reconnu aux premiers octets
+du contenu (PDF, JPEG, PNG, WebP), jamais au nom ni à l'en-tête annoncé.
+
+À chaque sauvegarde, `deposerPieces` dépose dans `clora-pieces-<série>/` du
+dossier de destination celles qui n'y sont pas encore : une fois chacune,
+chiffrées avec la clé du dossier quand la protection est active. Le nom étant
+l'empreinte, une pièce n'est jamais réécrite ni supprimée par la rétention. À la
+lecture, une pièce absente du poste (base restaurée ailleurs) est reprise du
+dossier de sauvegarde, déchiffrée, et rendue seulement si son empreinte
+concorde.
+
+La pièce est servie avec sa propre politique de contenu (`sandbox`) : un PDF
+piégé reçu d'un fournisseur ne peut rien exécuter. Dans l'application de bureau,
+« Ouvrir » la confie à la visionneuse du système (`shell.openPath`), depuis une
+copie dans le dossier temporaire.
+
+### 3.4 Les PDF
+
+L'interface envoie le document tel qu'elle l'affiche (`POST /api/pdf`). Le
+serveur le dépose sous un jeton de 24 octets aléatoires, valable une minute et
+une seule fois, puis ouvre une fenêtre Electron cachée sur
+`/api/pdf/page/<jeton>`, la même origine que l'application : feuilles de style
+et polices s'y chargent normalement. Il attend `document.fonts.ready`, puis
+`printToPDF` produit un PDF au format lettre, balisé, au vrai texte. La fenêtre
+cachée est en bac à sable, sans Node, et ne peut ni naviguer ni ouvrir d'autre
+fenêtre ; la page déposée reçoit la politique de contenu de l'application. Elle
+est lisible avant la vérification de session, protégée par son seul jeton.
+
+Hors d'Electron (serveur lancé seul, tests), il n'y a pas de Chromium à qui le
+demander : la fabrication répond 501.
 
 ### L'arithmétique monétaire
 
@@ -482,7 +547,7 @@ de sécurité.
 | | |
 | --- | --- |
 | **Le binaire n'est pas signé** | Windows affiche un avertissement SmartScreen à l'installation. Aucun certificat de signature de code n'a encore été acheté |
-| **La base n'est pas chiffrée au repos** | Seuls les secrets le sont, et les sauvegardes quand la protection est activée. Quelqu'un qui a accès au disque de l'ordinateur a accès à la comptabilité : c'est le modèle d'un logiciel de bureau mono-poste |
+| **La base n'est pas chiffrée au repos** | Seuls les secrets le sont, et les sauvegardes (reçus compris) quand la protection est activée. Les reçus rangés à côté de la base ne le sont pas non plus. Quelqu'un qui a accès au disque de l'ordinateur a accès à la comptabilité : c'est le modèle d'un logiciel de bureau mono-poste |
 | **Protection des sauvegardes facultative** | Elle s'active dans Paramètres, et le tableau des premiers pas la propose. Les copies antérieures à la 1.9.1, dont on ignore le dossier, ne sont jamais chiffrées d'office : l'utilisateur les supprime lui-même |
 | **La clé de licence est partageable** | Sans serveur, rien n'empêche de la donner à un tiers |
 | **L'essai se réinitialise** | Supprimer `comptes.sqlite` remet le compteur à zéro |
@@ -706,6 +771,10 @@ dossiers rangés dans `entreprises/` : la restauration ne s'appliquait jamais su
 une installation récente, et pouvait remplacer le premier dossier sur une
 installation antérieure au multi-dossier.
 
+**Les reçus voyagent à part** (§3.3). Une restauration ne les touche pas : la
+base restaurée cite ses pièces par empreinte, et celles qui manquent au poste
+sont reprises du dossier de sauvegarde à la première lecture.
+
 ---
 
 ## 9. Le planificateur
@@ -725,7 +794,7 @@ facture émise), donc une vérification fréquente est sans risque.
 
 ## 10. Tests et intégration continue
 
-**476 tests**, exécutés par `node --test`. Répartition :
+**502 tests**, exécutés par `node --test`. Répartition :
 
 | Domaine | Tests |
 | --- | --- |
@@ -758,6 +827,10 @@ facture émise), donc une vérification fréquente est sans risque.
 | Traçabilité au journal | 7 |
 | Journal de fonctionnement et diagnostic | 6 |
 | Durcissement du serveur local | 4 |
+| Date de verrouillage | 10 |
+| Pièces justificatives | 7 |
+| Archivage et renommage | 6 |
+| PDF au texte réel | 3 |
 | Préfixe des factures | 8 |
 | Date du jour et fuseau horaire | 6 |
 | Abonnements | 8 |
@@ -828,7 +901,13 @@ fonction déclarée obsolète par Electron ne soit appelée. Il est le filet des
 mises à jour d'Electron : c'est une version majeure qui avait rendu obsolètes
 les fonctions sur lesquelles reposait le coffre. Sous Linux, le coffre n'est pas
 celui de Windows : cet essai ne dit rien de la relecture, sur un vrai poste, des
-secrets d'une installation existante.
+secrets d'une installation existante. `interface.js` pilote les écrans comme un
+utilisateur, par leurs libellés : premier lancement, client, facture, aperçu et
+envoi par courriel (seule la requête d'envoi est interceptée, le PDF est
+réellement fabriqué puis vérifié au format lettre et porteur de texte) ; dépense
+avec son reçu, puis clôture de sa période ; client supprimé, client archivé,
+dossier renommé. Chaque fenêtre ouverte doit tenir dans l'écran : c'est ce que
+la 1.9.1 avait cassé sans qu'aucun test ne bronche.
 
 `.github/dependabot.yml` surveille les dépendances du serveur, de l'interface
 et des workflows, et propose leurs mises à jour chaque semaine.
@@ -933,10 +1012,8 @@ Trois corrections peuvent être demandées explicitement :
 | **Retraits bancaires** | Ignorés : frais et sorties sont hors périmètre |
 | **Windows seul** | Aucune cible macOS ou Linux |
 | **Electron 45 chez les autres testeurs** | Le passage à Electron 45 est vérifié sous Linux dans la vraie application, et sous Windows par une fabrication d'essai installée par-dessus la 1.10.1 sur un poste réel : les secrets enregistrés ont été relus par le nouveau coffre. Un seul poste a fait cet essai ; les autres le feront à la publication |
-| **Aucune date de verrouillage** | Une dépense d'une période déjà déclarée se modifie ou se supprime librement |
-| **Pas de pièces justificatives** | Aucun reçu ne peut être joint à une dépense |
-| **PDF en image** | La facture envoyée par courriel est une image : texte non sélectionnable, illisible par un lecteur d'écran, fichier lourd |
-| **Dossiers et clients** | Ni renommage ni archivage d'un dossier, ni archivage d'un client |
+| **Reçus : pas d'export groupé** | Les reçus d'une période ne se remettent pas d'un coup au comptable : ils s'ouvrent un à un. Ils ne sont pas non plus chiffrés sur le poste lui-même |
+| **Lot 3 sous Windows** | La date de verrouillage, les reçus, les PDF au texte réel et l'archivage sont éprouvés sous Linux dans la vraie application ; l'ouverture d'un reçu dans la visionneuse de Windows et le rendu des PDF sur un vrai poste restent à observer |
 | **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.12.0 en offre l'occasion sur toute installation restée en 1.11.0 |
 | **Redémarrage après restauration** | Vérifié de bout en bout dans l'application de bureau sous Linux en 1.9.1, puis de nouveau en 1.10.1 (restauration appliquée, redémarrage automatique). Reste à l'observer sur un vrai Windows |
 | **Sauvegarde à la fermeture** | Vérifiée à chaque fusion par l'essai de bout en bout, sous Linux, et observée le 12 novembre sur un poste Windows lors de l'essai d'Electron 45. Reste à la confirmer chez les autres testeurs |

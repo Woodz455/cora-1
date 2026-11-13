@@ -159,7 +159,8 @@ Clora s'ouvre.
 *Accessible à tous*
 
 Le cœur de l'application. Création, modification, aperçu imprimable, envoi par
-courriel avec le PDF en pièce jointe.
+courriel avec le PDF en pièce jointe. Ce PDF est un vrai document : son texte se
+sélectionne, se cherche et se lit par un lecteur d'écran, au format lettre.
 
 Une facture porte cinq états possibles :
 
@@ -175,6 +176,10 @@ La distinction entre *Payée* et *Créditée* n'est pas cosmétique : confondre 
 deux ferait croire à une rentrée d'argent qui n'a jamais eu lieu.
 
 Recherche, tri sur chaque colonne, pagination, filtres par statut et par période.
+
+Une facture d'une **période verrouillée** porte un cadenas : elle ne se modifie,
+ne s'annule ni ne se supprime plus. Elle s'encaisse toujours, et se corrige par
+une note de crédit datée d'aujourd'hui.
 
 ### Devis
 *Accessible à tous*
@@ -195,6 +200,11 @@ Import possible depuis un fichier Excel ou CSV : les colonnes se choisissent à
 l'écran, un aperçu montre ce qui passera et ce qui sera refusé avec le motif,
 et l'écriture est tout ou rien. Personne ne ressaisit deux cents clients à la
 main.
+
+**Un client qui ne l'est plus s'archive.** Il quitte les listes de choix et ne
+reçoit plus de facture, de devis ni d'abonnement ; ses factures passées restent
+là, consultables et encaissables, et il se réactive d'un clic. Une fiche créée
+par erreur, qui ne porte aucun document, se supprime.
 
 ### Catalogue
 *Accessible à tous*
@@ -243,6 +253,11 @@ d'une facture, au cent près.
 
 Charges et achats : fournisseur, description, date, montant hors taxes, TPS,
 TVQ, catégorie. Sert au calcul des taxes payées, à déduire de la remise.
+
+**Le reçu se joint à la dépense** : une photo ou un PDF, dès la saisie ou plus
+tard par le trombone de la liste. Il se rouvre dans la visionneuse de Windows.
+Les autorités fiscales demandent de garder les reçus six ans : ils restent avec
+le dossier, et partent avec ses sauvegardes, chiffrés si elles le sont.
 
 **Les déplacements s'y inscrivent en kilomètres**, et non en dollars. On saisit
 la date, le motif, le véhicule ou le mode de transport, et la distance ; le
@@ -311,7 +326,8 @@ Qui a fait quoi, et quand. Les actions sensibles y sont consignées :
 annulation d'un encaissement, annulation ou suppression d'une facture,
 suppression d'une note de crédit, modification d'un client, **changement des
 taux de taxe**, création ou modification d'un compte, restauration d'une
-sauvegarde.
+sauvegarde, dépenses ajoutées, modifiées ou supprimées, reçus joints ou
+retirés, clients archivés, **verrouillage ou réouverture d'une période**.
 
 Chaque entrée porte l'horodatage, l'auteur, son rôle et l'écart constaté, sous
 la forme « avant → après ». **Le journal ne peut être ni modifié ni effacé**,
@@ -326,6 +342,12 @@ Identité de l'entreprise, logo, numéros de taxe, taux par défaut, conditions 
 paiement, instructions de paiement en français et en anglais, serveur d'envoi de
 courriels, relances automatiques, paiement en
 ligne, sauvegardes, restauration, gestion des comptes, activation de la licence.
+
+**Clôture des périodes.** Une fois la déclaration de taxes produite, on
+verrouille la période qu'elle couvre : jusqu'à la date choisie, plus aucune
+facture, dépense, note de crédit ni aucun encaissement ne se crée, ne se modifie
+ou ne se supprime. La déclaration remise ne peut plus mentir. Rouvrir une
+période reste possible, et le journal le note.
 
 ---
 
@@ -488,6 +510,9 @@ produite **automatiquement, activée par défaut**.
 - **Chaque dossier a ses copies.** Un comptable peut envoyer les sauvegardes de
   tous ses clients dans le même dossier OneDrive : chaque dossier d'entreprise
   ne voit, ne compte et ne supprime que les siennes.
+- **Les reçus suivent.** Les pièces jointes aux dépenses rejoignent le dossier
+  des sauvegardes, une fois chacune. Une comptabilité restaurée sur un nouvel
+  ordinateur y retrouve ses reçus d'elle-même.
 
 **Restaurer** est réservé à l'administrateur. Avant de confirmer, Clora montre
 ce que contient la copie : l'entreprise, le nombre de factures et de clients,
@@ -542,6 +567,12 @@ montrer les factures d'un client à un autre.
 
 Les comptes d'utilisateurs, eux, sont communs : on ne se reconnecte pas en
 changeant de dossier.
+
+**Renommer, archiver.** L'administrateur d'un dossier le renomme ou l'archive
+depuis l'écran de choix des dossiers. Un dossier archivé n'est plus proposé à
+l'ouverture, mais rien n'est effacé : il se réactive au même endroit. Le nom du
+dossier suit la raison sociale saisie dans Paramètres, sauf si on lui en a donné
+un autre.
 
 **Le profil du dossier.** À la création, on dit ce que l'entreprise est :
 travailleur autonome, startup en démarrage ou PME établie. Ce choix règle des

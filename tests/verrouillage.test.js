@@ -233,3 +233,23 @@ test('un abonnement rattrapé sur une période close est facturé au premier jou
   assert.equal(premiere.date_emission, lendemain(VERROU));
   assert.ok(premiere.date_echeance > premiere.date_emission, 'l\'échéance suit la date retenue');
 });
+
+test('un déplacement de la période ouverte s\'inscrit, même quand l\'année a des trajets clos', async (t) => {
+  const api = await avecAdmin(t);
+  const annee = Number(aujourdhui().slice(0, 4));
+  assert.equal((await api.put('/api/settings/taux-kilometriques', { annee, taux_1: 0.7, taux_2: 0.64, seuil_km: 5000 })).status, 200);
+  const trajet = (date, km) => api.post('/api/depenses', {
+    fournisseur: '', description: 'Client', date_depense: date, categorie: 'Déplacement', kilometres: km, vehicule: 'Auto'
+  });
+  const ancien = await trajet(`${annee}-01-05`, 100);
+  assert.equal(ancien.status, 201, JSON.stringify(ancien.data));
+  // Le 1er janvier n'est clos que si l'on est au moins le 2.
+  if (aujourdhui() <= `${annee}-01-05`) return;
+  assert.equal((await api.put('/api/settings/verrouillage', { date_verrouillage: `${annee}-01-05` })).status, 200);
+
+  // Le recalcul de l'année repasse sur le trajet clos, et retombe sur son montant.
+  const nouveau = await trajet(aujourdhui(), 50);
+  assert.equal(nouveau.status, 201, JSON.stringify(nouveau.data));
+  assert.equal(nouveau.data.montant_ht, 35);
+  assert.equal((await api.db.get('SELECT montant_ht FROM depenses WHERE id = ?', [ancien.data.id])).montant_ht, 70);
+});

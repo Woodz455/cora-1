@@ -12,7 +12,7 @@ version 1.12.0.*
 | **Version publiée** | 1.12.0, le 12 novembre 2026 |
 | **Publications** | 20 versions livrées depuis le 24 juillet 2026 |
 | **Développement** | 106 commits, 51 demandes de fusion : 50 fusionnées, une rendue sans objet |
-| **Tests** | 476, tous au vert, exécutés à chaque fusion, plus deux essais de l'application de bureau |
+| **Tests** | 502, tous au vert, exécutés à chaque fusion, plus trois essais de l'application de bureau, dont un qui pilote les écrans |
 | **Durée** | 16 semaines, du 24 juillet au 12 novembre 2026 |
 | **Langues** | Interface en français ou en anglais, au choix de chaque utilisateur |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
@@ -519,6 +519,35 @@ Vérifié dans la vraie application : les onze écrans, le PDF envoyé par
 courriel, une tentative de sortie de la fenêtre et un script injecté, tous deux
 bloqués. 17 tests de plus.
 
+### Phase 21 : le niveau référence
+*13 novembre · pas encore publié*
+
+Le second lot relevé par la vérification d'ensemble : ce qui sépare un bon
+logiciel de facturation d'une référence.
+
+- **Une date de verrouillage.** Une fois la déclaration de taxes produite,
+  l'administrateur clôt la période dans Paramètres : plus aucune facture,
+  dépense, note de crédit ni aucun encaissement de la période ne bouge. Une
+  facture close s'encaisse toujours et se corrige par une note de crédit. C'est
+  SQLite qui fait respecter la règle, comme pour le journal d'audit.
+- **Les reçus joints aux dépenses.** Une photo ou un PDF, gardés à côté de la
+  base et déposés une fois chacun dans le dossier des sauvegardes, chiffrés si
+  elles le sont. Une comptabilité restaurée sur un autre poste retrouve ses
+  reçus d'elle-même.
+- **De vrais PDF.** Factures, devis, notes de crédit et compte rendu sortent en
+  texte réel, au format lettre, imprimés par Chromium : le texte se sélectionne
+  et se lit par un lecteur d'écran. La bibliothèque qui les dessinait en image
+  est retirée, et l'interface s'allège de près d'un mégaoctet.
+- **Renommer et archiver.** Un client s'archive (ou se supprime, s'il ne porte
+  aucun document) ; un dossier se renomme ou s'archive depuis l'écran de choix.
+- **Les écrans sont essayés.** Un essai pilote l'application comme un
+  utilisateur, du premier lancement à l'envoi d'une facture, jusqu'à la clôture
+  d'une période et l'archivage d'un client.
+
+Vérifié dans la vraie application : les trois parcours, le PDF d'une facture et
+d'un compte rendu de trois pages, et les écrans à 1 280 pixels. Deux défauts
+d'affichage vus en chemin sont corrigés. 26 tests de plus.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
@@ -599,16 +628,14 @@ l'avertissement d'emblée.
 
 #### Relevé par la vérification d'ensemble du 12 novembre
 
-Constats vérifiés dans le code ou par essai, non corrigés : chacun demande une
-décision.
+Les deux lots qu'elle avait relevés sont faits : traçabilité et durcissement
+(phase 20), puis verrouillage, reçus, PDF, archivage et essais des écrans
+(phase 21). Ce qu'ils laissent ouvert :
 
 | Sujet | Effort estimé | Pourquoi |
 | --- | --- | --- |
-| **Date de verrouillage** | Moyen | Une fois la déclaration de taxes produite, rien ne devrait plus bouger dans la période |
-| **Pièces justificatives** | Moyen | Joindre le reçu à la dépense : les autorités fiscales exigent de les conserver six ans |
-| **PDF nets** | Moyen | Les factures envoyées sont des images. Electron sait produire un vrai PDF, au texte sélectionnable, et retirerait près d'un mégaoctet du paquet |
-| **Renommer et archiver** | Moyen | Un dossier ne se renomme ni ne s'archive, un client créé par erreur reste pour toujours |
-| **Essais de l'interface** | Moyen | Aucun test ne pilote les écrans : deux ou trois parcours automatisés éviteraient une régression comme celle des fenêtres de la 1.9.1 |
+| **Remettre les reçus d'une période** | Petit | Un comptable voudra les reçus d'un trimestre d'un seul coup ; ils s'ouvrent aujourd'hui un à un |
+| **Verrouiller depuis Rapports** | Petit | Proposer de clore la période juste après avoir produit son rapport de taxes, plutôt que d'aller dans Paramètres |
 
 > **Réserve sur une quatrième idée** souvent proposée : la détection des
 > inversions de chiffres n'a presque aucune valeur ici. Elle attrape les
@@ -651,6 +678,18 @@ jamais été observés sur une machine réelle :
   s'applique et l'application redémarre seule. Reste à le voir sous Windows.
 
 Ce sont deux choses à regarder pendant les tests utilisateurs.
+
+La phase 21 en ajoute quatre, éprouvées sous Linux dans la vraie application :
+
+- **Un reçu ouvert dans la visionneuse de Windows**, par le bouton « Ouvrir » de
+  la fenêtre des pièces justificatives, photo comme PDF.
+- **Le PDF d'une facture envoyée par courriel**, ouvert chez le destinataire :
+  polices, logo, accents, et texte sélectionnable.
+- **Le compte rendu téléchargé** : l'enregistrement doit proposer de choisir
+  où ranger le fichier.
+- **Une sauvegarde avec des reçus**, dans un dossier OneDrive : le sous-dossier
+  `clora-pieces-…` doit y apparaître, et ses fichiers être chiffrés si la
+  protection est active.
 
 Deux autres points figuraient ici et n'y sont plus, observés le 12 novembre sur
 un poste Windows, lors de l'essai d'une fabrication installée par-dessus la
@@ -783,7 +822,10 @@ la clé de licence à la fin des tests. Ce que la vérification a relevé sans l
 corriger attend une décision, point par point (section 4). Le passage à
 Electron 45 est fait, éprouvé sous Windows et livré en 1.11.0. Le premier lot
 relevé par la vérification d'ensemble, traçabilité et durcissement, est livré
-en 1.12.0.
+en 1.12.0. Le second (verrouillage des périodes, reçus joints, vrais PDF,
+renommage et archivage, essais des écrans) est fait, et attend sa version : il
+change ce que les testeurs voient, et il faudra leur demander d'ouvrir un reçu
+et le PDF d'une facture sur leur poste (section 5).
 
 **Tout ce qui avait été relevé en corrigeant le design est fait** : les polices
 embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la
