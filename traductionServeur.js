@@ -294,7 +294,15 @@ const EXACTS = new Map([
   ['Cette clé est incomplète.', 'This key is incomplete.'],
   ["Cette clé n'est pas authentique.", 'This key is not genuine.'],
   ['Cette clé est illisible.', 'This key cannot be read.'],
-  ["Aucun dossier d'entreprise n'est ouvert pour cette requête.", 'No company file is open for this request.']
+  ["Aucun dossier d'entreprise n'est ouvert pour cette requête.", 'No company file is open for this request.'],
+
+  // Verrouillage des périodes
+  ['Cette opération toucherait une période verrouillée. Un administrateur peut la déverrouiller dans Paramètres.',
+    'This would change a locked period. An administrator can unlock it in Settings.'],
+  ['La date de verrouillage est invalide (format AAAA-MM-JJ).', 'The lock date is invalid (format YYYY-MM-DD).'],
+  ["La date de verrouillage doit être antérieure à aujourd'hui.", 'The lock date must be before today.'],
+  ['Aucun changement.', 'No change.'],
+  ['Toutes les périodes sont rouvertes.', 'All periods are unlocked.']
 ]);
 
 /**
@@ -376,7 +384,12 @@ const MOTIFS = [
   [/^Cette sauvegarde est inutilisable \((.*)\)\. Rien n'a été modifié\.$/s,
     (m) => `This backup cannot be used (${traduire(m[1], 'en')}). Nothing was changed.`],
   [/^Cette clé couvre la maintenance jusqu'au (\S+), et cette version date du (\S+)\. Renouvelez la maintenance, ou installez une version antérieure : vos données restent intactes\.$/,
-    (m) => `This key covers maintenance until ${m[1]}, and this version is dated ${m[2]}. Renew your maintenance, or install an earlier version: your data stays intact.`]
+    (m) => `This key covers maintenance until ${m[1]}, and this version is dated ${m[2]}. Renew your maintenance, or install an earlier version: your data stays intact.`],
+  [/^La période est verrouillée jusqu'au (\S+) : pour corriger cette facture, émettez une note de crédit\.$/,
+    (m) => `The period is locked through ${m[1]}: to correct this invoice, issue a credit note.`],
+  [/^La période est verrouillée jusqu'au (\S+) : cette pièce ne peut plus être créée, modifiée ni supprimée\.$/,
+    (m) => `The period is locked through ${m[1]}: this entry can no longer be created, edited or deleted.`],
+  [/^Périodes verrouillées jusqu'au (\S+)\.$/, (m) => `Periods locked through ${m[1]}.`]
 ];
 
 /** Statuts cités dans un message, traduits comme à l'écran. */

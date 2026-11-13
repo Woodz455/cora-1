@@ -19,6 +19,7 @@ const DELAI_PAIEMENT_JOURS = 30;
 const MAX_RATTRAPAGE = 24;
 
 const { aujourdhui } = require('./dates.js');
+const { dateDeVerrouillage, estVerrouillee, lendemain } = require('./verrouillage.js');
 
 /** Jour d'une date construite en heure universelle, pour l'arithmétique des échéances. */
 const iso = (date) => date.toISOString().split('T')[0];
@@ -143,6 +144,7 @@ async function checkAndGenerateRecurringInvoices(db) {
 
   let generees = 0;
   let erreurs = 0;
+  const verrou = await dateDeVerrouillage(db);
 
   for (const sub of dueSubs) {
     try {
@@ -151,12 +153,16 @@ async function checkAndGenerateRecurringInvoices(db) {
       let iterations = 0;
 
       while (dateGeneration <= today && iterations < MAX_RATTRAPAGE) {
-        const echeance = new Date(`${dateGeneration}T00:00:00Z`);
+        // Une période rattrapée peut avoir été close entre-temps. La facture
+        // est due quand même : elle est datée du premier jour ouvert plutôt
+        // que perdue, ou que de rouvrir une déclaration déjà remise.
+        const emission = estVerrouillee(dateGeneration, verrou) ? lendemain(verrou) : dateGeneration;
+        const echeance = new Date(`${emission}T00:00:00Z`);
         echeance.setUTCDate(echeance.getUTCDate() + DELAI_PAIEMENT_JOURS);
 
         await createFacture(db, {
           client_id: sub.client_id,
-          date_emission: dateGeneration,
+          date_emission: emission,
           date_echeance: iso(echeance),
           devise: sub.devise || 'CAD',
           taux_change: 1.0

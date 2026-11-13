@@ -51,7 +51,8 @@ const LIBELLES_CHAMPS = {
   lignes_json: 'Lignes', depot: 'Dépôt', date_transaction: 'Date du dépôt',
   montant_impute: 'Montant imputé', montant: 'Montant', destinataire: 'Destinataire',
   deja_envoyee: 'Déjà envoyée au client', client_id: 'Client', date_echeance: 'Échéance',
-  sous_total: 'Sous-total', montant_taxe_1: 'Taxe 1', montant_taxe_2: 'Taxe 2'
+  sous_total: 'Sous-total', montant_taxe_1: 'Taxe 1', montant_taxe_2: 'Taxe 2',
+  date_verrouillage: 'Verrouillé jusqu\'au'
 };
 
 /** Rôles et auteur automatique, enregistrés en français. */

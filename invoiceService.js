@@ -7,6 +7,7 @@ const { withTransaction } = require('./dbUtils.js');
 const { nextDocumentNumber, normaliserPrefixe, PREFIXE_FACTURE_HERITE } = require('./sequences.js');
 const { normaliserCondition, calculerEcheance, CONDITION_DEFAUT } = require('./paymentTerms.js');
 const { aujourdhui: dateDuJour } = require('./dates.js');
+const { exigerPeriodeOuverte } = require('./verrouillage.js');
 
 /** Statuts possibles d'une facture. */
 const STATUTS = {
@@ -141,6 +142,10 @@ async function getFacturesAvecSoldes(db) {
       f.taxe_1_nom,
       f.taxe_2_nom,
       f.conditions_paiement,
+      -- L'écran masque ce qu'une période close interdit, plutôt que de laisser
+      -- cliquer pour essuyer un refus.
+      CASE WHEN f.date_emission <= (SELECT date_verrouillage FROM settings ORDER BY id LIMIT 1)
+           THEN 1 ELSE 0 END AS verrouillee,
       ${COLONNES_FINANCIERES}
     FROM factures f
     JOIN clients c ON f.client_id = c.id
@@ -162,6 +167,7 @@ async function getSoldeFacture(db, factureId) {
     SELECT
       f.id,
       f.numero_facture,
+      f.date_emission,
       f.statut,
       f.devise,
       f.taux_change,
@@ -249,6 +255,9 @@ async function addPaiement(db, factureId, montant, note = '', datePaiement = nul
     if (!facture) {
       throw Object.assign(new Error('Facture non trouvée.'), { status: 404 });
     }
+    // C'est la date de l'encaissement qui compte, pas celle de la facture :
+    // une facture d'une période close s'encaisse normalement aujourd'hui.
+    await exigerPeriodeOuverte(db, [date]);
     if (facture.statut === STATUTS.ANNULEE) {
       throw Object.assign(new Error('Une facture annulée ne peut pas recevoir de paiement.'), { status: 400 });
     }
@@ -295,6 +304,7 @@ async function annulerPaiement(db, paiementId, { motif = '', utilisateur = '' } 
     if (paiement.annule_le) {
       throw Object.assign(new Error('Ce paiement est déjà annulé.'), { status: 400 });
     }
+    await exigerPeriodeOuverte(db, [paiement.date_paiement]);
 
     await db.run(
       'UPDATE paiements SET annule_le = ?, annule_par = ?, motif_annulation = ? WHERE id = ?',
@@ -481,6 +491,7 @@ async function createFacture(db, factureData, lignes) {
     if (!client) {
       throw Object.assign(new Error('Client introuvable.'), { status: 400 });
     }
+    await exigerPeriodeOuverte(db, [date_emission]);
 
     // Le terme est celui de la fiche client, sauf mention explicite sur la
     // facture. Il est figé ici, comme les taux de taxe : changer les conditions
@@ -576,6 +587,7 @@ async function cancelFacture(db, factureId) {
   if (facture.statut === STATUTS.ANNULEE) {
     throw Object.assign(new Error('Cette facture est déjà annulée.'), { status: 400 });
   }
+  await exigerPeriodeOuverte(db, [facture.date_emission], { facture: true });
   if (facture.montant_paye > EPSILON) {
     throw Object.assign(
       new Error('Une facture comportant un paiement ne peut pas être annulée. Émettez une note de crédit.'),
@@ -602,6 +614,7 @@ async function updateFacture(db, factureId, factureData, lignes) {
     if (!facture) {
       throw Object.assign(new Error('Facture non trouvée.'), { status: 404 });
     }
+    await exigerPeriodeOuverte(db, [facture.date_emission], { facture: true });
     if (facture.statut !== STATUTS.EN_ATTENTE) {
       throw Object.assign(
         new Error(`Seules les factures « ${STATUTS.EN_ATTENTE} » peuvent être modifiées.`),
@@ -661,6 +674,7 @@ async function deleteFacture(db, factureId) {
   if (!facture) {
     throw Object.assign(new Error('Facture non trouvée.'), { status: 404 });
   }
+  await exigerPeriodeOuverte(db, [facture.date_emission], { facture: true });
   if (facture.montant_paye > EPSILON) {
     throw Object.assign(
       new Error('Cette facture comporte un paiement encaissé et ne peut pas être supprimée. Annulez-la ou émettez une note de crédit.'),

@@ -7,7 +7,9 @@ const express = require('express');
 const { anyRole, adminOnly } = require('../authMiddleware.js');
 const { journaliser, ecart, ACTIONS } = require('../auditService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
-const { sanitizeText, isValidEmailList } = require('../validators.js');
+const { sanitizeText, isValidEmailList, isValidDate } = require('../validators.js');
+const { aujourdhui } = require('../dates.js');
+const { dateDeVerrouillage } = require('../verrouillage.js');
 const { parsePaliers: analyserPaliers } = require('../relanceService.js');
 const {
   chiffrer, dechiffrer, lireSecret, estProtege, coffreDisponible
@@ -454,6 +456,47 @@ module.exports = function settingsRoutes(getDb) {
     }
 
     res.json({ message: `Taux kilométriques de ${annee} enregistrés.`, taux: apres });
+  }));
+
+  /**
+   * Verrouille les périodes jusqu'à une date, ou les rouvre.
+   *
+   * Réservé à l'administrateur et consigné dans les deux sens. Reculer la date,
+   * ou l'effacer, rouvre des périodes : c'est permis, une erreur se corrige,
+   * mais le journal garde qui l'a fait et ce qui était clos.
+   */
+  router.put('/verrouillage', adminOnly(), asyncRoute(async (req, res) => {
+    const db = getDb();
+    const brut = req.body && req.body.date_verrouillage;
+    const date = brut === null || brut === undefined || brut === '' ? null : String(brut);
+
+    if (date !== null && !isValidDate(date)) {
+      throw httpError(400, 'La date de verrouillage est invalide (format AAAA-MM-JJ).');
+    }
+    // Clore l'avenir empêcherait de facturer aujourd'hui même.
+    if (date !== null && date >= aujourdhui()) {
+      throw httpError(400, 'La date de verrouillage doit être antérieure à aujourd\'hui.');
+    }
+
+    const avant = await dateDeVerrouillage(db);
+    if (avant === date) {
+      return res.json({ message: 'Aucun changement.', date_verrouillage: date });
+    }
+
+    await db.run('UPDATE settings SET date_verrouillage = ?', [date]);
+
+    const rouvre = avant !== null && (date === null || date < avant);
+    await journaliser(db, req, {
+      action: rouvre ? ACTIONS.PERIODE_DEVERROUILLAGE : ACTIONS.PERIODE_VERROUILLAGE,
+      entite: 'parametres',
+      entite_id: null,
+      details: { changements: { date_verrouillage: { avant, apres: date } } }
+    });
+
+    res.json({
+      message: date ? `Périodes verrouillées jusqu'au ${date}.` : 'Toutes les périodes sont rouvertes.',
+      date_verrouillage: date
+    });
   }));
 
   return router;

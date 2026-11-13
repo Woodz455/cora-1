@@ -3,6 +3,7 @@ const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const { getDbPath } = require('./config.js');
 const { appliquerRestaurationEnAttente, identifiantDuDossier } = require('./backupService.js');
+const { installerVerrous } = require('./verrouillage.js');
 
 /** Journalisation silencieuse sous test, pour ne pas noyer la sortie. */
 const log = (...args) => {
@@ -416,6 +417,10 @@ async function runMigrations(db) {
   await addColumn(db, 'settings', 'sauvegarde_cle', 'TEXT');
   await addColumn(db, 'settings', 'sauvegarde_cle_empreinte', 'TEXT');
 
+  // Date jusqu'à laquelle les périodes sont closes (voir verrouillage.js).
+  // Vide : rien n'est verrouillé, comme avant.
+  await addColumn(db, 'settings', 'date_verrouillage', 'TEXT');
+
   await figerMontants(db);
 }
 
@@ -642,6 +647,8 @@ async function initDb(dbPath = getDbPath()) {
     await createTables(db);
     await runMigrations(db);
     await createIndexes(db);
+    // Après les migrations : les déclencheurs citent des colonnes ajoutées par elles.
+    await installerVerrous(db);
     await migrateLegacyAdmin(db);
     await identifiantDuDossier(db);
 

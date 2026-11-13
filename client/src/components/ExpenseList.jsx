@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Lock } from 'lucide-react';
 import InfoTooltip from './InfoTooltip';
 import { api } from '../api';
 import { useApiResource } from '../useApiResource';
@@ -297,8 +297,16 @@ function ExpenseList() {
                 </td>
                 <td className="numeric" style={{ fontWeight: 'bold' }}>{formatMontant(expense.montant_ttc)}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <button type="button" className="btn-icon" onClick={() => openModal(expense)} aria-label={t('Modifier la dépense')} style={{ marginRight: '4px' }}><Pencil size={16} aria-hidden="true" /></button>
-                  <button type="button" className="btn-danger" onClick={() => handleDelete(expense)} aria-label={t('Supprimer la dépense')}><Trash2 size={16} aria-hidden="true" /></button>
+                  {expense.verrouillee ? (
+                    <span title={t('Période verrouillée : cette dépense ne peut plus être modifiée.')} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      <Lock size={14} aria-hidden="true" /> {t('Période close')}
+                    </span>
+                  ) : (
+                    <>
+                      <button type="button" className="btn-icon" onClick={() => openModal(expense)} aria-label={t('Modifier la dépense')} style={{ marginRight: '4px' }}><Pencil size={16} aria-hidden="true" /></button>
+                      <button type="button" className="btn-danger" onClick={() => handleDelete(expense)} aria-label={t('Supprimer la dépense')}><Trash2 size={16} aria-hidden="true" /></button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}

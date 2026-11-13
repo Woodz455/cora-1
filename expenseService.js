@@ -9,6 +9,7 @@
 const { sanitizeText, isValidDate } = require('./validators.js');
 const { roundCents } = require('./money.js');
 const { withTransaction } = require('./dbUtils.js');
+const { exigerPeriodeOuverte } = require('./verrouillage.js');
 const {
   anneeDe, tauxDeLAnnee, recalculerAnnees
 } = require('./kilometrageService.js');
@@ -111,7 +112,14 @@ async function exigerTaux(db, depense) {
 }
 
 async function getExpenses(db) {
-  return db.all('SELECT * FROM depenses ORDER BY date_depense DESC, id DESC');
+  // `verrouillee` : la dépense appartient à une période close (voir verrouillage.js).
+  return db.all(`
+    SELECT d.*,
+           CASE WHEN d.date_depense <= (SELECT date_verrouillage FROM settings ORDER BY id LIMIT 1)
+                THEN 1 ELSE 0 END AS verrouillee
+    FROM depenses d
+    ORDER BY d.date_depense DESC, d.id DESC
+  `);
 }
 
 /** Véhicules déjà employés, pour épargner la ressaisie à chaque trajet. */
@@ -129,6 +137,7 @@ async function createExpense(db, body) {
   if (error) throw Object.assign(new Error(error), { status: 400 });
 
   return withTransaction(db, async () => {
+    await exigerPeriodeOuverte(db, [depense.date_depense]);
     await exigerTaux(db, depense);
 
     const result = await db.run(
@@ -153,6 +162,9 @@ async function updateExpense(db, id, body) {
     const existant = await db.get('SELECT id, date_depense, kilometres FROM depenses WHERE id = ?', [id]);
     if (!existant) throw Object.assign(new Error('Dépense introuvable.'), { status: 404 });
 
+    // Ni la quitter ni la rejoindre : déplacer une dépense hors d'une période
+    // close la retirerait de la déclaration aussi sûrement que la supprimer.
+    await exigerPeriodeOuverte(db, [existant.date_depense, depense.date_depense]);
     await exigerTaux(db, depense);
 
     await db.run(
@@ -180,6 +192,7 @@ async function deleteExpense(db, id) {
   return withTransaction(db, async () => {
     const existant = await db.get('SELECT id, date_depense, kilometres FROM depenses WHERE id = ?', [id]);
     if (!existant) throw Object.assign(new Error('Dépense introuvable.'), { status: 404 });
+    await exigerPeriodeOuverte(db, [existant.date_depense]);
 
     await db.run('DELETE FROM depenses WHERE id = ?', [id]);
 

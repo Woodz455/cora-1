@@ -13,6 +13,7 @@ const { initDb, reprendreMontants } = require('./database.js');
 const { getFacturesAvecSoldes, annulerPaiement, resolveStatut, STATUTS } = require('./invoiceService.js');
 const { roundCents, formatMontant } = require('./money.js');
 const { majStatutTransaction, resolveStatutTransaction } = require('./bankService.js');
+const { dateDeVerrouillage, estVerrouillee } = require('./verrouillage.js');
 
 const argent = (n) => formatMontant(n);
 
@@ -241,22 +242,26 @@ async function corrigerStatuts(db) {
  */
 async function annulerSurpaiements(db) {
   const factures = await getFacturesAvecSoldes(db);
+  const verrou = await dateDeVerrouillage(db);
   let annules = 0;
 
   for (const f of factures) {
     if (f.solde_restant >= -0.005) continue;
 
     const paiements = await db.all(
-      `SELECT id, montant, note, transaction_id FROM paiements
+      `SELECT id, montant, note, transaction_id, date_paiement FROM paiements
        WHERE facture_id = ? AND annule_le IS NULL ORDER BY date_paiement DESC, id DESC`,
       [f.id]
     );
 
     // Du plus récent au plus ancien, tant que la facture reste excédentaire.
+    // Un paiement d'une période close n'est pas défait d'office : c'est à
+    // l'administrateur de décider s'il rouvre la période.
     let excedent = -f.solde_restant;
     for (const p of paiements) {
       if (excedent <= 0.005) break;
       if (!estIssuDunRapprochement(p)) continue;
+      if (estVerrouillee(p.date_paiement, verrou)) continue;
 
       await annulerPaiement(db, p.id, {
         motif: 'Sur-paiement corrigé par le diagnostic ; transaction remise en attente.',
@@ -268,7 +273,7 @@ async function annulerSurpaiements(db) {
     }
 
     if (excedent > 0.005) {
-      console.log(`  ${f.numero_facture} : ${argent(excedent)} d'excédent subsistent, saisis à la main : à trancher dans l'application.`);
+      console.log(`  ${f.numero_facture} : ${argent(excedent)} d'excédent subsistent (saisis à la main, ou dans une période verrouillée) : à trancher dans l'application.`);
     }
   }
   return annules;

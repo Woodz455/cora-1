@@ -10,6 +10,7 @@
 const { computeTotals, roundCents, formatMontant } = require('./money.js');
 const { withTransaction } = require('./dbUtils.js');
 const { nextDocumentNumber } = require('./sequences.js');
+const { exigerPeriodeOuverte } = require('./verrouillage.js');
 
 /** Tolérance d'un demi-cent, alignée sur invoiceService. */
 const EPSILON = 0.005;
@@ -106,6 +107,9 @@ async function createNoteCredit(db, factureId, donnees, lignes) {
     if (!facture) {
       throw Object.assign(new Error('Facture non trouvée.'), { status: 404 });
     }
+    // La note est datée de sa propre émission : une facture d'une période
+    // close se corrige justement par une note datée d'une période ouverte.
+    await exigerPeriodeOuverte(db, [date_emission]);
     if (facture.statut === 'Annulée') {
       throw Object.assign(
         new Error('Une facture annulée n\'a rien à créditer.'),
@@ -176,10 +180,11 @@ async function createNoteCredit(db, factureId, donnees, lignes) {
  */
 async function deleteNoteCredit(db, noteId) {
   return withTransaction(db, async () => {
-    const note = await db.get('SELECT id, facture_id, numero_note FROM notes_credit WHERE id = ?', [noteId]);
+    const note = await db.get('SELECT id, facture_id, numero_note, date_emission FROM notes_credit WHERE id = ?', [noteId]);
     if (!note) {
       throw Object.assign(new Error('Note de crédit non trouvée.'), { status: 404 });
     }
+    await exigerPeriodeOuverte(db, [note.date_emission]);
 
     const { paye } = await db.get(
       'SELECT COALESCE(SUM(montant), 0) AS paye FROM paiements WHERE facture_id = ? AND annule_le IS NULL',

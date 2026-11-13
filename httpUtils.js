@@ -2,6 +2,9 @@
  * Utilitaires HTTP partagés par les routes.
  */
 
+/** Message des déclencheurs de verrouillage (voir verrouillage.js, qui dépend de ce module). */
+const MARQUE_VERROU = 'CLORA_PERIODE_VERROUILLEE';
+
 /**
  * Encapsule un gestionnaire asynchrone pour que toute exception parte vers le
  * middleware d'erreur.
@@ -30,6 +33,16 @@ function apiNotFound(req, res) {
  * serveur » l'envoie chercher dans les journaux d'un logiciel de bureau.
  */
 function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-vars
+  // Un déclencheur de verrouillage a refusé l'écriture : ce n'est pas une
+  // anomalie, mais une règle que l'utilisateur doit comprendre. Les routes
+  // vérifient d'ordinaire avant d'écrire ; ceci couvre les chemins indirects,
+  // comme un recalcul d'indemnités kilométriques.
+  if (err && String(err.message).includes(MARQUE_VERROU)) {
+    return res.status(409).json({
+      error: 'Cette opération toucherait une période verrouillée. Un administrateur peut la déverrouiller dans Paramètres.'
+    });
+  }
+
   const status = Number.isInteger(err.status) ? err.status : 500;
 
   if (status >= 500) {
@@ -50,4 +63,4 @@ function httpError(status, message) {
   return Object.assign(new Error(message), { status, expose: true });
 }
 
-module.exports = { asyncRoute, apiNotFound, errorHandler, httpError };
+module.exports = { asyncRoute, apiNotFound, errorHandler, httpError, MARQUE_VERROU };

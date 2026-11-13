@@ -43,7 +43,11 @@ const ACTIONS = {
   ABONNEMENT_MODIFICATION: 'abonnement.modification',
   ABONNEMENT_SUPPRESSION: 'abonnement.suppression',
   BANQUE_RAPPROCHEMENT: 'banque.rapprochement',
-  BANQUE_DEPOT_IGNORE: 'banque.depot_ignore'
+  BANQUE_DEPOT_IGNORE: 'banque.depot_ignore',
+  // Clore une période fige une déclaration ; la rouvrir est le geste qui
+  // permettrait de la changer après coup, et doit donc se voir.
+  PERIODE_VERROUILLAGE: 'periode.verrouillage',
+  PERIODE_DEVERROUILLAGE: 'periode.deverrouillage'
 };
 
 /** Libellés lisibles, partagés avec l'interface. */
@@ -74,7 +78,9 @@ const LIBELLES = {
   [ACTIONS.ABONNEMENT_MODIFICATION]: 'Abonnement modifié',
   [ACTIONS.ABONNEMENT_SUPPRESSION]: 'Abonnement supprimé',
   [ACTIONS.BANQUE_RAPPROCHEMENT]: 'Dépôt bancaire imputé',
-  [ACTIONS.BANQUE_DEPOT_IGNORE]: 'Dépôt bancaire ignoré'
+  [ACTIONS.BANQUE_DEPOT_IGNORE]: 'Dépôt bancaire ignoré',
+  [ACTIONS.PERIODE_VERROUILLAGE]: 'Période verrouillée',
+  [ACTIONS.PERIODE_DEVERROUILLAGE]: 'Période déverrouillée'
 };
 
 /** Longueur maximale du détail sérialisé, pour qu'une ligne reste une ligne. */
