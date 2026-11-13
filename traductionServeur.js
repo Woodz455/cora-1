@@ -294,7 +294,51 @@ const EXACTS = new Map([
   ['Cette clé est incomplète.', 'This key is incomplete.'],
   ["Cette clé n'est pas authentique.", 'This key is not genuine.'],
   ['Cette clé est illisible.', 'This key cannot be read.'],
-  ["Aucun dossier d'entreprise n'est ouvert pour cette requête.", 'No company file is open for this request.']
+  ["Aucun dossier d'entreprise n'est ouvert pour cette requête.", 'No company file is open for this request.'],
+
+  // Verrouillage des périodes
+  ['Cette opération toucherait une période verrouillée. Un administrateur peut la déverrouiller dans Paramètres.',
+    'This would change a locked period. An administrator can unlock it in Settings.'],
+  ['La date de verrouillage est invalide (format AAAA-MM-JJ).', 'The lock date is invalid (format YYYY-MM-DD).'],
+  ["La date de verrouillage doit être antérieure à aujourd'hui.", 'The lock date must be before today.'],
+  ['Aucun changement.', 'No change.'],
+  ['Toutes les périodes sont rouvertes.', 'All periods are unlocked.'],
+
+  // Pièces justificatives
+  ['Le fichier est vide.', 'The file is empty.'],
+  ['Le fichier dépasse 15 Mo.', 'The file is larger than 15 MB.'],
+  ['Seuls les PDF et les images JPEG, PNG ou WebP peuvent être joints.',
+    'Only PDF files and JPEG, PNG or WebP images can be attached.'],
+  ['Pièce introuvable.', 'Attachment not found.'],
+  ['Pièce mal décrite dans la base.', 'This attachment is incorrectly recorded in the database.'],
+  ['Ce fichier est introuvable sur cet ordinateur et dans le dossier des sauvegardes.',
+    'This file cannot be found on this computer or in the backup folder.'],
+  ['Identifiant de pièce invalide.', 'Invalid attachment ID.'],
+  ["Ouvrir une pièce n'est possible que dans l'application de bureau. Téléchargez-la plutôt.",
+    'Attachments can only be opened in the desktop app. Download it instead.'],
+  ['Pièce retirée.', 'Attachment removed.'],
+
+  // PDF
+  ["La fabrication des PDF n'est possible que dans l'application de bureau.", 'PDFs can only be produced in the desktop app.'],
+  ['Le document à imprimer est vide.', 'The document to print is empty.'],
+  ['Le document à imprimer est trop volumineux.', 'The document to print is too large.'],
+  ['La fabrication du PDF a pris trop de temps.', 'Producing the PDF took too long.'],
+
+  // Clients et dossiers archivés
+  ['Ce client est archivé : réactivez-le pour lui adresser un document.',
+    'This client is archived: reactivate them to send them a document.'],
+  ["Ce client a un abonnement actif : suspendez-le avant d'archiver le client.",
+    'This client has an active subscription: suspend it before archiving the client.'],
+  ['Ce client a des factures, des devis ou des abonnements : archivez-le plutôt.',
+    'This client has invoices, quotes or subscriptions: archive them instead.'],
+  ['Client archivé.', 'Client archived.'],
+  ['Client réactivé.', 'Client reactivated.'],
+  ['Client supprimé.', 'Client deleted.'],
+  ['Dossier renommé.', 'Company file renamed.'],
+  ['Dossier archivé.', 'Company file archived.'],
+  ['Dossier réactivé.', 'Company file restored.'],
+  ["Ce dossier est ouvert : ouvrez-en un autre avant de l'archiver.",
+    'This company file is open: open another one before archiving it.']
 ]);
 
 /**
@@ -376,7 +420,14 @@ const MOTIFS = [
   [/^Cette sauvegarde est inutilisable \((.*)\)\. Rien n'a été modifié\.$/s,
     (m) => `This backup cannot be used (${traduire(m[1], 'en')}). Nothing was changed.`],
   [/^Cette clé couvre la maintenance jusqu'au (\S+), et cette version date du (\S+)\. Renouvelez la maintenance, ou installez une version antérieure : vos données restent intactes\.$/,
-    (m) => `This key covers maintenance until ${m[1]}, and this version is dated ${m[2]}. Renew your maintenance, or install an earlier version: your data stays intact.`]
+    (m) => `This key covers maintenance until ${m[1]}, and this version is dated ${m[2]}. Renew your maintenance, or install an earlier version: your data stays intact.`],
+  [/^La période est verrouillée jusqu'au (\S+) : pour corriger cette facture, émettez une note de crédit\.$/,
+    (m) => `The period is locked through ${m[1]}: to correct this invoice, issue a credit note.`],
+  [/^La période est verrouillée jusqu'au (\S+) : cette pièce ne peut plus être créée, modifiée ni supprimée\.$/,
+    (m) => `The period is locked through ${m[1]}: this entry can no longer be created, edited or deleted.`],
+  [/^Périodes verrouillées jusqu'au (\S+)\.$/, (m) => `Periods locked through ${m[1]}.`],
+  [/^Une dépense ne peut pas porter plus de (\d+) pièces\.$/, (m) => `An expense cannot have more than ${m[1]} attachments.`],
+  [/^Le fichier n'a pas pu être ouvert : (.*)$/s, (m) => `The file could not be opened: ${m[1]}`]
 ];
 
 /** Statuts cités dans un message, traduits comme à l'écran. */

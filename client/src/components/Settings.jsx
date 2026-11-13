@@ -4,11 +4,19 @@ import { api, CONDITIONS } from '../api';
 import { useUser } from '../UserContext';
 import { useFeedback } from '../FeedbackContext';
 import { PROFILS } from '../profils';
+import { dateLocale } from '../dates';
 import { useLangue } from '../i18n.js';
 import DemandeSecret from './DemandeSecret';
 import FeuilleDeSecours from './FeuilleDeSecours';
 
 const TAILLE_MAX_LOGO = 2 * 1024 * 1024;
+
+/** La veille, sur l'horloge du poste : clore aujourd'hui empêcherait de facturer aujourd'hui. */
+function hier() {
+  const jour = new Date();
+  jour.setDate(jour.getDate() - 1);
+  return dateLocale(jour);
+}
 
 const ROLES = [
   { valeur: 'employe', libelle: 'Employé : factures, devis, clients, catalogue' },
@@ -39,7 +47,7 @@ function Message({ contenu }) {
   );
 }
 
-function Settings({ ancre, naviguer }) {
+function Settings({ ancre, naviguer, renommerDossier }) {
   const utilisateurCourant = useUser();
   const { notifier, confirmer } = useFeedback();
   const { langue, t, tp, montant: formatMontant } = useLangue();
@@ -79,6 +87,10 @@ function Settings({ ancre, naviguer }) {
   });
   const [savingTaux, setSavingTaux] = useState(false);
   const [tauxMessage, setTauxMessage] = useState(null);
+  // Date proposée pour clore les périodes ; la date en vigueur vit dans `settings`.
+  const [dateVerrou, setDateVerrou] = useState('');
+  const [verrouEnCours, setVerrouEnCours] = useState(false);
+  const [verrouMessage, setVerrouMessage] = useState(null);
   const [infoSauvegardes, setInfoSauvegardes] = useState(null);
   const [sauvegardeEnCours, setSauvegardeEnCours] = useState(false);
   // Nom de la sauvegarde dont on lit le contenu avant de proposer sa restauration.
@@ -269,6 +281,39 @@ function Settings({ ancre, naviguer }) {
     const cible = document.getElementById(ancre);
     if (cible) cible.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [ancre, loading]);
+
+  /**
+   * Pose la date de verrouillage, ou l'efface. Reculer la date rouvre des
+   * périodes déjà déclarées : le serveur le consigne, et l'écran demande de
+   * confirmer.
+   */
+  const changerVerrou = async (date) => {
+    const actuelle = settings.date_verrouillage || null;
+    if (actuelle && (date === null || date < actuelle)) {
+      const accepte = await confirmer({
+        titre: t('Rouvrir des périodes verrouillées ?'),
+        message: t('Les pièces datées jusqu\'au {date} pourront de nouveau être modifiées ou supprimées, '
+          + 'alors que votre déclaration les a peut-être déjà comptées. Le geste est consigné au journal d\'audit.',
+        { date: actuelle }),
+        libelleConfirmer: t('Rouvrir'),
+        danger: true
+      });
+      if (!accepte) return;
+    }
+
+    setVerrouEnCours(true);
+    setVerrouMessage(null);
+    try {
+      const r = await api.put('/api/settings/verrouillage', { date_verrouillage: date });
+      setSettings((prev) => ({ ...prev, date_verrouillage: r.date_verrouillage }));
+      setDateVerrou('');
+      setVerrouMessage({ type: 'success', texte: r.message });
+    } catch (err) {
+      setVerrouMessage({ type: 'error', texte: err.message });
+    } finally {
+      setVerrouEnCours(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -464,6 +509,8 @@ function Settings({ ancre, naviguer }) {
       // qu'un mot de passe existe.
       setMotDePasseSmtp('');
       if (enregistres && enregistres.settings) setSettings(enregistres.settings);
+      // Le dossier suivait la raison sociale : l'en-tête suit à son tour.
+      if (enregistres && enregistres.dossier && renommerDossier) renommerDossier(enregistres.dossier);
       notifier(t('Paramètres enregistrés.'));
     } catch (err) {
       setMessage({ type: 'error', texte: err.message });
@@ -1437,6 +1484,46 @@ function Settings({ ancre, naviguer }) {
             </p>
           </div>
         )}
+      </div>
+
+      <h2 id="section-cloture" style={{ color: 'var(--text-main)', marginTop: '48px', marginBottom: '20px' }}>{t('Clôture des périodes')}</h2>
+      <Message contenu={verrouMessage} />
+
+      <div className="glass-panel" style={{ padding: '20px' }}>
+        <p className="alert alert-info">
+          {t('Une fois votre déclaration de taxes produite, verrouillez la période qu\'elle couvre. '
+            + 'Jusqu\'à cette date, plus aucune facture, dépense, note de crédit ni aucun encaissement ne '
+            + 'pourra être créé, modifié ou supprimé. Une facture d\'une période close se corrige par une '
+            + 'note de crédit datée d\'aujourd\'hui.')}
+        </p>
+
+        <p style={{ margin: '0 0 16px 0' }}>
+          {settings.date_verrouillage
+            ? <>{t('Périodes verrouillées jusqu\'au ')}<strong>{settings.date_verrouillage}</strong>{t(' inclusivement.')}</>
+            : t('Aucune période n\'est verrouillée.')}
+        </p>
+
+        <form
+          onSubmit={(e) => { e.preventDefault(); changerVerrou(dateVerrou); }}
+          style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'end' }}
+        >
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label htmlFor="date-verrouillage">{t('Verrouiller jusqu\'au')}</label>
+            <input
+              id="date-verrouillage" type="date" className="form-control" required
+              value={dateVerrou} onChange={(e) => setDateVerrou(e.target.value)}
+              max={hier()}
+            />
+          </div>
+          <button type="submit" className="btn-primary" disabled={verrouEnCours || !dateVerrou}>
+            {t('Verrouiller')}
+          </button>
+          {settings.date_verrouillage && (
+            <button type="button" className="btn-secondary" disabled={verrouEnCours} onClick={() => changerVerrou(null)}>
+              {t('Rouvrir toutes les périodes')}
+            </button>
+          )}
+        </form>
       </div>
 
       <h2 id="section-identifiants" style={{ color: 'var(--text-main)', marginTop: '48px', marginBottom: '20px' }}>{t('Mes identifiants')}</h2>

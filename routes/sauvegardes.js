@@ -28,6 +28,7 @@ const {
   etatDesSauvegardes,
   CLE_ILLISIBLE
 } = require('../backupService.js');
+const { rechiffrerPieces } = require('../piecesService.js');
 const { genererCle, normaliserCle, formater } = require('../codesSecours.js');
 const { empreinteDe } = require('../chiffrementSauvegardes.js');
 
@@ -210,11 +211,14 @@ module.exports = function sauvegardeRoutes(getDb, getComptesDb = () => null) {
 
     await enregistrerCle(db, cle);
     const reglages = await lireReglages(db);
-    const { rechiffrees, laissees } = rechiffrerSerie(reglages.dossier, serieDe(reglages.uid), {
+    const options = {
       ancienne: avant.cle,
       nouvelle: cle,
       inclureClaires: !req.body || req.body.chiffrer_existantes !== false
-    });
+    };
+    const { rechiffrees, laissees } = rechiffrerSerie(reglages.dossier, serieDe(reglages.uid), options);
+    // Les pièces justificatives déposées suivent la même clé que les copies.
+    const pieces = rechiffrerPieces(reglages.dossier, serieDe(reglages.uid), options);
 
     await journaliser(db, req, {
       action: ACTIONS.SAUVEGARDE_PROTECTION,
@@ -227,6 +231,7 @@ module.exports = function sauvegardeRoutes(getDb, getComptesDb = () => null) {
       empreinte: empreinteDe(cle),
       rechiffrees,
       laissees,
+      pieces,
       anciennes_en_clair: anciennesEnClair(reglages.dossier)
     });
   }));

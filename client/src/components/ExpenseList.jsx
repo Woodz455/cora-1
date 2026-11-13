@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Lock, Paperclip } from 'lucide-react';
 import InfoTooltip from './InfoTooltip';
+import PiecesJustificatives from './PiecesJustificatives';
 import { api } from '../api';
 import { useApiResource } from '../useApiResource';
 import { useModale } from '../useModale';
@@ -82,6 +83,10 @@ function ExpenseList() {
   const [modalError, setModalError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [recherche, setRecherche] = useState('');
+  // Reçus choisis dans le formulaire d'une nouvelle dépense, envoyés une fois
+  // la dépense créée. Une dépense existante gère les siens dans sa fenêtre.
+  const [recus, setRecus] = useState([]);
+  const [piecesDe, setPiecesDe] = useState(null);
 
   // Un déplacement se reconnaît à sa distance, ici comme en base.
   const estDeplacement = currentExpense.kilometres !== null
@@ -144,17 +149,36 @@ function ExpenseList() {
         // Le total TTC est recalculé par le serveur à partir de ces trois montants.
       };
 
+    let creee = null;
     try {
       if (currentExpense.id) await api.put(`/api/depenses/${currentExpense.id}`, payload);
-      else await api.post('/api/depenses', payload);
-
-      setIsModalOpen(false);
-      refresh();
-      if (estDeplacement) refreshVehicules();
+      else creee = await api.post('/api/depenses', payload);
     } catch (err) {
       setModalError(err.message);
-    } finally {
       setSaving(false);
+      return;
+    }
+
+    // La dépense existe désormais : un reçu refusé ne la défait pas. On le
+    // dit, et la fenêtre des pièces s'ouvre pour réessayer.
+    let recuRefuse = null;
+    if (creee) {
+      for (const fichier of recus) {
+        try {
+          await api.envoyerFichier(`/api/depenses/${creee.id}/pieces`, fichier);
+        } catch (err) {
+          recuRefuse = err.message;
+        }
+      }
+    }
+
+    setSaving(false);
+    setIsModalOpen(false);
+    refresh();
+    if (estDeplacement) refreshVehicules();
+    if (recuRefuse) {
+      notifier(t('Dépense enregistrée, mais un reçu a été refusé : {raison}', { raison: recuRefuse }), 'erreur');
+      setPiecesDe(creee);
     }
   };
 
@@ -190,12 +214,14 @@ function ExpenseList() {
     } else {
       setCurrentExpense(depenseVide());
     }
+    setRecus([]);
     setModalError(null);
     setIsModalOpen(true);
   };
 
   const openDeplacement = () => {
     setCurrentExpense(deplacementVide());
+    setRecus([]);
     setModalError(null);
     setIsModalOpen(true);
   };
@@ -297,8 +323,32 @@ function ExpenseList() {
                 </td>
                 <td className="numeric" style={{ fontWeight: 'bold' }}>{formatMontant(expense.montant_ttc)}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <button type="button" className="btn-icon" onClick={() => openModal(expense)} aria-label={t('Modifier la dépense')} style={{ marginRight: '4px' }}><Pencil size={16} aria-hidden="true" /></button>
-                  <button type="button" className="btn-danger" onClick={() => handleDelete(expense)} aria-label={t('Supprimer la dépense')}><Trash2 size={16} aria-hidden="true" /></button>
+                  {/* Des icônes seules, serrées : la colonne débordait du
+                      tableau, qui défilait alors de côté dès 1 280 pixels. */}
+                  <button
+                    type="button" className="btn-icon" onClick={() => setPiecesDe(expense)}
+                    style={{ marginRight: '4px', padding: '8px', gap: '2px' }}
+                    aria-label={tp(expense.pieces || 0, 'Pièces justificatives ({n})', 'Pièces justificatives ({n})|pluriel')}
+                    title={expense.pieces ? tp(expense.pieces, '{n} pièce jointe', '{n} pièces jointes') : t('Joindre un reçu')}
+                  >
+                    <Paperclip size={16} aria-hidden="true" />{expense.pieces > 0 && <span>{expense.pieces}</span>}
+                  </button>
+                  {expense.verrouillee ? (
+                    <span
+                      role="img" aria-label={t('Période close')}
+                      title={t('Période verrouillée : cette dépense ne peut plus être modifiée.')}
+                      // La largeur des deux boutons qu'il remplace : les trombones
+                      // restent alignés d'une rangée à l'autre.
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', width: '68px', color: 'var(--text-muted)' }}
+                    >
+                      <Lock size={16} aria-hidden="true" />
+                    </span>
+                  ) : (
+                    <>
+                      <button type="button" className="btn-icon" onClick={() => openModal(expense)} aria-label={t('Modifier la dépense')} style={{ marginRight: '4px', padding: '8px' }}><Pencil size={16} aria-hidden="true" /></button>
+                      <button type="button" className="btn-danger" onClick={() => handleDelete(expense)} aria-label={t('Supprimer la dépense')} style={{ padding: '8px' }}><Trash2 size={16} aria-hidden="true" /></button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
@@ -454,6 +504,19 @@ function ExpenseList() {
               </>
               )}
 
+              {/* À la création seulement : une dépense existante gère ses
+                  reçus par le trombone de la liste, où l'on voit ceux déjà joints. */}
+              {!currentExpense.id && !estDeplacement && (
+                <div className="form-group" style={{ marginTop: '16px' }}>
+                  <label htmlFor="depense-recu">{t('Reçu (facultatif, PDF ou image)')}</label>
+                  <input
+                    id="depense-recu" type="file" className="form-control" style={{ padding: '8px' }}
+                    accept="application/pdf,image/jpeg,image/png,image/webp" multiple
+                    onChange={(e) => setRecus([...e.target.files])}
+                  />
+                </div>
+              )}
+
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
                 <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)} disabled={saving}>{t('Annuler')}</button>
                 <button type="submit" className="btn-primary" disabled={saving || (estDeplacement && !tauxDeLAnnee)}>{saving ? t('Enregistrement…') : t('Enregistrer')}</button>
@@ -461,6 +524,10 @@ function ExpenseList() {
             </form>
           </div>
         </div>
+      )}
+
+      {piecesDe && (
+        <PiecesJustificatives depense={piecesDe} onFermer={() => setPiecesDe(null)} onChangement={refresh} />
       )}
     </div>
   );

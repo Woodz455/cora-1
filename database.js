@@ -3,6 +3,7 @@ const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const { getDbPath } = require('./config.js');
 const { appliquerRestaurationEnAttente, identifiantDuDossier } = require('./backupService.js');
+const { installerVerrous } = require('./verrouillage.js');
 
 /** Journalisation silencieuse sous test, pour ne pas noyer la sortie. */
 const log = (...args) => {
@@ -262,6 +263,21 @@ async function createTables(db) {
       message TEXT
     );
 
+    -- Pièces justificatives d'une dépense. Le fichier vit à côté de la base,
+    -- sous le nom de son empreinte (voir piecesService.js) : la base n'en
+    -- garde que la description.
+    CREATE TABLE IF NOT EXISTS pieces_jointes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      depense_id INTEGER NOT NULL,
+      nom TEXT NOT NULL,
+      type TEXT NOT NULL,
+      taille INTEGER NOT NULL,
+      empreinte TEXT NOT NULL,
+      ajoute_le TEXT NOT NULL,
+      ajoute_par TEXT,
+      FOREIGN KEY (depense_id) REFERENCES depenses (id) ON DELETE CASCADE
+    );
+
     -- Journal des actions sensibles. Aucune clé étrangère : la trace doit
     -- survivre à la suppression de ce qu'elle décrit, sans quoi effacer une
     -- facture effacerait la preuve qu'on l'a effacée.
@@ -347,6 +363,9 @@ async function runMigrations(db) {
   // chaque facture émise — au même titre que les taux de taxe, pour qu'un
   // changement de terme ne rétroagisse pas sur des documents déjà remis.
   await addColumn(db, 'clients', 'conditions_paiement', "TEXT DEFAULT 'net30'");
+  // Client archivé : il ne reçoit plus de document et quitte les listes de
+  // choix, mais ses factures passées gardent son nom. NULL : actif.
+  await addColumn(db, 'clients', 'archive_le', 'TEXT');
   await addColumn(db, 'factures', 'conditions_paiement', "TEXT DEFAULT 'net30'");
   // Premier envoi de la facture au client par courriel. Sert à prévenir avant
   // de modifier une facture que le client a déjà en main.
@@ -415,6 +434,10 @@ async function runMigrations(db) {
   // même quand le coffre de ce poste ne sait plus rendre la clé.
   await addColumn(db, 'settings', 'sauvegarde_cle', 'TEXT');
   await addColumn(db, 'settings', 'sauvegarde_cle_empreinte', 'TEXT');
+
+  // Date jusqu'à laquelle les périodes sont closes (voir verrouillage.js).
+  // Vide : rien n'est verrouillé, comme avant.
+  await addColumn(db, 'settings', 'date_verrouillage', 'TEXT');
 
   await figerMontants(db);
 }
@@ -540,6 +563,8 @@ async function createIndexes(db) {
     CREATE INDEX IF NOT EXISTS idx_notes_credit_facture_id ON notes_credit (facture_id);
     CREATE INDEX IF NOT EXISTS idx_lignes_note_credit_note_id ON lignes_note_credit (note_id);
     CREATE INDEX IF NOT EXISTS idx_relances_facture_palier ON relances (facture_id, palier_jours);
+    CREATE INDEX IF NOT EXISTS idx_pieces_jointes_depense ON pieces_jointes (depense_id);
+    CREATE INDEX IF NOT EXISTS idx_pieces_jointes_empreinte ON pieces_jointes (empreinte);
     -- Le journal se consulte du plus récent au plus ancien, et se filtre par
     -- auteur ou par type d'action.
     CREATE INDEX IF NOT EXISTS idx_logs_audit_date ON logs_audit (date_heure DESC);
@@ -642,6 +667,8 @@ async function initDb(dbPath = getDbPath()) {
     await createTables(db);
     await runMigrations(db);
     await createIndexes(db);
+    // Après les migrations : les déclencheurs citent des colonnes ajoutées par elles.
+    await installerVerrous(db);
     await migrateLegacyAdmin(db);
     await identifiantDuDossier(db);
 

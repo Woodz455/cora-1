@@ -43,7 +43,17 @@ const ACTIONS = {
   ABONNEMENT_MODIFICATION: 'abonnement.modification',
   ABONNEMENT_SUPPRESSION: 'abonnement.suppression',
   BANQUE_RAPPROCHEMENT: 'banque.rapprochement',
-  BANQUE_DEPOT_IGNORE: 'banque.depot_ignore'
+  BANQUE_DEPOT_IGNORE: 'banque.depot_ignore',
+  // Clore une période fige une déclaration ; la rouvrir est le geste qui
+  // permettrait de la changer après coup, et doit donc se voir.
+  PERIODE_VERROUILLAGE: 'periode.verrouillage',
+  PERIODE_DEVERROUILLAGE: 'periode.deverrouillage',
+  // Le reçu est la preuve de la dépense : le retirer doit laisser une trace.
+  PIECE_AJOUT: 'piece.ajout',
+  PIECE_RETRAIT: 'piece.retrait',
+  CLIENT_ARCHIVAGE: 'client.archivage',
+  CLIENT_REACTIVATION: 'client.reactivation',
+  CLIENT_SUPPRESSION: 'client.suppression'
 };
 
 /** Libellés lisibles, partagés avec l'interface. */
@@ -74,7 +84,14 @@ const LIBELLES = {
   [ACTIONS.ABONNEMENT_MODIFICATION]: 'Abonnement modifié',
   [ACTIONS.ABONNEMENT_SUPPRESSION]: 'Abonnement supprimé',
   [ACTIONS.BANQUE_RAPPROCHEMENT]: 'Dépôt bancaire imputé',
-  [ACTIONS.BANQUE_DEPOT_IGNORE]: 'Dépôt bancaire ignoré'
+  [ACTIONS.BANQUE_DEPOT_IGNORE]: 'Dépôt bancaire ignoré',
+  [ACTIONS.PERIODE_VERROUILLAGE]: 'Période verrouillée',
+  [ACTIONS.PERIODE_DEVERROUILLAGE]: 'Période déverrouillée',
+  [ACTIONS.PIECE_AJOUT]: 'Pièce justificative jointe',
+  [ACTIONS.PIECE_RETRAIT]: 'Pièce justificative retirée',
+  [ACTIONS.CLIENT_ARCHIVAGE]: 'Client archivé',
+  [ACTIONS.CLIENT_REACTIVATION]: 'Client réactivé',
+  [ACTIONS.CLIENT_SUPPRESSION]: 'Client supprimé'
 };
 
 /** Longueur maximale du détail sérialisé, pour qu'une ligne reste une ligne. */

@@ -304,6 +304,9 @@ sequences.js       Numérotation des documents, jamais réattribuée
 journalFichier.js  Journal de fonctionnement, dans le dossier de données
 diagnosticService.js  Rapport à télécharger pour le soutien, sans donnée comptable
 dates.js           La date du jour, lue à l'horloge du poste
+verrouillage.js    Date de verrouillage des périodes, tenue par des déclencheurs SQLite
+piecesService.js   Reçus joints aux dépenses, rangés à côté de la base
+pdfService.js      PDF au texte réel, imprimés par Chromium dans une fenêtre cachée
 dbUtils.js         Transactions sérialisées et réentrantes
 validators.js      Validation des données entrantes
 rateLimit.js       Limitation des tentatives de connexion
@@ -347,6 +350,12 @@ client/src/        Interface React
   facture du 30 novembre au soir serait partie dans la série et la période de
   taxes de décembre. Seule cette lecture est locale (`dates.js`) ; le calcul
   des échéances et des jours de retard reste en heure universelle.
+- **Périodes verrouillées.** Une fois la déclaration de taxes produite,
+  l'administrateur pose une date dans Paramètres (Clôture des périodes).
+  Jusqu'à elle, aucune facture, ligne de facture, note de crédit, aucun
+  encaissement ni aucune dépense ne se crée, ne se modifie ni ne se supprime.
+  Une facture close se corrige par une note de crédit datée d'une période
+  ouverte, et s'encaisse normalement aujourd'hui. Voir plus bas.
 - **Note de crédit ou annulation de paiement ?** La note de crédit corrige ce
   que le client **doit**, et reprend les taxes correspondantes : elle vaut pour
   un retour de marchandise ou une remise accordée après coup. L'annulation d'un
@@ -354,6 +363,36 @@ client/src/        Interface React
   elle vaut pour une erreur de saisie. Créditer une facture pour rattraper un
   paiement mal saisi récupérerait à tort de la taxe sur un montant jamais
   facturé.
+
+## Date de verrouillage
+
+`verrouillage.js`. La date se règle dans Paramètres, section Clôture des
+périodes, par l'administrateur seul (`PUT /api/settings/verrouillage`). Elle doit
+être antérieure à aujourd'hui : clore le jour même empêcherait de facturer.
+
+Ce qui est figé jusqu'à cette date, inclusivement, et ce qui ne l'est pas :
+
+| Figé | Encore permis |
+| --- | --- |
+| Créer, modifier, annuler ou supprimer une facture émise dans la période | Encaisser aujourd'hui une facture de la période close |
+| Créer ou supprimer un encaissement, ou une note de crédit, datés de la période | Émettre aujourd'hui une note de crédit sur une facture close |
+| Créer, modifier, déplacer ou supprimer une dépense de la période | Relancer une facture close, l'envoyer de nouveau |
+| Retirer un reçu d'une dépense close | Joindre un reçu à une dépense close |
+
+**C'est SQLite qui refuse**, par des déclencheurs posés sur `factures`,
+`lignes_facture`, `paiements`, `notes_credit`, `lignes_note_credit`,
+`depenses` et `pieces_jointes`, comme pour le journal d'audit. Les routes
+vérifient d'abord pour donner un message utile, mais un chemin oublié (un
+recalcul d'indemnités, l'outil `doctor.js`, une route future) ne peut pas
+contourner la règle. Une modification qui ne change aucune valeur passe : un
+recalcul qui retombe sur les mêmes montants n'échoue pas. Les déclencheurs sont
+reposés à chaque ouverture de la base, pour qu'une base ancienne reçoive
+toujours leur version en vigueur.
+
+Une facture d'abonnement rattrapée sur une période close est datée du premier
+jour ouvert plutôt que perdue. Rouvrir une période (reculer la date, ou
+l'effacer) est permis, une erreur se corrige ; le journal d'audit le consigne,
+comme chaque verrouillage.
 
 ## Encaissements
 
@@ -518,6 +557,35 @@ estimation. L'interface le dit à l'écran des paramètres.
 restent à zéro. Un inscrit à la TPS peut avoir droit à un crédit sur une
 allocation versée, et c'est au comptable de le reprendre.
 
+## Pièces justificatives
+
+`piecesService.js`. Les autorités fiscales demandent de garder les reçus six
+ans. Un PDF ou une image (JPEG, PNG, WebP, 15 Mo au plus) se joint à une
+dépense, depuis son formulaire ou par le trombone de la liste ; le format est
+reconnu au contenu, pas au nom du fichier. Dans l'application de bureau, la
+pièce s'ouvre dans la visionneuse du système ; elle peut aussi se télécharger.
+Joindre et retirer sont consignés au journal d'audit.
+
+**Les fichiers ne vont pas dans la base.** Les sauvegardes recopient la base
+entière chaque jour et en gardent trente : un reçu y serait copié trente fois.
+Ils sont rangés à côté d'elle, dans `pieces/`, sous le nom de leur empreinte
+SHA-256 ; la table `pieces_jointes` n'en garde que la description. Un même
+reçu joint deux fois n'occupe qu'une place, et le fichier n'est effacé du
+poste que lorsque plus aucune pièce ne le cite.
+
+**Ils sont sauvegardés une fois chacun.** À chaque sauvegarde, les pièces qui
+manquent au dossier de destination y sont déposées dans
+`clora-pieces-<série>/`, chiffrées (`.clora`) avec la clé du dossier quand la
+protection est active, en clair (`.piece`) sinon. Activer la protection ou
+changer la clé les rechiffre comme les copies de la base. Elles ne sont jamais
+supprimées par la rétention : des copies plus anciennes de la base peuvent les
+citer.
+
+**Ils reviennent seuls.** Une base restaurée sur un autre poste cite des pièces
+absentes de son disque : à la première lecture, la pièce est reprise du dossier
+de sauvegarde, déchiffrée, et son empreinte vérifiée avant d'être remise en
+place. Une pièce altérée n'est pas rendue pour bonne.
+
 ## Notes de crédit
 
 Une facture émise ne se corrige pas : on lui oppose un second document, qui
@@ -579,6 +647,9 @@ est donc produite automatiquement, **activée par défaut**.
 - **Combien.** Les 30 plus récentes par défaut, **par dossier d'entreprise** ;
   au-delà, les plus anciennes sont supprimées. Les fichiers étrangers, et les
   copies d'un autre dossier, ne sont jamais touchés.
+- **Et les reçus.** Les pièces justificatives, qui ne sont pas dans la base,
+  rejoignent le même dossier à part, une fois chacune (voir Pièces
+  justificatives).
 
 La copie passe par `VACUUM INTO` et non par une copie de fichier. La base
 tourne en mode WAL : dupliquer `database.sqlite` pendant une écriture donnerait
@@ -760,15 +831,31 @@ est un état au jour du rapport, pas une période.
 
 Le bénéfice net garde la définition de l'écran Rapports, l'encaissé moins les
 dépenses hors taxes : deux « bénéfices » calculés différemment dans la même
-application sèmeraient le doute sur les deux. Le PDF est produit par
-`html2pdf.js` comme la facture, en format lettre ; c'est une image, non un
-texte sélectionnable, et le bouton Imprimer, qui passe par le navigateur,
-donne un PDF texte. Le document se présente comme un sommaire de gestion et
+application sèmeraient le doute sur les deux. Le PDF est fabriqué comme celui
+de la facture (voir PDF des documents), en format lettre et au texte réel, ses
+sections insécables respectées. Le document se présente comme un sommaire de gestion et
 non comme des états financiers : Clora n'a ni grand livre ni plan comptable, et
 ne peut produire ni bilan ni état des résultats.
 
 Une seule période gouverne l'écran Rapports : le compte rendu, les registres et
 le rapport de taxes portent sur les mêmes bornes et se recoupent.
+
+## PDF des documents
+
+`pdfService.js`, `routes/pdf.js`, `client/src/pdf.js`. La facture, le devis et
+la note de crédit envoyés par courriel, comme le compte rendu téléchargé, sont
+de vrais PDF : texte sélectionnable et cherchable, polices de l'application,
+format lettre, balisage pour les lecteurs d'écran. Jusqu'à la 1.12.0, c'étaient
+des images produites par `html2pdf.js`, qui pesait près d'un mégaoctet.
+
+L'interface envoie le document tel qu'elle l'affiche (`POST /api/pdf`) : l'aperçu
+et le PDF ne peuvent pas diverger. Le serveur, qui tourne dans le processus
+principal d'Electron, le dépose sous un jeton à usage unique valable une minute,
+l'ouvre dans une fenêtre cachée sur la même origine (feuilles de style et
+polices s'y chargent comme dans l'application), attend les polices, puis
+l'imprime avec `printToPDF`. La fenêtre ne peut ni naviguer ailleurs ni ouvrir
+d'autre fenêtre, et la politique de contenu de l'application s'y applique. Hors
+d'Electron, la fabrication est refusée (501) avec un message clair.
 
 ## Journal d'audit
 
@@ -778,7 +865,8 @@ crédit, modification d'un client, **changement des taux de taxe**, création,
 modification ou suppression d'un compte, changement d'identifiants,
 restauration d'une sauvegarde, ajout, modification ou suppression d'une
 dépense ou d'un abonnement, dépôt bancaire imputé ou écarté, envoi d'une
-facture par courriel et modification d'une facture. Un changement d'identifiants touche l'accès à
+facture par courriel et modification d'une facture, verrouillage ou réouverture
+d'une période, reçu joint ou retiré, client archivé, réactivé ou supprimé. Un changement d'identifiants touche l'accès à
 tous les dossiers du compte : il est consigné dans le journal de chacun.
 Jusqu'à la 1.9.0, il était écrit dans le registre des comptes, qui n'a pas de
 journal, et ne laissait aucune trace.
@@ -806,6 +894,23 @@ est la seule table qui ne fait que croître.
 un encaissement saisi à tort serait plus dommageable que de perdre une ligne de
 trace. Un échec part en erreur console.
 
+## Clients et dossiers archivés
+
+**Un client s'archive** depuis sa fiche (administration et comptabilité) : il
+quitte les listes de choix et ne reçoit plus ni facture, ni devis, ni
+abonnement, mais ses documents passés restent consultables et encaissables. Un
+client sous abonnement actif ne s'archive pas ; l'abonnement d'un client archivé
+ne se réactive pas. Une fiche que rien ne rattache à la comptabilité (ni
+facture, ni devis, ni abonnement) peut être supprimée par l'administrateur.
+Archivage, réactivation et suppression sont consignés.
+
+**Un dossier se renomme ou s'archive** depuis l'écran de choix des dossiers, par
+son administrateur. Seul le nom affiché change : le répertoire garde le sien.
+Rien n'est effacé ; un dossier archivé ne s'ouvre plus, n'est plus sauvegardé,
+et se réactive au même endroit. Le dossier ouvert ne s'archive pas. Le nom du
+dossier suit la raison sociale saisie dans Paramètres, sauf s'il a reçu un nom
+à lui.
+
 ## Tests
 
 ```bash
@@ -824,11 +929,16 @@ et de chaque message.
 
 L'intégration continue l'exécute deux fois : en heure universelle, puis à
 l'heure de Montréal, où une date lue dans le mauvais fuseau se voit. Elle lance
-ensuite `npm run test:e2e`, deux essais dans la vraie application de bureau, sur
+ensuite `npm run test:e2e`, trois essais dans la vraie application de bureau, sur
 l'interface compilée. Le premier crée un compte, ferme la fenêtre et vérifie
 que le processus sort proprement, que la sauvegarde de fin de journée existe et
 que les journaux de la base sont consolidés : ce qui ne vit que dans `main.js`
-ne se voit que là. Le second pose une clé de sauvegarde et un mot de passe de
+ne se voit que là. Le deuxième pose une clé de sauvegarde et un mot de passe de
 courriel, ferme, relance, et vérifie que le coffre du système les a protégés
 puis rendus à l'identique, sans appeler aucune fonction qu'Electron déclare
-obsolète : c'est le filet des mises à jour d'Electron.
+obsolète : c'est le filet des mises à jour d'Electron. Le troisième
+(`interface.js`) pilote les écrans comme un utilisateur : premier lancement,
+client, facture, aperçu et envoi par courriel avec un vrai PDF (seul le serveur
+d'envoi est simulé) ; dépense avec son reçu, puis clôture de sa période ; client
+supprimé, client archivé, dossier renommé. Chaque fenêtre ouverte doit tenir
+dans l'écran.

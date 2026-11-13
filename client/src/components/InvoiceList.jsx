@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Printer, Bell, Pencil, Ban, Trash2, FileMinus } from 'lucide-react';
+import { Printer, Bell, Pencil, Ban, Trash2, FileMinus, Lock } from 'lucide-react';
 import PaymentModal from './PaymentModal';
 import InvoiceModal from './InvoiceModal';
 import InvoicePrintTemplate from './InvoicePrintTemplate';
@@ -189,6 +189,9 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
       ) : (
         facturesAffichees.map((facture) => {
           const isAnnulee = facture.statut === 'Annulée';
+          // Période close : ni modification, ni annulation, ni suppression. La
+          // note de crédit reste offerte, c'est le moyen de corriger.
+          const close = Boolean(facture.verrouillee);
           const classeStatut = facture.statut === 'Payée' ? 'payee'
             : facture.statut === 'Partiellement payée' ? 'partielle'
               : facture.statut === 'Créditée' ? 'creditee'
@@ -212,6 +215,11 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                   <span className={`status-badge ${classeStatut}`}>{t(facture.statut)}</span>
                   {facture.devise !== 'CAD' && (
                     <span className="status-badge pending">{facture.devise}</span>
+                  )}
+                  {close && (
+                    <span title={t('Période verrouillée : corrigez cette facture par une note de crédit.')} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      <Lock size={14} aria-hidden="true" /> {t('Période close')}
+                    </span>
                   )}
                 </div>
                 <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.95rem' }}>
@@ -257,7 +265,7 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                   </button>
                 )}
 
-                {!isAnnulee && facture.statut === 'En attente' && (
+                {!isAnnulee && !close && facture.statut === 'En attente' && (
                   <button type="button" className="btn-icon" onClick={() => setFactureIdToEdit(facture.id)}>
                     <Pencil size={16} aria-hidden="true" /> {t('Modifier')}
                   </button>
@@ -266,13 +274,13 @@ function InvoiceList({ statutInitial, echuesSeulement = false, ouvrirNouvelle = 
                 {/* Annulation et suppression ne sont proposées qu'aux rôles
                     qui y ont droit : elles étaient offertes à tout le monde et
                     le refus n'arrivait qu'après le clic. */}
-                {gereTresorerie && !isAnnulee && facture.montant_paye === 0 && (
+                {gereTresorerie && !isAnnulee && !close && facture.montant_paye === 0 && (
                   <button type="button" className="btn-danger" onClick={() => handleCancelFacture(facture)}>
                     <Ban size={16} aria-hidden="true" /> {t('Annuler')}
                   </button>
                 )}
 
-                {estAdmin && facture.montant_paye === 0 && (
+                {estAdmin && !close && facture.montant_paye === 0 && (
                   <button type="button" className="btn-danger" onClick={() => handleDeleteFacture(facture)} title={t('Supprimer définitivement')}>
                     <Trash2 size={16} aria-hidden="true" /> {t('Supprimer')}
                   </button>

@@ -43,6 +43,7 @@ const licenceRoutes = require('./routes/licence.js');
 const importRoutes = require('./routes/import.js');
 const paiementEnLigneRoutes = require('./routes/paiementsEnLigne.js');
 const diagnosticRoutes = require('./routes/diagnostic.js');
+const { pagePdfRoutes, pdfRoutes } = require('./routes/pdf.js');
 
 /** Limite de corps par défaut. */
 const LIMITE_CORPS = '1mb';
@@ -163,14 +164,19 @@ function createApp(db, options = {}) {
   const jsonStandard = express.json({ limit: LIMITE_CORPS });
   const jsonVolumineux = express.json({ limit: LIMITE_CORPS_COURRIEL });
   app.use((req, res, next) => (
-    // L'envoi de courriels transporte un PDF, l'import un tableur : les deux
-    // dépassent la limite ordinaire, qui protège toutes les autres routes.
-    req.path === '/api/emails/send' || req.path.startsWith('/api/import/')
+    // L'envoi de courriels transporte un PDF, la fabrication d'un PDF le
+    // document et son logo, l'import un tableur : tous dépassent la limite
+    // ordinaire, qui protège toutes les autres routes.
+    req.path === '/api/emails/send' || req.path === '/api/pdf' || req.path.startsWith('/api/import/')
       ? jsonVolumineux(req, res, next)
       : jsonStandard(req, res, next)
   ));
 
   app.use(cookieParser());
+
+  // La page qu'une fenêtre cachée imprime en PDF : protégée par son jeton,
+  // elle doit rester lisible avant les contrôles de licence et de session.
+  app.use('/api/pdf', pagePdfRoutes());
 
   // La licence se consulte et s'active sans session : un essai expiré bloque
   // l'application avant la connexion, et exiger d'être connecté pour saisir
@@ -235,6 +241,10 @@ function createApp(db, options = {}) {
       );
       const role = entreprise ? await roleSur(comptesDb, req.user.sub, id) : null;
       if (!entreprise || !role) {
+        // Un dossier archivé, ou retiré, par quelqu'un d'autre : le choix d'un
+        // autre dossier doit rester possible, sans quoi l'utilisateur serait
+        // enfermé dehors jusqu'à sa prochaine connexion.
+        if (req.path.startsWith('/entreprises')) return next();
         return res.status(403).json({ error: "Ce dossier ne vous est plus accessible." });
       }
 
@@ -269,8 +279,9 @@ function createApp(db, options = {}) {
   app.use('/api/audit', auditRoutes(getDb));
   app.use('/api/import', importRoutes(getDb));
   app.use('/api/paiements-en-ligne', paiementEnLigneRoutes(getDb));
-  app.use('/api/settings', settingsRoutes(getDb));
+  app.use('/api/settings', settingsRoutes(getDb, getComptesDb));
   app.use('/api/diagnostic', diagnosticRoutes(getDb, getComptesDb));
+  app.use('/api/pdf', pdfRoutes(path.join(__dirname, 'client', 'dist')));
   app.use('/api', rapportRoutes(getDb));
 
   // Toute autre route d'API répond en JSON, et non par la page d'accueil React.
