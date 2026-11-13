@@ -1,6 +1,6 @@
 # Clora : architecture, sécurité et licence
 
-*Document technique. Version 1.12.0, novembre 2026.*
+*Document technique. Version 1.13.0, novembre 2026.*
 
 Ce document décrit comment Clora est construit, ce qui protège les données, et
 comment fonctionne le modèle de licence. Pour la description fonctionnelle, voir
@@ -1014,7 +1014,7 @@ Trois corrections peuvent être demandées explicitement :
 | **Electron 45 chez les autres testeurs** | Le passage à Electron 45 est vérifié sous Linux dans la vraie application, et sous Windows par une fabrication d'essai installée par-dessus la 1.10.1 sur un poste réel : les secrets enregistrés ont été relus par le nouveau coffre. Un seul poste a fait cet essai ; les autres le feront à la publication |
 | **Reçus : pas d'export groupé** | Les reçus d'une période ne se remettent pas d'un coup au comptable : ils s'ouvrent un à un. Ils ne sont pas non plus chiffrés sur le poste lui-même |
 | **Lot 3 sous Windows** | La date de verrouillage, les reçus, les PDF au texte réel et l'archivage sont éprouvés sous Linux dans la vraie application ; l'ouverture d'un reçu dans la visionneuse de Windows et le rendu des PDF sur un vrai poste restent à observer |
-| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.12.0 en offre l'occasion sur toute installation restée en 1.11.0 |
+| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.13.0 en offre l'occasion sur toute installation restée en 1.12.0 |
 | **Redémarrage après restauration** | Vérifié de bout en bout dans l'application de bureau sous Linux en 1.9.1, puis de nouveau en 1.10.1 (restauration appliquée, redémarrage automatique). Reste à l'observer sur un vrai Windows |
 | **Sauvegarde à la fermeture** | Vérifiée à chaque fusion par l'essai de bout en bout, sous Linux, et observée le 12 novembre sur un poste Windows lors de l'essai d'Electron 45. Reste à la confirmer chez les autres testeurs |
 
