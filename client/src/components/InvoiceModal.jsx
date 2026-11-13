@@ -217,7 +217,9 @@ function InvoiceModal({ factureIdToEdit, onClose, onSuccess, mode = 'facture' })
                   required
                 >
                   <option value="">{t('Sélectionner un client')}</option>
-                  {clients.map((c) => (
+                  {/* Un client archivé n'est plus proposé, sauf s'il est
+                      celui du document qu'on modifie. */}
+                  {clients.filter((c) => !c.archive_le || String(c.id) === String(formData.client_id)).map((c) => (
                     <option key={c.id} value={c.id}>{c.nom_entreprise} ({c.province})</option>
                   ))}
                 </select>

@@ -375,13 +375,28 @@ function App() {
       .catch(() => {});
   };
 
+  /** Un dossier renommé, ici ou dans Paramètres : la liste et l'en-tête suivent. */
+  const renommerDossier = ({ id, nom }) => {
+    setEntreprises((liste) => liste.map((e) => (e.id === id ? { ...e, nom } : e)));
+    setOuvert((actuel) => (actuel && actuel.id === id ? { ...actuel, nom } : actuel));
+  };
+
   // Aucun dossier ouvert, ou bascule demandée : le choix passe avant tout le
   // reste. Une facture saisie dans le mauvais dossier se répare mal.
   if (!ouvert || changementDossier) {
     return (
       <ChoixEntreprise
         entreprises={entreprises}
+        ouvertId={ouvert ? ouvert.id : null}
         onOuvert={ouvrirDossier}
+        onListe={(liste) => {
+          setEntreprises(liste);
+          // Le dossier ouvert a pu être renommé depuis cet écran.
+          setOuvert((actuel) => {
+            const trouve = actuel && liste.find((e) => e.id === actuel.id);
+            return trouve ? { ...actuel, nom: trouve.nom } : actuel;
+          });
+        }}
         onAnnuler={changementDossier ? () => setChangementDossier(false) : null}
       />
     );
@@ -574,7 +589,7 @@ function App() {
 
           <div style={{ position: 'relative', zIndex: 10 }}>
             <Suspense fallback={<p style={{ color: 'var(--text-muted)' }}>{t('Chargement…')}</p>}>
-              <ContenuActif naviguer={naviguer} {...(parametresVue || {})} />
+              <ContenuActif naviguer={naviguer} renommerDossier={renommerDossier} {...(parametresVue || {})} />
             </Suspense>
           </div>
         </main>

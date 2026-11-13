@@ -4,6 +4,7 @@
 
 const { createFacture } = require('./invoiceService.js');
 const { validateLignes } = require('./validators.js');
+const { exigerClientActif } = require('./clientService.js');
 
 const CYCLES = ['Mensuel', 'Annuel'];
 const STATUTS = ['Actif', 'Inactif'];
@@ -73,10 +74,11 @@ function parseLignesJson(lignesJson) {
 async function createSubscription(db, data) {
   const { client_id, titre, lignes_json, cycle, date_prochaine_generation, devise } = data;
 
-  const client = await db.get('SELECT id FROM clients WHERE id = ?', [client_id]);
+  const client = await db.get('SELECT id, archive_le FROM clients WHERE id = ?', [client_id]);
   if (!client) {
     throw Object.assign(new Error('Client introuvable.'), { status: 400 });
   }
+  exigerClientActif(client);
   const lignes = parseLignesJson(lignes_json);
   const cycleValide = CYCLES.includes(cycle) ? cycle : 'Mensuel';
 
@@ -106,6 +108,11 @@ async function updateSubscription(db, id, data) {
   const prochaine = data.date_prochaine_generation !== undefined
     ? data.date_prochaine_generation
     : existant.date_prochaine_generation;
+
+  // Réactiver l'abonnement d'un client archivé le ferait facturer à nouveau.
+  if (statut === 'Actif' && existant.statut !== 'Actif') {
+    exigerClientActif(await db.get('SELECT archive_le FROM clients WHERE id = ?', [existant.client_id]));
+  }
 
   await db.run(
     `UPDATE abonnements SET titre = ?, lignes_json = ?, cycle = ?,

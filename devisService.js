@@ -7,6 +7,7 @@ const { computeTotals } = require('./money.js');
 const { withTransaction } = require('./dbUtils.js');
 const { nextDocumentNumber } = require('./sequences.js');
 const { aujourdhui } = require('./dates.js');
+const { exigerClientActif } = require('./clientService.js');
 
 /** Statuts possibles d'un devis. */
 const STATUTS = {
@@ -118,10 +119,11 @@ async function createDevis(db, devisData, lignes) {
   const { client_id, date_emission, date_validite, devise = 'CAD', taux_change = 1.0 } = devisData;
 
   return withTransaction(db, async () => {
-    const client = await db.get('SELECT id, province FROM clients WHERE id = ?', [client_id]);
+    const client = await db.get('SELECT id, province, archive_le FROM clients WHERE id = ?', [client_id]);
     if (!client) {
       throw Object.assign(new Error('Client introuvable.'), { status: 400 });
     }
+    exigerClientActif(client);
 
     const taxes = getTaxRatesForProvince(client.province);
     const numero_devis = await generateDevisNumber(db, date_emission);

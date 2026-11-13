@@ -363,6 +363,9 @@ async function runMigrations(db) {
   // chaque facture émise — au même titre que les taux de taxe, pour qu'un
   // changement de terme ne rétroagisse pas sur des documents déjà remis.
   await addColumn(db, 'clients', 'conditions_paiement', "TEXT DEFAULT 'net30'");
+  // Client archivé : il ne reçoit plus de document et quitte les listes de
+  // choix, mais ses factures passées gardent son nom. NULL : actif.
+  await addColumn(db, 'clients', 'archive_le', 'TEXT');
   await addColumn(db, 'factures', 'conditions_paiement', "TEXT DEFAULT 'net30'");
   // Premier envoi de la facture au client par courriel. Sert à prévenir avant
   // de modifier une facture que le client a déjà en main.

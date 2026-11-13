@@ -201,7 +201,7 @@ const CHAMPS_SUIVIS = [
   'stripe_actif'
 ];
 
-module.exports = function settingsRoutes(getDb) {
+module.exports = function settingsRoutes(getDb, getComptesDb = () => null) {
   const router = express.Router();
 
   /**
@@ -325,6 +325,19 @@ module.exports = function settingsRoutes(getDb) {
 
     const settings = await db.get('SELECT * FROM settings LIMIT 1');
 
+    // Le dossier porte d'ordinaire la raison sociale. Quand elle change et que
+    // le nom du dossier la suivait, il la suit encore ; un nom choisi à part,
+    // « Tremblay 2025 » par exemple, est laissé tel quel.
+    let dossier = null;
+    const comptesDb = getComptesDb();
+    if (comptesDb && req.entreprise && avant && avant.entreprise_nom !== settings.entreprise_nom) {
+      const inscrit = await comptesDb.get('SELECT nom FROM entreprises WHERE id = ?', [req.entreprise.id]);
+      if (inscrit && inscrit.nom === avant.entreprise_nom) {
+        await comptesDb.run('UPDATE entreprises SET nom = ? WHERE id = ?', [settings.entreprise_nom, req.entreprise.id]);
+        dossier = { id: req.entreprise.id, nom: settings.entreprise_nom };
+      }
+    }
+
     // Le corps de requête n'est jamais journalisé tel quel : il transporte
     // `entreprise_logo`, un data-URI de plusieurs mégaoctets. Seul l'écart sur
     // les champs suivis est consigné — les taux de taxe au premier chef, dont
@@ -339,7 +352,7 @@ module.exports = function settingsRoutes(getDb) {
       });
     }
 
-    res.json({ message: 'Paramètres mis à jour.', settings: await nettoyer(settings) });
+    res.json({ message: 'Paramètres mis à jour.', settings: await nettoyer(settings), dossier });
   }));
 
   /**

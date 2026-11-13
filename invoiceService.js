@@ -8,6 +8,7 @@ const { nextDocumentNumber, normaliserPrefixe, PREFIXE_FACTURE_HERITE } = requir
 const { normaliserCondition, calculerEcheance, CONDITION_DEFAUT } = require('./paymentTerms.js');
 const { aujourdhui: dateDuJour } = require('./dates.js');
 const { exigerPeriodeOuverte } = require('./verrouillage.js');
+const { exigerClientActif } = require('./clientService.js');
 
 /** Statuts possibles d'une facture. */
 const STATUTS = {
@@ -486,11 +487,12 @@ async function createFacture(db, factureData, lignes) {
 
   return withTransaction(db, async () => {
     const client = await db.get(
-      'SELECT id, province, conditions_paiement FROM clients WHERE id = ?', [client_id]
+      'SELECT id, province, conditions_paiement, archive_le FROM clients WHERE id = ?', [client_id]
     );
     if (!client) {
       throw Object.assign(new Error('Client introuvable.'), { status: 400 });
     }
+    exigerClientActif(client);
     await exigerPeriodeOuverte(db, [date_emission]);
 
     // Le terme est celui de la fiche client, sauf mention explicite sur la

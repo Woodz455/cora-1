@@ -196,7 +196,8 @@ function SubscriptionList() {
               <label htmlFor="abo-client">{t('Client *')}</label>
               <select id="abo-client" className="form-control" value={newSub.client_id} onChange={(e) => setNewSub({ ...newSub, client_id: e.target.value })} required>
                 <option value="">{t('Sélectionner un client…')}</option>
-                {clients.map((c) => <option key={c.id} value={c.id}>{c.nom_entreprise}</option>)}
+                {/* Un client archivé ne reçoit plus d'abonnement. */}
+                {clients.filter((c) => !c.archive_le).map((c) => <option key={c.id} value={c.id}>{c.nom_entreprise}</option>)}
               </select>
             </div>
             <div className="form-group">

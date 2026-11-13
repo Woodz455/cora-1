@@ -50,7 +50,10 @@ const ACTIONS = {
   PERIODE_DEVERROUILLAGE: 'periode.deverrouillage',
   // Le reçu est la preuve de la dépense : le retirer doit laisser une trace.
   PIECE_AJOUT: 'piece.ajout',
-  PIECE_RETRAIT: 'piece.retrait'
+  PIECE_RETRAIT: 'piece.retrait',
+  CLIENT_ARCHIVAGE: 'client.archivage',
+  CLIENT_REACTIVATION: 'client.reactivation',
+  CLIENT_SUPPRESSION: 'client.suppression'
 };
 
 /** Libellés lisibles, partagés avec l'interface. */
@@ -85,7 +88,10 @@ const LIBELLES = {
   [ACTIONS.PERIODE_VERROUILLAGE]: 'Période verrouillée',
   [ACTIONS.PERIODE_DEVERROUILLAGE]: 'Période déverrouillée',
   [ACTIONS.PIECE_AJOUT]: 'Pièce justificative jointe',
-  [ACTIONS.PIECE_RETRAIT]: 'Pièce justificative retirée'
+  [ACTIONS.PIECE_RETRAIT]: 'Pièce justificative retirée',
+  [ACTIONS.CLIENT_ARCHIVAGE]: 'Client archivé',
+  [ACTIONS.CLIENT_REACTIVATION]: 'Client réactivé',
+  [ACTIONS.CLIENT_SUPPRESSION]: 'Client supprimé'
 };
 
 /** Longueur maximale du détail sérialisé, pour qu'une ligne reste une ligne. */

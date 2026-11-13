@@ -47,7 +47,7 @@ function Message({ contenu }) {
   );
 }
 
-function Settings({ ancre, naviguer }) {
+function Settings({ ancre, naviguer, renommerDossier }) {
   const utilisateurCourant = useUser();
   const { notifier, confirmer } = useFeedback();
   const { langue, t, tp, montant: formatMontant } = useLangue();
@@ -509,6 +509,8 @@ function Settings({ ancre, naviguer }) {
       // qu'un mot de passe existe.
       setMotDePasseSmtp('');
       if (enregistres && enregistres.settings) setSettings(enregistres.settings);
+      // Le dossier suivait la raison sociale : l'en-tête suit à son tour.
+      if (enregistres && enregistres.dossier && renommerDossier) renommerDossier(enregistres.dossier);
       notifier(t('Paramètres enregistrés.'));
     } catch (err) {
       setMessage({ type: 'error', texte: err.message });

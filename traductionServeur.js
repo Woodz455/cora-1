@@ -322,7 +322,23 @@ const EXACTS = new Map([
   ["La fabrication des PDF n'est possible que dans l'application de bureau.", 'PDFs can only be produced in the desktop app.'],
   ['Le document à imprimer est vide.', 'The document to print is empty.'],
   ['Le document à imprimer est trop volumineux.', 'The document to print is too large.'],
-  ['La fabrication du PDF a pris trop de temps.', 'Producing the PDF took too long.']
+  ['La fabrication du PDF a pris trop de temps.', 'Producing the PDF took too long.'],
+
+  // Clients et dossiers archivés
+  ['Ce client est archivé : réactivez-le pour lui adresser un document.',
+    'This client is archived: reactivate them to send them a document.'],
+  ["Ce client a un abonnement actif : suspendez-le avant d'archiver le client.",
+    'This client has an active subscription: suspend it before archiving the client.'],
+  ['Ce client a des factures, des devis ou des abonnements : archivez-le plutôt.',
+    'This client has invoices, quotes or subscriptions: archive them instead.'],
+  ['Client archivé.', 'Client archived.'],
+  ['Client réactivé.', 'Client reactivated.'],
+  ['Client supprimé.', 'Client deleted.'],
+  ['Dossier renommé.', 'Company file renamed.'],
+  ['Dossier archivé.', 'Company file archived.'],
+  ['Dossier réactivé.', 'Company file restored.'],
+  ["Ce dossier est ouvert : ouvrez-en un autre avant de l'archiver.",
+    'This company file is open: open another one before archiving it.']
 ]);
 
 /**

@@ -202,6 +202,38 @@ async function listerPourUtilisateur(comptesDb, userId) {
   );
 }
 
+/**
+ * Dossiers archivés auxquels un utilisateur a accès : ils n'apparaissent plus
+ * dans le choix ordinaire, mais restent là pour qui veut les rouvrir.
+ */
+async function listerArchivesPourUtilisateur(comptesDb, userId) {
+  return comptesDb.all(
+    `SELECT e.id, e.nom, e.cree_le, a.role
+     FROM entreprises e
+     JOIN acces a ON a.entreprise_id = e.id
+     WHERE a.user_id = ? AND e.archive = 1
+     ORDER BY e.nom COLLATE NOCASE`,
+    [userId]
+  );
+}
+
+/**
+ * Renomme un dossier dans le registre.
+ *
+ * Seul le nom affiché au choix du dossier change. Le répertoire garde le sien,
+ * car un chemin déplacé sur une comptabilité vaut moins que l'ordre d'une
+ * arborescence ; la raison sociale imprimée sur les documents, elle, se règle
+ * dans Paramètres.
+ */
+async function renommerEntreprise(comptesDb, id, nom) {
+  await comptesDb.run('UPDATE entreprises SET nom = ? WHERE id = ?', [nom, id]);
+}
+
+/** Archive un dossier, ou le rend au choix ordinaire. Rien n'est effacé. */
+async function archiverEntreprise(comptesDb, id, archiver) {
+  await comptesDb.run('UPDATE entreprises SET archive = ? WHERE id = ?', [archiver ? 1 : 0, id]);
+}
+
 /** Rôle d'un utilisateur sur un dossier, ou null s'il n'y a pas accès. */
 async function roleSur(comptesDb, userId, entrepriseId) {
   const ligne = await comptesDb.get(
@@ -366,6 +398,9 @@ module.exports = {
   ouvrirComptes,
   migrerSiNecessaire,
   listerPourUtilisateur,
+  listerArchivesPourUtilisateur,
+  renommerEntreprise,
+  archiverEntreprise,
   roleSur,
   creerEntreprise,
   nommerSiVierge,

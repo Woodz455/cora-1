@@ -4,8 +4,10 @@
 
 const express = require('express');
 
-const { getClients, createClient, updateClient } = require('../clientService.js');
-const { anyRole } = require('../authMiddleware.js');
+const {
+  getClients, createClient, updateClient, archiverClient, supprimerClient
+} = require('../clientService.js');
+const { anyRole, adminOnly, adminOrAccountant } = require('../authMiddleware.js');
 const { journaliser, ecart, ACTIONS } = require('../auditService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { parseId, sanitizeText, validateClient } = require('../validators.js');
@@ -68,6 +70,40 @@ module.exports = function clientRoutes(getDb) {
     }
 
     res.json({ message: 'Client modifié avec succès.', client: modifie });
+  }));
+
+  /**
+   * Archive un client, ou le réactive. Il quitte les listes de choix et ne
+   * reçoit plus de document ; ses documents passés restent intacts.
+   */
+  router.put('/:id/archive', adminOrAccountant(), asyncRoute(async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) throw httpError(400, 'Identifiant de client invalide.');
+    const archiver = Boolean(req.body && req.body.archive);
+
+    const client = await archiverClient(getDb(), id, archiver);
+    await journaliser(getDb(), req, {
+      action: archiver ? ACTIONS.CLIENT_ARCHIVAGE : ACTIONS.CLIENT_REACTIVATION,
+      entite: 'client',
+      entite_id: id,
+      details: { nom: client.nom_entreprise }
+    });
+    res.json({ message: archiver ? 'Client archivé.' : 'Client réactivé.', client });
+  }));
+
+  /** Supprime une fiche que rien ne rattache à la comptabilité. */
+  router.delete('/:id', adminOnly(), asyncRoute(async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) throw httpError(400, 'Identifiant de client invalide.');
+
+    const client = await supprimerClient(getDb(), id);
+    await journaliser(getDb(), req, {
+      action: ACTIONS.CLIENT_SUPPRESSION,
+      entite: 'client',
+      entite_id: id,
+      details: { nom: client.nom_entreprise, email: client.email }
+    });
+    res.json({ message: 'Client supprimé.' });
   }));
 
   return router;

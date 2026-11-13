@@ -241,6 +241,10 @@ function createApp(db, options = {}) {
       );
       const role = entreprise ? await roleSur(comptesDb, req.user.sub, id) : null;
       if (!entreprise || !role) {
+        // Un dossier archivé, ou retiré, par quelqu'un d'autre : le choix d'un
+        // autre dossier doit rester possible, sans quoi l'utilisateur serait
+        // enfermé dehors jusqu'à sa prochaine connexion.
+        if (req.path.startsWith('/entreprises')) return next();
         return res.status(403).json({ error: "Ce dossier ne vous est plus accessible." });
       }
 
@@ -275,7 +279,7 @@ function createApp(db, options = {}) {
   app.use('/api/audit', auditRoutes(getDb));
   app.use('/api/import', importRoutes(getDb));
   app.use('/api/paiements-en-ligne', paiementEnLigneRoutes(getDb));
-  app.use('/api/settings', settingsRoutes(getDb));
+  app.use('/api/settings', settingsRoutes(getDb, getComptesDb));
   app.use('/api/diagnostic', diagnosticRoutes(getDb, getComptesDb));
   app.use('/api/pdf', pdfRoutes(path.join(__dirname, 'client', 'dist')));
   app.use('/api', rapportRoutes(getDb));
