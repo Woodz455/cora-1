@@ -46,12 +46,39 @@ async function request(method, url, body) {
   return data;
 }
 
+/**
+ * Envoie un fichier tel quel, sans l'encoder dans du JSON : une photo de 10 Mo
+ * en base64 en pèserait 13. Le nom d'origine part dans un en-tête.
+ */
+async function envoyerFichier(url, fichier) {
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-Clora-Langue': langueCourante(),
+        'Content-Type': fichier.type || 'application/octet-stream',
+        'X-Nom-Fichier': encodeURIComponent(fichier.name || '')
+      },
+      body: fichier
+    });
+  } catch {
+    throw new ApiError(traduire('Impossible de joindre le serveur.'), 0);
+  }
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError((data && data.error) || traduire('Erreur {statut}', { statut: response.status }), response.status);
+  }
+  return data;
+}
+
 export const api = {
   get: (url) => request('GET', url),
   post: (url, body) => request('POST', url, body),
   put: (url, body) => request('PUT', url, body),
   // Un DELETE peut porter un corps : l'annulation d'un paiement transmet son motif.
-  del: (url, body) => request('DELETE', url, body)
+  del: (url, body) => request('DELETE', url, body),
+  envoyerFichier
 };
 
 /**

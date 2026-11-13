@@ -30,6 +30,7 @@ const { open } = require('sqlite');
 const { getDataDir, getDbPath } = require('./config.js');
 const { chiffrer, dechiffrer, estChiffre, empreinteDe } = require('./chiffrementSauvegardes.js');
 const secrets = require('./secretStorage.js');
+const { deposerPieces } = require('./piecesService.js');
 
 /** Préfixe et extensions des fichiers produits : en clair, ou chiffrés. */
 const PREFIXE = 'clora-';
@@ -432,8 +433,22 @@ async function creerSauvegarde(db, options = {}) {
     supprimer(partiel);
   }
 
+  // Les pièces justificatives ne sont pas dans la base : elles rejoignent le
+  // dossier de destination à part, une fois chacune. Un échec ici ne défait pas
+  // la copie de la base, qui a réussi ; il est consigné et retenté demain.
+  let pieces = { deposees: 0, manquantes: 0 };
+  try {
+    pieces = await deposerPieces(db, dossier, serie, protection.active ? protection.cle : null);
+    if (pieces.manquantes > 0) {
+      console.error(`Sauvegarde : ${pieces.manquantes} pièce(s) justificative(s) introuvable(s) sur ce poste.`);
+    }
+  } catch (error) {
+    console.error('Sauvegarde : pièces justificatives non déposées.', error.message);
+    pieces = { ...pieces, erreur: error.message };
+  }
+
   const supprimes = appliquerRetention(dossier, retention, serie);
-  return { nom, chemin, taille: fs.statSync(chemin).size, supprimes };
+  return { nom, chemin, taille: fs.statSync(chemin).size, supprimes, pieces };
 }
 
 /**

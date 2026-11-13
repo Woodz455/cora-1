@@ -102,13 +102,21 @@ function declencheurs() {
     );
   }
 
+  // Joindre un reçu à une dépense close la justifie sans rien changer aux
+  // chiffres : c'est permis. Le retirer, non.
+  instructions.push(
+    `CREATE TRIGGER verrou_pieces_jointes_suppression BEFORE DELETE ON pieces_jointes
+     WHEN (SELECT date_depense FROM depenses WHERE id = OLD.depense_id) <= ${VERROU} ${refus}`
+  );
+
   return instructions;
 }
 
 /** Noms des déclencheurs, pour les retirer avant de les reposer. */
 function nomsDesDeclencheurs() {
   return [...Object.keys(DATE_DE), ...Object.keys(LIGNES)]
-    .flatMap((t) => ['ajout', 'modification', 'suppression'].map((s) => `verrou_${t}_${s}`));
+    .flatMap((t) => ['ajout', 'modification', 'suppression'].map((s) => `verrou_${t}_${s}`))
+    .concat('verrou_pieces_jointes_suppression');
 }
 
 /**

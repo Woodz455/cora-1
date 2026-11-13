@@ -302,7 +302,21 @@ const EXACTS = new Map([
   ['La date de verrouillage est invalide (format AAAA-MM-JJ).', 'The lock date is invalid (format YYYY-MM-DD).'],
   ["La date de verrouillage doit être antérieure à aujourd'hui.", 'The lock date must be before today.'],
   ['Aucun changement.', 'No change.'],
-  ['Toutes les périodes sont rouvertes.', 'All periods are unlocked.']
+  ['Toutes les périodes sont rouvertes.', 'All periods are unlocked.'],
+
+  // Pièces justificatives
+  ['Le fichier est vide.', 'The file is empty.'],
+  ['Le fichier dépasse 15 Mo.', 'The file is larger than 15 MB.'],
+  ['Seuls les PDF et les images JPEG, PNG ou WebP peuvent être joints.',
+    'Only PDF files and JPEG, PNG or WebP images can be attached.'],
+  ['Pièce introuvable.', 'Attachment not found.'],
+  ['Pièce mal décrite dans la base.', 'This attachment is incorrectly recorded in the database.'],
+  ['Ce fichier est introuvable sur cet ordinateur et dans le dossier des sauvegardes.',
+    'This file cannot be found on this computer or in the backup folder.'],
+  ['Identifiant de pièce invalide.', 'Invalid attachment ID.'],
+  ["Ouvrir une pièce n'est possible que dans l'application de bureau. Téléchargez-la plutôt.",
+    'Attachments can only be opened in the desktop app. Download it instead.'],
+  ['Pièce retirée.', 'Attachment removed.']
 ]);
 
 /**
@@ -389,7 +403,9 @@ const MOTIFS = [
     (m) => `The period is locked through ${m[1]}: to correct this invoice, issue a credit note.`],
   [/^La période est verrouillée jusqu'au (\S+) : cette pièce ne peut plus être créée, modifiée ni supprimée\.$/,
     (m) => `The period is locked through ${m[1]}: this entry can no longer be created, edited or deleted.`],
-  [/^Périodes verrouillées jusqu'au (\S+)\.$/, (m) => `Periods locked through ${m[1]}.`]
+  [/^Périodes verrouillées jusqu'au (\S+)\.$/, (m) => `Periods locked through ${m[1]}.`],
+  [/^Une dépense ne peut pas porter plus de (\d+) pièces\.$/, (m) => `An expense cannot have more than ${m[1]} attachments.`],
+  [/^Le fichier n'a pas pu être ouvert : (.*)$/s, (m) => `The file could not be opened: ${m[1]}`]
 ];
 
 /** Statuts cités dans un message, traduits comme à l'écran. */

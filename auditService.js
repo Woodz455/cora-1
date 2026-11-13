@@ -47,7 +47,10 @@ const ACTIONS = {
   // Clore une période fige une déclaration ; la rouvrir est le geste qui
   // permettrait de la changer après coup, et doit donc se voir.
   PERIODE_VERROUILLAGE: 'periode.verrouillage',
-  PERIODE_DEVERROUILLAGE: 'periode.deverrouillage'
+  PERIODE_DEVERROUILLAGE: 'periode.deverrouillage',
+  // Le reçu est la preuve de la dépense : le retirer doit laisser une trace.
+  PIECE_AJOUT: 'piece.ajout',
+  PIECE_RETRAIT: 'piece.retrait'
 };
 
 /** Libellés lisibles, partagés avec l'interface. */
@@ -80,7 +83,9 @@ const LIBELLES = {
   [ACTIONS.BANQUE_RAPPROCHEMENT]: 'Dépôt bancaire imputé',
   [ACTIONS.BANQUE_DEPOT_IGNORE]: 'Dépôt bancaire ignoré',
   [ACTIONS.PERIODE_VERROUILLAGE]: 'Période verrouillée',
-  [ACTIONS.PERIODE_DEVERROUILLAGE]: 'Période déverrouillée'
+  [ACTIONS.PERIODE_DEVERROUILLAGE]: 'Période déverrouillée',
+  [ACTIONS.PIECE_AJOUT]: 'Pièce justificative jointe',
+  [ACTIONS.PIECE_RETRAIT]: 'Pièce justificative retirée'
 };
 
 /** Longueur maximale du détail sérialisé, pour qu'une ligne reste une ligne. */

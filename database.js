@@ -263,6 +263,21 @@ async function createTables(db) {
       message TEXT
     );
 
+    -- Pièces justificatives d'une dépense. Le fichier vit à côté de la base,
+    -- sous le nom de son empreinte (voir piecesService.js) : la base n'en
+    -- garde que la description.
+    CREATE TABLE IF NOT EXISTS pieces_jointes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      depense_id INTEGER NOT NULL,
+      nom TEXT NOT NULL,
+      type TEXT NOT NULL,
+      taille INTEGER NOT NULL,
+      empreinte TEXT NOT NULL,
+      ajoute_le TEXT NOT NULL,
+      ajoute_par TEXT,
+      FOREIGN KEY (depense_id) REFERENCES depenses (id) ON DELETE CASCADE
+    );
+
     -- Journal des actions sensibles. Aucune clé étrangère : la trace doit
     -- survivre à la suppression de ce qu'elle décrit, sans quoi effacer une
     -- facture effacerait la preuve qu'on l'a effacée.
@@ -545,6 +560,8 @@ async function createIndexes(db) {
     CREATE INDEX IF NOT EXISTS idx_notes_credit_facture_id ON notes_credit (facture_id);
     CREATE INDEX IF NOT EXISTS idx_lignes_note_credit_note_id ON lignes_note_credit (note_id);
     CREATE INDEX IF NOT EXISTS idx_relances_facture_palier ON relances (facture_id, palier_jours);
+    CREATE INDEX IF NOT EXISTS idx_pieces_jointes_depense ON pieces_jointes (depense_id);
+    CREATE INDEX IF NOT EXISTS idx_pieces_jointes_empreinte ON pieces_jointes (empreinte);
     -- Le journal se consulte du plus récent au plus ancien, et se filtre par
     -- auteur ou par type d'action.
     CREATE INDEX IF NOT EXISTS idx_logs_audit_date ON logs_audit (date_heure DESC);

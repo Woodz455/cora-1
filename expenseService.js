@@ -116,7 +116,8 @@ async function getExpenses(db) {
   return db.all(`
     SELECT d.*,
            CASE WHEN d.date_depense <= (SELECT date_verrouillage FROM settings ORDER BY id LIMIT 1)
-                THEN 1 ELSE 0 END AS verrouillee
+                THEN 1 ELSE 0 END AS verrouillee,
+           (SELECT COUNT(*) FROM pieces_jointes p WHERE p.depense_id = d.id) AS pieces
     FROM depenses d
     ORDER BY d.date_depense DESC, d.id DESC
   `);
