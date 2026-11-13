@@ -32,7 +32,15 @@ function apiNotFound(req, res) {
  * configuré » dit à l'utilisateur quoi faire, alors que « Erreur interne du
  * serveur » l'envoie chercher dans les journaux d'un logiciel de bureau.
  */
-function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-vars
+function errorHandler(err, req, res, next) {
+  // Une réponse déjà commencée (une archive en cours d'envoi) ne peut plus
+  // devenir un message d'erreur : Express coupe alors la connexion, et le
+  // téléchargement échoue plutôt que de livrer un fichier tronqué pour bon.
+  if (res.headersSent) {
+    console.error(`[${req.method} ${req.originalUrl}] interrompu :`, err.message);
+    return next(err);
+  }
+
   // Un déclencheur de verrouillage a refusé l'écriture : ce n'est pas une
   // anomalie, mais une règle que l'utilisateur doit comprendre. Les routes
   // vérifient d'ordinaire avant d'écrire ; ceci couvre les chemins indirects,
