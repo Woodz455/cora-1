@@ -868,6 +868,7 @@ export default {
   'Renommer le dossier « {nom} »': 'Rename the company file “{nom}”',
   'Renommer': 'Rename',
   'Réactiver': 'Reactivate',
+  "Ouvrez un autre dossier avant d'archiver celui-ci.": 'Open another company file before archiving this one.',
   'Archiver « {nom} » ?': 'Archive “{nom}”?',
   'Archiver « {nom} »': 'Archive “{nom}”',
   'Aucun client archivé.': 'No archived clients.',

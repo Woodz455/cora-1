@@ -172,11 +172,13 @@ function ChoixEntreprise({ entreprises, ouvertId = null, onOuvert, onListe, onAn
                   <Pencil size={16} aria-hidden="true" />
                 </button>
               )}
-              {e.role === 'admin' && e.id !== ouvertId && (
+              {e.role === 'admin' && (
                 <button
-                  type="button" style={STYLE_ACTION} disabled={enCours !== null}
+                  type="button" disabled={enCours !== null || e.id === ouvertId}
+                  style={{ ...STYLE_ACTION, ...(e.id === ouvertId ? { opacity: .4, cursor: 'not-allowed' } : {}) }}
                   onClick={() => archiver(e, true)}
-                  aria-label={t('Archiver le dossier « {nom} »', { nom: e.nom })} title={t('Archiver')}
+                  aria-label={t('Archiver le dossier « {nom} »', { nom: e.nom })}
+                  title={e.id === ouvertId ? t("Ouvrez un autre dossier avant d'archiver celui-ci.") : t('Archiver')}
                 >
                   <Archive size={16} aria-hidden="true" />
                 </button>

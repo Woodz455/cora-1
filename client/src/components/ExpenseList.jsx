@@ -323,21 +323,30 @@ function ExpenseList() {
                 </td>
                 <td className="numeric" style={{ fontWeight: 'bold' }}>{formatMontant(expense.montant_ttc)}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  {/* Des icônes seules, serrées : la colonne débordait du
+                      tableau, qui défilait alors de côté dès 1 280 pixels. */}
                   <button
-                    type="button" className="btn-icon" onClick={() => setPiecesDe(expense)} style={{ marginRight: '4px' }}
+                    type="button" className="btn-icon" onClick={() => setPiecesDe(expense)}
+                    style={{ marginRight: '4px', padding: '8px', gap: '2px' }}
                     aria-label={tp(expense.pieces || 0, 'Pièces justificatives ({n})', 'Pièces justificatives ({n})|pluriel')}
                     title={expense.pieces ? tp(expense.pieces, '{n} pièce jointe', '{n} pièces jointes') : t('Joindre un reçu')}
                   >
-                    <Paperclip size={16} aria-hidden="true" />{expense.pieces > 0 && <span style={{ marginLeft: '2px' }}>{expense.pieces}</span>}
+                    <Paperclip size={16} aria-hidden="true" />{expense.pieces > 0 && <span>{expense.pieces}</span>}
                   </button>
                   {expense.verrouillee ? (
-                    <span title={t('Période verrouillée : cette dépense ne peut plus être modifiée.')} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      <Lock size={14} aria-hidden="true" /> {t('Période close')}
+                    <span
+                      role="img" aria-label={t('Période close')}
+                      title={t('Période verrouillée : cette dépense ne peut plus être modifiée.')}
+                      // La largeur des deux boutons qu'il remplace : les trombones
+                      // restent alignés d'une rangée à l'autre.
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', width: '68px', color: 'var(--text-muted)' }}
+                    >
+                      <Lock size={16} aria-hidden="true" />
                     </span>
                   ) : (
                     <>
-                      <button type="button" className="btn-icon" onClick={() => openModal(expense)} aria-label={t('Modifier la dépense')} style={{ marginRight: '4px' }}><Pencil size={16} aria-hidden="true" /></button>
-                      <button type="button" className="btn-danger" onClick={() => handleDelete(expense)} aria-label={t('Supprimer la dépense')}><Trash2 size={16} aria-hidden="true" /></button>
+                      <button type="button" className="btn-icon" onClick={() => openModal(expense)} aria-label={t('Modifier la dépense')} style={{ marginRight: '4px', padding: '8px' }}><Pencil size={16} aria-hidden="true" /></button>
+                      <button type="button" className="btn-danger" onClick={() => handleDelete(expense)} aria-label={t('Supprimer la dépense')} style={{ padding: '8px' }}><Trash2 size={16} aria-hidden="true" /></button>
                     </>
                   )}
                 </td>

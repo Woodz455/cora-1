@@ -61,10 +61,11 @@ jobs:
         working-directory: client
         run: npm run build
 
-      # La suite ordinaire n'exerce que le serveur. Cet essai lance la vraie
-      # application de bureau, ferme sa fenêtre, et vérifie que la sauvegarde
-      # de fin de journée a eu lieu : un défaut de `main.js` ne se voit que là.
-      # Il vient après la compilation, dont il a besoin, et sous `xvfb` parce
-      # que la machine n'a pas d'écran.
+      # La suite ordinaire n'exerce que le serveur. Ces essais lancent la vraie
+      # application de bureau : ils ferment sa fenêtre et vérifient la
+      # sauvegarde de fin de journée, relisent le coffre des secrets, et
+      # pilotent les écrans comme un utilisateur, jusqu'au PDF envoyé par
+      # courriel. Ils viennent après la compilation, dont ils ont besoin, et
+      # sous `xvfb` parce que la machine n'a pas d'écran.
       - name: Essayer l'application de bureau
         run: xvfb-run -a npm run test:e2e
