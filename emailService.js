@@ -128,8 +128,8 @@ function reinitialiser() {
 /**
  * Extrait les données utiles d'une pièce jointe en base64.
  *
- * html2pdf produit une chaîne du type
- * `data:application/pdf;filename=generated.pdf;base64,JVBER...`
+ * L'interface transmet le PDF en data-URI, du type
+ * `data:application/pdf;base64,JVBER...` (voir pdfService.js).
  */
 function extractBase64(input) {
   const marker = 'base64,';

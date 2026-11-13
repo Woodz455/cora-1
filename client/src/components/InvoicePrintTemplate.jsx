@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Mail, Printer } from 'lucide-react';
 import EmailModal from './EmailModal';
 import { api, formatMontant, formatTaux } from '../api';
+import { fabriquerPdf } from '../pdf';
 import { useModale } from '../useModale';
 import { useLangue } from '../i18n.js';
 
@@ -226,23 +227,9 @@ function InvoicePrintTemplate({ factureId, onClose, mode = 'facture', isRelance 
       : (estNote ? 'Note_de_credit' : estDevis ? 'Soumission' : 'Facture');
     const filename = `${typeDoc}_${numero}.pdf`;
 
-    // html2pdf embarque jsPDF et html2canvas, à eux seuls la moitié du paquet
-    // JavaScript. Ils ne sont chargés qu'au moment d'un envoi par courriel,
-    // et non au démarrage de l'application.
-    const { default: html2pdf } = await import('html2pdf.js');
-
-    // Format lettre, comme l'impression et les rapports : c'est le papier des
-    // imprimantes d'ici. En A4, la pièce jointe s'imprimait rognée ou réduite.
-    const pdfBase64 = await html2pdf()
-      .from(printRef.current)
-      .set({
-        margin: 10,
-        filename,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
-      })
-      .outputPdf('datauristring');
+    // Un vrai PDF, au texte sélectionnable, en format lettre : c'est le papier
+    // des imprimantes d'ici. Il était auparavant une image du document.
+    const pdfBase64 = await fabriquerPdf(printRef.current, { titre: filename, langue: isEn ? 'en' : 'fr' });
 
     await api.post('/api/emails/send', {
       to: emailData.to,

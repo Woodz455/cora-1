@@ -316,7 +316,13 @@ const EXACTS = new Map([
   ['Identifiant de pièce invalide.', 'Invalid attachment ID.'],
   ["Ouvrir une pièce n'est possible que dans l'application de bureau. Téléchargez-la plutôt.",
     'Attachments can only be opened in the desktop app. Download it instead.'],
-  ['Pièce retirée.', 'Attachment removed.']
+  ['Pièce retirée.', 'Attachment removed.'],
+
+  // PDF
+  ["La fabrication des PDF n'est possible que dans l'application de bureau.", 'PDFs can only be produced in the desktop app.'],
+  ['Le document à imprimer est vide.', 'The document to print is empty.'],
+  ['Le document à imprimer est trop volumineux.', 'The document to print is too large.'],
+  ['La fabrication du PDF a pris trop de temps.', 'Producing the PDF took too long.']
 ]);
 
 /**

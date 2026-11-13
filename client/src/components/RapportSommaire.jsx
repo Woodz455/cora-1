@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Download, Printer } from 'lucide-react';
 import { api } from '../api';
+import { fabriquerPdf, enregistrerPdf } from '../pdf';
 import { useModale } from '../useModale';
 import { libellePeriode, dateLongue, moisLong, suffixePeriode } from '../periodes';
 import { useLangue } from '../i18n.js';
@@ -182,21 +183,10 @@ function RapportSommaire({ periode, onClose }) {
     setEnCours(true);
     setErreurPdf(null);
     try {
-      // Même chargement différé que pour la facture : jsPDF et html2canvas ne
-      // pèsent sur le démarrage de personne.
-      const { default: html2pdf } = await import('html2pdf.js');
-      await html2pdf()
-        .from(printRef.current)
-        .set({
-          margin: [10, 10, 12, 10],
-          filename: `${t('Compte_rendu')}_${suffixePeriode(periode, langue)}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2 },
-          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
-          // Les sections se déclarent insécables ; le rendu doit le respecter.
-          pagebreak: { mode: ['css', 'legacy'] }
-        })
-        .save();
+      // Les sections se déclarent insécables : le moteur d'impression le
+      // respecte de lui-même, comme à l'impression.
+      const nom = `${t('Compte_rendu')}_${suffixePeriode(periode, langue)}.pdf`;
+      enregistrerPdf(await fabriquerPdf(printRef.current, { titre: nom, langue }), nom);
     } catch (err) {
       setErreurPdf(err.message || t('La production du PDF a échoué.'));
     } finally {
