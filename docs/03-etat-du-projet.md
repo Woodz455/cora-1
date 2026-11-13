@@ -1,7 +1,7 @@
 # Clora : état du projet
 
-*Ce qui a été fait, ce qui reste à faire. Arrêté au 12 novembre 2026,
-version 1.12.0.*
+*Ce qui a été fait, ce qui reste à faire. Arrêté au 13 novembre 2026,
+version 1.13.0.*
 
 ---
 
@@ -9,11 +9,11 @@ version 1.12.0.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.12.0, le 12 novembre 2026 |
-| **Publications** | 20 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 106 commits, 51 demandes de fusion : 50 fusionnées, une rendue sans objet |
+| **Version publiée** | 1.13.0, le 13 novembre 2026 |
+| **Publications** | 21 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 113 commits, 53 demandes de fusion : 52 fusionnées, une rendue sans objet |
 | **Tests** | 502, tous au vert, exécutés à chaque fusion, plus trois essais de l'application de bureau, dont un qui pilote les écrans |
-| **Durée** | 16 semaines, du 24 juillet au 12 novembre 2026 |
+| **Durée** | 16 semaines, du 24 juillet au 13 novembre 2026 |
 | **Langues** | Interface en français ou en anglais, au choix de chaque utilisateur |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
 | **Ventes** | Aucune : les tests utilisateurs sont en cours |
@@ -520,7 +520,7 @@ courriel, une tentative de sortie de la fenêtre et un script injecté, tous deu
 bloqués. 17 tests de plus.
 
 ### Phase 21 : le niveau référence
-*13 novembre · pas encore publié*
+*13 novembre · publié en 1.13.0 · demande de fusion #52*
 
 Le second lot relevé par la vérification d'ensemble : ce qui sépare un bon
 logiciel de facturation d'une référence.
@@ -671,8 +671,8 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.12.0 en offre l'occasion sur toute installation restée en
-  1.11.0.
+  annoncer. La 1.13.0 en offre l'occasion sur toute installation restée en
+  1.12.0.
 - **Le redémarrage après restauration d'une sauvegarde.** Vérifié de bout en
   bout dans l'application de bureau sous Linux depuis la 1.9.1 : la restauration
   s'applique et l'application redémarre seule. Reste à le voir sous Windows.
@@ -771,7 +771,15 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.12.0 par les testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.13.0 par les testeurs et écouter ce qu'ils disent.**
+
+La 1.13.0 change ce qu'ils voient : un trombone pour joindre les reçus aux
+dépenses, une section « Clôture des périodes » dans Paramètres, l'archivage des
+clients et des dossiers, et des PDF dont le texte se sélectionne. Il faut leur
+demander d'ouvrir un reçu joint, de regarder le PDF d'une facture qu'ils
+s'envoient à eux-mêmes, et de vérifier que les reçus apparaissent dans leur
+dossier de sauvegarde (section 5). Rien ne se verrouille tant qu'ils ne posent
+pas eux-mêmes une date.
 
 La 1.12.0 ne change presque rien à ce qu'ils voient : un avertissement avant de
 modifier une facture déjà envoyée, un rappel au tableau de bord tant que leurs
@@ -823,9 +831,7 @@ corriger attend une décision, point par point (section 4). Le passage à
 Electron 45 est fait, éprouvé sous Windows et livré en 1.11.0. Le premier lot
 relevé par la vérification d'ensemble, traçabilité et durcissement, est livré
 en 1.12.0. Le second (verrouillage des périodes, reçus joints, vrais PDF,
-renommage et archivage, essais des écrans) est fait, et attend sa version : il
-change ce que les testeurs voient, et il faudra leur demander d'ouvrir un reçu
-et le PDF d'une facture sur leur poste (section 5).
+renommage et archivage, essais des écrans) est livré en 1.13.0.
 
 **Tout ce qui avait été relevé en corrigeant le design est fait** : les polices
 embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la
@@ -847,4 +853,4 @@ chez lui.
 ---
 
 *Document maintenu par Safehill Technologies. Dernière mise à jour :
-12 novembre 2026.*
+13 novembre 2026.*
