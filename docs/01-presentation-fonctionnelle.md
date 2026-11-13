@@ -1,6 +1,6 @@
 # Clora : ce que fait l'application
 
-*Document de présentation fonctionnelle. Version 1.13.0, novembre 2026.*
+*Document de présentation fonctionnelle. Version 1.13.1, novembre 2026.*
 
 Ce document décrit ce que Clora fait, du point de vue de la personne qui s'en
 sert. Il ne suppose aucune connaissance technique. Pour l'architecture, la
@@ -306,8 +306,16 @@ Cinq productions :
    - *Registre des encaissements* : une ligne par paiement reçu, avec son origine
      (saisie manuelle ou rapprochement bancaire).
 
+   Et, d'un clic, **les reçus de la période** en une seule archive : chaque
+   reçu joint aux dépenses, nommé par sa date et son fournisseur, avec la liste
+   des dépenses qui les relie. Le comptable n'a plus à les demander un par un.
+
 Une seule période, choisie en tête de l'écran, gouverne le compte rendu, les
 registres et le rapport de taxes.
+
+Une fois la période terminée et sa déclaration produite, l'administrateur la
+**verrouille depuis le rapport de taxes**, sans passer par Paramètres. Le
+rapport d'une période close le dit.
 
 Les fichiers CSV sont produits pour être ouverts sans manipulation dans un Excel
 francophone : marque d'encodage UTF-8, séparateur point-virgule, virgule

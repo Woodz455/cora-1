@@ -65,7 +65,11 @@ const MESSAGES_INTERNES = new Set([
   'série de sauvegardes non précisée',
   'base à restaurer non précisée',
   // Erreur de programmation : `lireSecret` appelée hors de sa liste fermée.
-  'colonne de secret inconnue'
+  'colonne de secret inconnue',
+  // Archive des reçus : levées une fois l'envoi commencé, elles coupent le
+  // téléchargement et ne vont qu'à la console.
+  'archive interrompue : le destinataire est parti',
+  'archive trop volumineuse pour le format ZIP'
 ]);
 
 /** Lit le dictionnaire, qui ne contient que des données. */

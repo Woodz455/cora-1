@@ -13,6 +13,8 @@ const { verifierMiseAJour } = require('../updateService.js');
 const { versCSV, nomFichier } = require('../exportService.js');
 const { asyncRoute, httpError } = require('../httpUtils.js');
 const { langueDeRequete, traduireStatut } = require('../traductionServeur.js');
+const { piecesDeLaPeriode, nomDansLArchive, lirePiece } = require('../piecesService.js');
+const { ArchiveZip } = require('../archiveZip.js');
 
 /**
  * Colonnes du registre des ventes, dans l'ordre attendu par un comptable.
@@ -60,11 +62,29 @@ const COLONNES_BALANCE = [
   { cle: 'total', titre: 'Total dû', titreEn: 'Total due', type: 'montant' }
 ];
 
+/**
+ * Index des reçus, rangé dans l'archive : le comptable retrouve la dépense de
+ * chaque fichier sans ouvrir Clora, et voit d'un coup d'œil ceux qui manquent.
+ */
+const COLONNES_RECUS = [
+  { cle: 'date_depense', titre: 'Date', titreEn: 'Date' },
+  { cle: 'fournisseur', titre: 'Fournisseur', titreEn: 'Supplier' },
+  { cle: 'description', titre: 'Description', titreEn: 'Description' },
+  { cle: 'categorie', titre: 'Catégorie', titreEn: 'Category' },
+  { cle: 'montant_ht', titre: 'Montant HT', titreEn: 'Amount before tax', type: 'montant' },
+  { cle: 'tps', titre: 'TPS / TVH', titreEn: 'GST / HST', type: 'montant' },
+  { cle: 'tvq', titre: 'TVQ / TVP', titreEn: 'QST / PST', type: 'montant' },
+  { cle: 'montant_ttc', titre: 'Total TTC', titreEn: 'Total', type: 'montant' },
+  { cle: 'fichier', titre: 'Fichier', titreEn: 'File' }
+];
+
 /** Nom des fichiers, dans chaque langue. */
 const FICHIERS = {
   ventes: { fr: 'registre-ventes', en: 'sales-register' },
   encaissements: { fr: 'registre-encaissements', en: 'payments-received-register' },
-  balance: { fr: 'balance-agee', en: 'aged-receivables' }
+  balance: { fr: 'balance-agee', en: 'aged-receivables' },
+  recus: { fr: 'recus', en: 'receipts' },
+  indexRecus: { fr: 'registre-des-recus.csv', en: 'receipts-register.csv' }
 };
 
 /**
@@ -199,6 +219,52 @@ module.exports = function rapportRoutes(getDb) {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${nomFichier(FICHIERS.balance[langue])}"`);
     res.send(versCSV(COLONNES_BALANCE, lignes, langue));
+  }));
+
+  /**
+   * Combien de reçus la période compte, et leur poids : l'écran dit ce qu'il
+   * s'apprête à remettre, et ne propose rien quand il n'y a rien.
+   */
+  router.get('/rapports/recus', adminOrAccountant(), asyncRoute(async (req, res) => {
+    const pieces = await piecesDeLaPeriode(getDb(), validerPeriode(req.query));
+    res.json({ nombre: pieces.length, taille: pieces.reduce((total, p) => total + p.taille, 0) });
+  }));
+
+  /**
+   * Les reçus de la période, en une archive ZIP à remettre au comptable, avec
+   * leur index. Un reçu introuvable (sur ce poste comme dans le dossier des
+   * sauvegardes) ne fait pas échouer l'archive : l'index le signale.
+   *
+   * L'archive s'écrit au fil de la lecture, un reçu à la fois.
+   */
+  router.get('/rapports/export/recus', adminOrAccountant(), asyncRoute(async (req, res) => {
+    const db = getDb();
+    const periode = validerPeriode(req.query);
+    const langue = langueDuFichier(req);
+    const pieces = await piecesDeLaPeriode(db, periode);
+    if (pieces.length === 0) throw httpError(404, 'Aucun reçu n\'est joint aux dépenses de cette période.');
+
+    const nom = nomFichier(FICHIERS.recus[langue], periode, langue).replace(/\.csv$/, '.zip');
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${nom}"`);
+
+    const archive = new ArchiveZip(res);
+    const pris = new Set([FICHIERS.indexRecus[langue]]);
+    const index = [];
+    for (const piece of pieces) {
+      let fichier;
+      try {
+        const { contenu } = await lirePiece(db, piece.id);
+        fichier = nomDansLArchive(piece, pris);
+        await archive.ajouter(fichier, contenu, new Date(`${piece.date_depense}T12:00:00`));
+      } catch (error) {
+        console.error(`Reçu ${piece.id} absent de l'archive :`, error.message);
+        fichier = langue === 'en' ? `missing: ${piece.nom}` : `introuvable : ${piece.nom}`;
+      }
+      index.push({ ...piece, fichier });
+    }
+    await archive.ajouter(FICHIERS.indexRecus[langue], Buffer.from(versCSV(COLONNES_RECUS, index, langue), 'utf8'));
+    await archive.terminer();
   }));
 
   registre('/rapports/export/ventes', FICHIERS.ventes, COLONNES_VENTES, getRegistreVentes);

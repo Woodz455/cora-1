@@ -338,7 +338,8 @@ const EXACTS = new Map([
   ['Dossier archivé.', 'Company file archived.'],
   ['Dossier réactivé.', 'Company file restored.'],
   ["Ce dossier est ouvert : ouvrez-en un autre avant de l'archiver.",
-    'This company file is open: open another one before archiving it.']
+    'This company file is open: open another one before archiving it.'],
+  ["Aucun reçu n'est joint aux dépenses de cette période.", 'No receipt is attached to the expenses of this period.']
 ]);
 
 /**

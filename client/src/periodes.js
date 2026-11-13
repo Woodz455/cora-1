@@ -44,6 +44,18 @@ export function libellePeriode({ annee, mois, trimestre }, langue = 'fr') {
   return langue === 'en' ? `Year ${annee}` : `Année ${annee}`;
 }
 
+/**
+ * Dernier jour d'une période, AAAA-MM-JJ : le 30 septembre pour le troisième
+ * trimestre, le 31 décembre pour l'année. En UTC, pour qu'un fuseau ne fasse
+ * pas glisser la borne d'un jour.
+ */
+export function finDePeriode({ annee, mois, trimestre }) {
+  const a = Number(annee);
+  const dernier = mois ? Number(mois) : trimestre ? Number(trimestre) * 3 : 12;
+  const jours = new Date(Date.UTC(a, dernier, 0)).getUTCDate();
+  return `${a}-${String(dernier).padStart(2, '0')}-${String(jours).padStart(2, '0')}`;
+}
+
 /** « 1 septembre 2026 », ou « September 1, 2026 », à partir d'une date AAAA-MM-JJ. */
 export function dateLongue(iso, langue = 'fr') {
   const [a, m, j] = iso.split('-').map(Number);

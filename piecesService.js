@@ -391,7 +391,58 @@ function rechiffrerPieces(dossier, serie, { ancienne = null, nouvelle, inclureCl
   return { rechiffrees, laissees };
 }
 
+/**
+ * Les pièces des dépenses d'une période, avec ce qui les décrit, dans l'ordre
+ * des dépenses. La période suit les mêmes bornes que les registres et le
+ * rapport de taxes : les reçus remis au comptable sont ceux des dépenses qu'il
+ * retrouve dans la déclaration.
+ *
+ * @param {{annee?: string, mois?: string, trimestre?: string}} periode
+ */
+async function piecesDeLaPeriode(db, periode) {
+  // Import tardif : invoiceService est lourd, et ce module est chargé tôt.
+  const { clausesPeriode } = require('./invoiceService.js');
+  const { conditions, params } = clausesPeriode('d.date_depense', periode);
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  return db.all(
+    `SELECT p.id, p.nom, p.type, p.taille, p.empreinte,
+            d.id AS depense_id, d.date_depense, d.fournisseur, d.description, d.categorie,
+            d.montant_ht, d.tps, d.tvq, d.montant_ttc
+     FROM pieces_jointes p
+     JOIN depenses d ON d.id = p.depense_id
+     ${where}
+     ORDER BY d.date_depense ASC, d.id ASC, p.id ASC`,
+    params
+  );
+}
+
+/**
+ * Nom d'un reçu dans l'archive remise au comptable : la date et le fournisseur
+ * d'abord, pour que l'archive se trie d'elle-même, puis le nom d'origine. Les
+ * caractères que Windows refuse dans un nom de fichier sont retirés.
+ */
+function nomDansLArchive(piece, dejaPris) {
+  const format = FORMATS.find((f) => f.type === piece.type);
+  const propre = (texte) => String(texte || '')
+    .replace(/[\u0000-\u001f\u007f<>:"/\\|?*]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  // L'extension d'origine est retirée, quelle que soit sa graphie (« .JPEG »,
+  // « .jpg ») : c'est celle du format reconnu qui est remise.
+  const origine = propre(propre(piece.nom).replace(/\.(pdf|jpe?g|png|webp)$/i, ''));
+  const extension = format ? format.extension : '';
+  const base = [piece.date_depense, propre(piece.fournisseur), origine]
+    .filter(Boolean).join(' - ').slice(0, 120);
+
+  let nom = `${base}${extension}`;
+  for (let n = 2; dejaPris.has(nom.toLowerCase()); n += 1) nom = `${base} (${n})${extension}`;
+  dejaPris.add(nom.toLowerCase());
+  return nom;
+}
+
 module.exports = {
+  piecesDeLaPeriode,
+  nomDansLArchive,
   TAILLE_MAX,
   MAX_PAR_DEPENSE,
   PREFIXE_DOSSIER_SAUVEGARDE,

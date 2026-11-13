@@ -1,10 +1,13 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
-import { TriangleAlert } from 'lucide-react';
+import { TriangleAlert, Lock, Archive } from 'lucide-react';
 import { PieChart, Pie, Cell, Legend, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import InfoTooltip from './InfoTooltip';
 import { api } from '../api';
-import { libellePeriode, nomDuMois } from '../periodes';
+import { libellePeriode, nomDuMois, finDePeriode } from '../periodes';
 import { useLangue } from '../i18n.js';
+import { useUser } from '../UserContext';
+import { useFeedback } from '../FeedbackContext';
+import { aujourdhui } from '../dates.js';
 
 // Le document n'est chargé qu'à la demande : la plupart des visites de l'écran
 // Rapports n'en produisent pas.
@@ -106,8 +109,22 @@ function Carte({ titre, valeur, aide, alerte = false }) {
   );
 }
 
+/** « 245 Ko », « 3,1 Mo ». */
+function poids(octets, langue) {
+  const locale = langue === 'en' ? 'en-CA' : 'fr-CA';
+  if (octets < 1024 * 1024) return `${Math.max(1, Math.round(octets / 1024)).toLocaleString(locale)} ${langue === 'en' ? 'KB' : 'Ko'}`;
+  return `${(octets / (1024 * 1024)).toLocaleString(locale, { maximumFractionDigits: 1 })} ${langue === 'en' ? 'MB' : 'Mo'}`;
+}
+
 function ReportDashboard() {
-  const { langue, t, montant: formatMontant } = useLangue();
+  const { langue, t, tp, montant: formatMontant } = useLangue();
+  const user = useUser();
+  const { notifier, confirmer } = useFeedback();
+  const estAdmin = user?.role === 'admin';
+  // Date de verrouillage en vigueur, et reçus de la période choisie.
+  const [verrou, setVerrou] = useState(null);
+  const [recus, setRecus] = useState(null);
+  const [verrouEnCours, setVerrouEnCours] = useState(false);
   const [stats, setStats] = useState(null);
   const [taxStats, setTaxStats] = useState(null);
   const [balance, setBalance] = useState(null);
@@ -133,6 +150,10 @@ function ReportDashboard() {
       .then((data) => { if (!annule) setBalance(data); })
       .catch(() => {});
 
+    api.get('/api/settings')
+      .then((data) => { if (!annule) setVerrou(data.date_verrouillage || null); })
+      .catch(() => {});
+
     return () => { annule = true; };
   }, []);
 
@@ -148,6 +169,9 @@ function ReportDashboard() {
     api.get(`/api/rapports/taxes?${params.toString()}`)
       .then((data) => { if (!annule) setTaxStats(data); })
       .catch((err) => { if (!annule) setError(err.message); });
+    api.get(`/api/rapports/recus?${params.toString()}`)
+      .then((data) => { if (!annule) setRecus(data); })
+      .catch(() => {});
     return () => { annule = true; };
   }, [annee, mois, trimestre]);
 
@@ -178,6 +202,37 @@ function ReportDashboard() {
   };
 
   const periode = { annee, mois, trimestre };
+
+  // Dernier jour de la période choisie : elle est close si la date de
+  // verrouillage l'atteint, et peut l'être une fois terminée.
+  const finPeriode = finDePeriode(periode);
+  const periodeClose = Boolean(verrou && finPeriode <= verrou);
+  const periodeTerminee = finPeriode < aujourdhui();
+
+  /**
+   * Clôt la période juste après avoir produit sa déclaration : c'est le moment
+   * où l'on y pense, plutôt que d'aller chercher le réglage dans Paramètres.
+   */
+  const verrouiller = async () => {
+    const accepte = await confirmer({
+      titre: t("Verrouiller jusqu'au {date} ?", { date: finPeriode }),
+      message: t('Les factures, dépenses, notes de crédit et encaissements datés jusqu\'à cette date ne pourront '
+        + 'plus être créés, modifiés ni supprimés. Une facture de la période se corrigera par une note de crédit. '
+        + 'Un administrateur pourra rouvrir la période dans Paramètres.'),
+      libelleConfirmer: t('Verrouiller')
+    });
+    if (!accepte) return;
+    setVerrouEnCours(true);
+    try {
+      const r = await api.put('/api/settings/verrouillage', { date_verrouillage: finPeriode });
+      setVerrou(r.date_verrouillage);
+      notifier(r.message);
+    } catch (err) {
+      notifier(err.message, 'erreur');
+    } finally {
+      setVerrouEnCours(false);
+    }
+  };
 
   // Les statuts restent en français dans les données, qui choisissent la
   // couleur ; seul le nom affiché se traduit.
@@ -334,6 +389,22 @@ function ReportDashboard() {
             <a className="btn-secondary" href={lienExport('encaissements')} download>
               {t('Registre des encaissements')}
             </a>
+            {/* Les reçus des dépenses de la période, en une archive avec leur
+                index. Rien à remettre : rien à proposer. */}
+            {recus && recus.nombre > 0 ? (
+              <a
+                className="btn-secondary" href={lienExport('recus')} download
+                title={t('Archive ZIP de {poids}, avec la liste des dépenses', { poids: poids(recus.taille, langue) })}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}
+              >
+                <Archive size={16} aria-hidden="true" />
+                {tp(recus.nombre, 'Reçus de la période ({n})', 'Reçus de la période ({n})|pluriel')}
+              </a>
+            ) : (
+              <button type="button" className="btn-secondary" disabled title={t('Aucun reçu joint aux dépenses de cette période.')}>
+                {t('Aucun reçu sur la période')}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -470,6 +541,24 @@ function ReportDashboard() {
           {/* La période se choisit en tête de page, pour toute la page. */}
           <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{libellePeriode(periode, langue)}</span>
         </div>
+
+        {periodeClose ? (
+          <p className="alert alert-info" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Lock size={16} aria-hidden="true" style={{ flexShrink: 0 }} />
+            {t('Période verrouillée : ce rapport ne peut plus changer.')}
+          </p>
+        ) : estAdmin && periodeTerminee && (
+          <div className="alert alert-info" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+            <span>{t('Déclaration produite ? Verrouillez la période : plus rien ne pourra y changer.')}</span>
+            <button
+              type="button" className="btn-secondary" onClick={verrouiller} disabled={verrouEnCours}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}
+            >
+              <Lock size={16} aria-hidden="true" />
+              {t("Verrouiller jusqu'au {date}", { date: finPeriode })}
+            </button>
+          </div>
+        )}
 
         {taxStats ? (
           <>

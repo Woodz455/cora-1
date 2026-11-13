@@ -1,6 +1,6 @@
 # Clora : architecture, sécurité et licence
 
-*Document technique. Version 1.13.0, novembre 2026.*
+*Document technique. Version 1.13.1, novembre 2026.*
 
 Ce document décrit comment Clora est construit, ce qui protège les données, et
 comment fonctionne le modèle de licence. Pour la description fonctionnelle, voir
@@ -124,6 +124,7 @@ secretStorage.js   Chiffrement des secrets au repos
 verrouillage.js    Date de verrouillage des périodes, tenue par des déclencheurs SQLite
 piecesService.js   Reçus joints aux dépenses : rangement, sauvegarde, reprise
 pdfService.js      PDF au texte réel, imprimés par Chromium dans une fenêtre cachée
+archiveZip.js      Archive ZIP écrite au fil de l'eau, sans dépendance
 chiffrementSauvegardes.js  Format chiffré des sauvegardes (AES-256-GCM)
 codesSecours.js    Clé des sauvegardes et code de récupération (base 32 de Crockford)
 companyStore.js    Registre des dossiers d'entreprise et comptes partagés
@@ -132,7 +133,7 @@ traductionServeur.js  Messages du serveur traduits en anglais à la sortie
 routes/            23 modules de points d'entrée HTTP
 client/src/        Interface React (38 composants, 15 crochets et modules,
                    dictionnaire anglais dans traductions/en.js)
-tests/             40 fichiers, 502 tests, et trois essais de bout en bout dans e2e/
+tests/             41 fichiers, 505 tests, et trois essais de bout en bout dans e2e/
 ```
 
 Le découpage est strict : **`server.js` ne fait que câbler**. Il ne contient
@@ -335,6 +336,15 @@ l'empreinte, une pièce n'est jamais réécrite ni supprimée par la rétention.
 lecture, une pièce absente du poste (base restaurée ailleurs) est reprise du
 dossier de sauvegarde, déchiffrée, et rendue seulement si son empreinte
 concorde.
+
+Les reçus d'une période se remettent au comptable en une archive ZIP
+(`GET /api/rapports/export/recus`), sur les mêmes bornes que les registres.
+`archiveZip.js` l'écrit au fil de la lecture, un reçu à la fois, en méthode
+« stockée » (des PDF et des photos ne gagnent rien à être recomprimés), avec
+les noms en UTF-8 et un index CSV. Une réponse déjà commencée ne peut plus
+devenir un message d'erreur : le gestionnaire d'erreurs coupe alors la
+connexion, et le téléchargement échoue plutôt que de livrer une archive
+tronquée pour bonne.
 
 La pièce est servie avec sa propre politique de contenu (`sandbox`) : un PDF
 piégé reçu d'un fournisseur ne peut rien exécuter. Dans l'application de bureau,
@@ -794,7 +804,7 @@ facture émise), donc une vérification fréquente est sans risque.
 
 ## 10. Tests et intégration continue
 
-**502 tests**, exécutés par `node --test`. Répartition :
+**505 tests**, exécutés par `node --test`. Répartition :
 
 | Domaine | Tests |
 | --- | --- |
@@ -829,6 +839,7 @@ facture émise), donc une vérification fréquente est sans risque.
 | Durcissement du serveur local | 4 |
 | Date de verrouillage | 10 |
 | Pièces justificatives | 7 |
+| Reçus d'une période en archive | 3 |
 | Archivage et renommage | 6 |
 | PDF au texte réel | 3 |
 | Préfixe des factures | 8 |
@@ -1012,9 +1023,9 @@ Trois corrections peuvent être demandées explicitement :
 | **Retraits bancaires** | Ignorés : frais et sorties sont hors périmètre |
 | **Windows seul** | Aucune cible macOS ou Linux |
 | **Electron 45 chez les autres testeurs** | Le passage à Electron 45 est vérifié sous Linux dans la vraie application, et sous Windows par une fabrication d'essai installée par-dessus la 1.10.1 sur un poste réel : les secrets enregistrés ont été relus par le nouveau coffre. Un seul poste a fait cet essai ; les autres le feront à la publication |
-| **Reçus : pas d'export groupé** | Les reçus d'une période ne se remettent pas d'un coup au comptable : ils s'ouvrent un à un. Ils ne sont pas non plus chiffrés sur le poste lui-même |
+| **Reçus non chiffrés sur le poste** | Ils le sont dans les sauvegardes quand la protection est active, pas dans le dossier de données, pas plus que la base |
 | **Lot 3 sous Windows** | La date de verrouillage, les reçus, les PDF au texte réel et l'archivage sont éprouvés sous Linux dans la vraie application ; l'ouverture d'un reçu dans la visionneuse de Windows et le rendu des PDF sur un vrai poste restent à observer |
-| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.13.0 en offre l'occasion sur toute installation restée en 1.12.0 |
+| **Bandeau de mise à jour** | Le cas positif n'a jamais été observé sur un vrai Windows. La 1.13.1 en offre l'occasion sur toute installation restée en 1.13.0 |
 | **Redémarrage après restauration** | Vérifié de bout en bout dans l'application de bureau sous Linux en 1.9.1, puis de nouveau en 1.10.1 (restauration appliquée, redémarrage automatique). Reste à l'observer sur un vrai Windows |
 | **Sauvegarde à la fermeture** | Vérifiée à chaque fusion par l'essai de bout en bout, sous Linux, et observée le 12 novembre sur un poste Windows lors de l'essai d'Electron 45. Reste à la confirmer chez les autres testeurs |
 

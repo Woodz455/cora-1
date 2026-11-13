@@ -38,7 +38,7 @@ dans [INSTALLATION.md](INSTALLATION.md).
 et dépose le fichier sur la page des publications :
 
 ```bash
-git tag v1.13.0 && git push origin v1.13.0
+git tag v1.13.1 && git push origin v1.13.1
 ```
 
 L'étiquette doit correspondre au champ `version` de `package.json` : c'est lui
@@ -307,6 +307,7 @@ dates.js           La date du jour, lue à l'horloge du poste
 verrouillage.js    Date de verrouillage des périodes, tenue par des déclencheurs SQLite
 piecesService.js   Reçus joints aux dépenses, rangés à côté de la base
 pdfService.js      PDF au texte réel, imprimés par Chromium dans une fenêtre cachée
+archiveZip.js      Archive ZIP écrite au fil de l'eau : les reçus remis au comptable
 dbUtils.js         Transactions sérialisées et réentrantes
 validators.js      Validation des données entrantes
 rateLimit.js       Limitation des tentatives de connexion
@@ -388,6 +389,10 @@ contourner la règle. Une modification qui ne change aucune valeur passe : un
 recalcul qui retombe sur les mêmes montants n'échoue pas. Les déclencheurs sont
 reposés à chaque ouverture de la base, pour qu'une base ancienne reçoive
 toujours leur version en vigueur.
+
+Dans l'écran Rapports, le rapport de taxes d'une période terminée propose à
+l'administrateur de la verrouiller sur-le-champ, et dit quand elle l'est déjà :
+c'est juste après avoir produit la déclaration que l'on y pense.
 
 Une facture d'abonnement rattrapée sur une période close est datée du premier
 jour ouvert plutôt que perdue. Rouvrir une période (reculer la date, ou
@@ -805,6 +810,17 @@ statuts, origine des paiements, noms de taxes (GST, QST, HST, PST) et nom du
 fichier (`sales-register-2026.csv`). Il suit alors l'usage de l'Excel
 anglophone, pour la même raison : virgule entre les colonnes et point décimal.
 Sans langue demandée, le fichier est celui d'avant, à l'octet près.
+
+**Les reçus de la période** partent eux aussi d'un clic, en une archive ZIP
+(`GET /api/rapports/export/recus`, administration et comptabilité) : chaque
+reçu joint aux dépenses de la période, nommé par sa date, son fournisseur et
+son nom d'origine pour que l'archive se trie d'elle-même, et un index CSV qui
+relie chaque fichier à sa dépense (date, fournisseur, montants, taxes). Un reçu
+introuvable, sur le poste comme dans le dossier des sauvegardes, n'empêche pas
+l'archive : l'index le signale. L'écran annonce d'avance combien de reçus la
+période compte et leur poids, et ne propose rien quand il n'y en a pas.
+`archiveZip.js` écrit l'archive au fil de la lecture, un reçu à la fois, sans
+dépendance : les reçus, déjà comprimés, y sont rangés tels quels.
 
 ## Compte rendu de la période
 
