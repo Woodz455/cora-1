@@ -1,7 +1,7 @@
 # Clora : état du projet
 
 *Ce qui a été fait, ce qui reste à faire. Arrêté au 13 novembre 2026,
-version 1.13.0.*
+version 1.13.1.*
 
 ---
 
@@ -9,10 +9,10 @@ version 1.13.0.*
 
 | | |
 | --- | --- |
-| **Version publiée** | 1.13.0, le 13 novembre 2026 |
-| **Publications** | 21 versions livrées depuis le 24 juillet 2026 |
-| **Développement** | 113 commits, 53 demandes de fusion : 52 fusionnées, une rendue sans objet |
-| **Tests** | 502, tous au vert, exécutés à chaque fusion, plus trois essais de l'application de bureau, dont un qui pilote les écrans |
+| **Version publiée** | 1.13.1, le 13 novembre 2026 |
+| **Publications** | 22 versions livrées depuis le 24 juillet 2026 |
+| **Développement** | 116 commits, 54 demandes de fusion : 53 fusionnées, une rendue sans objet |
+| **Tests** | 505, tous au vert, exécutés à chaque fusion, plus trois essais de l'application de bureau, dont un qui pilote les écrans |
 | **Durée** | 16 semaines, du 24 juillet au 13 novembre 2026 |
 | **Langues** | Interface en français ou en anglais, au choix de chaque utilisateur |
 | **Site web** | Page Clora en ligne sur safehilltechnologies.ca, remise à jour le 27 septembre |
@@ -548,6 +548,23 @@ Vérifié dans la vraie application : les trois parcours, le PDF d'une facture e
 d'un compte rendu de trois pages, et les écrans à 1 280 pixels. Deux défauts
 d'affichage vus en chemin sont corrigés. 26 tests de plus.
 
+### Phase 22 : les reçus au comptable
+*13 novembre · publié en 1.13.1 · demande de fusion #54*
+
+Les deux petites suites que la phase 21 laissait ouvertes.
+
+- **Les reçus d'une période en une archive.** Depuis Rapports, un clic remet
+  au comptable les reçus des dépenses du mois, du trimestre ou de l'année,
+  nommés par leur date et leur fournisseur, avec un index qui relie chaque
+  fichier à sa dépense. Un reçu introuvable est signalé dans l'index plutôt
+  que de faire échouer l'archive.
+- **La clôture depuis le rapport de taxes.** Une période terminée se verrouille
+  juste après avoir produit sa déclaration, sans passer par Paramètres, et le
+  rapport d'une période close le dit.
+
+Vérifié dans la vraie application, et l'archive ouverte par un lecteur ZIP
+indépendant, noms accentués compris. 3 tests de plus.
+
 ### En parallèle : le site web
 *Dépôt `safehill-web1`*
 
@@ -631,8 +648,8 @@ l'avertissement d'emblée.
 Les deux lots qu'elle avait relevés sont faits : traçabilité et durcissement
 (phase 20), puis verrouillage, reçus, PDF, archivage et essais des écrans
 (phase 21). Les deux petites suites que la phase 21 laissait ouvertes le sont
-aussi, après la 1.13.0 : les reçus d'une période se remettent au comptable en
-une archive, et la période se verrouille depuis le rapport de taxes. Il ne
+aussi, en 1.13.1 (phase 22) : les reçus d'une période se remettent au comptable
+en une archive, et la période se verrouille depuis le rapport de taxes. Il ne
 reste rien de ce que la vérification avait relevé.
 
 > **Réserve sur une quatrième idée** souvent proposée : la détection des
@@ -669,8 +686,8 @@ jamais été observés sur une machine réelle :
 
 - **Le bandeau de mise à jour, cas positif.** Il n'a jamais été observé sur un
   vrai Windows : jusqu'à la 1.5.1, aucune version plus récente n'existait à
-  annoncer. La 1.13.0 en offre l'occasion sur toute installation restée en
-  1.12.0.
+  annoncer. La 1.13.1 en offre l'occasion sur toute installation restée en
+  1.13.0.
 - **Le redémarrage après restauration d'une sauvegarde.** Vérifié de bout en
   bout dans l'application de bureau sous Linux depuis la 1.9.1 : la restauration
   s'applique et l'application redémarre seule. Reste à le voir sous Windows.
@@ -769,7 +786,12 @@ ce qu'on perd :
 
 ## 8. Prochaine étape
 
-**Faire installer la 1.13.0 par les testeurs et écouter ce qu'ils disent.**
+**Faire installer la 1.13.1 par les testeurs et écouter ce qu'ils disent.**
+
+La 1.13.1 ajoute deux gestes à l'écran Rapports : les reçus de la période en
+une archive, et la clôture de la période depuis le rapport de taxes. Il faut
+demander à un testeur d'ouvrir l'archive dans l'explorateur de Windows : les
+noms de fichiers accentués doivent s'y lire correctement.
 
 La 1.13.0 change ce qu'ils voient : un trombone pour joindre les reçus aux
 dépenses, une section « Clôture des périodes » dans Paramètres, l'archivage des
@@ -831,7 +853,7 @@ relevé par la vérification d'ensemble, traçabilité et durcissement, est livr
 en 1.12.0. Le second (verrouillage des périodes, reçus joints, vrais PDF,
 renommage et archivage, essais des écrans) est livré en 1.13.0. Ses deux
 petites suites (les reçus d'une période en archive, la clôture depuis le
-rapport de taxes) sont faites et attendent la prochaine version.
+rapport de taxes) sont livrées en 1.13.1.
 
 **Tout ce qui avait été relevé en corrigeant le design est fait** : les polices
 embarquées en 1.7.2, l'échelle d'espacement en 1.7.3, l'anneau de focus et la
