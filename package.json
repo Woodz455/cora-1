@@ -89,17 +89,17 @@
     "dotenv": "^18.0.10",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "nodemailer": "^10.4.0",
+    "nodemailer": "^10.6.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^6.0.1"
   },
   "devDependencies": {
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
-    "electron": "^45.3.1",
+    "electron": "^45.4.1",
     "electron-builder": "^26.15.3",
     "electron-is-dev": "^3.0.1",
-    "playwright-core": "^1.65.0",
+    "playwright-core": "^1.65.1",
     "png-to-ico": "^3.0.1",
     "wait-on": "^9.5.1"
   }
